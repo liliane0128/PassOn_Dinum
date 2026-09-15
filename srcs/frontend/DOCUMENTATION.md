@@ -10,7 +10,7 @@ comprendre chaque décision, pas juste "que ça marche".
 |---|---|---|
 | **Vite** | Sert le projet en développement, et le compile pour la production (`npm run build`) | Rapide, configuration minimale, standard actuel pour un projet React |
 | **React** | Librairie pour construire l'interface à base de composants | Demandé, et cohérent avec l'écosystème de `suitenumerique/docs` |
-| **react-router-dom** | Gère la navigation entre les "pages" (`/`, `/utilisateur/:slug`) sans recharger la page | Permet des URLs propres et partageables |
+| **react-router-dom** | Gère la navigation entre les "pages" (`/`, `/manager`, `/moi`) sans recharger la page | Permet des URLs propres |
 | **@gouvfr-lasuite/ui-components** | Le design system officiel de la Suite Numérique (composants + styles) | Demandé explicitement : rester cohérent avec la charte graphique de `suitenumerique/docs` |
 
 Pas de TypeScript (retiré sur ta demande) : tout est en `.jsx`/`.js`.
@@ -19,23 +19,27 @@ Pas de TypeScript (retiré sur ta demande) : tout est en `.jsx`/`.js`.
 
 ```
 src/
-  main.jsx              → point d'entrée. Monte React dans la page HTML, installe les
-                           "providers" globaux (voir plus bas), importe le CSS du kit.
-  App.jsx                → définit les routes (quelle page s'affiche pour quelle URL).
-  index.css               → reset CSS minimal (marges à zéro, hauteur 100%).
+  main.jsx              → point d'entrée. Monte React, installe les providers
+                           globaux (voir plus bas), importe le CSS du kit.
+  App.jsx                → définit les routes.
+  index.css               → reset CSS minimal.
 
   pages/
-    HomePage.jsx / .css    → la page d'accueil (formulaire prénom/nom).
-    UserPage.jsx / .css    → la page qui affiche mails + documents d'un collaborateur.
+    LoginPage.jsx / .css    → page de connexion (email + mot de passe).
+    ManagerPage.jsx / .css  → espace manager : équipe + résumé éditable.
+    EmployeePage.jsx / .css → espace employé : son résumé + ses documents.
+
+  context/
+    AuthContext.jsx          → qui est connecté, fonctions login()/logout().
+    SummaryContext.jsx        → les résumés IA (lecture + modification), partagés
+                                entre l'espace manager et l'espace employé.
 
   data/
-    mockData.js             → données fictives (collaborateurs, mails, documents),
-                               le temps qu'il n'y ait pas de vraie API branchée.
-
-  utils/
-    user.js                 → fonctions utilitaires : transformer "Amélie Rousseau" en
-                               slug d'URL "amelie-rousseau", et retrouver un collaborateur
-                               à partir de ce slug.
+    mockData.js              → données fictives : collaborateurs (avec email,
+                                mot de passe, rôle de compte, manager), mails,
+                                documents.
+    mockSummaries.js          → résumé IA fictif par collaborateur employé (texte
+                                de départ, en attendant un vrai appel IA).
 ```
 
 ## Comment ça se lance (`main.jsx`)
@@ -45,120 +49,157 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <CunninghamProvider theme="default">
       <BrowserRouter>
-        <App />
+        <AuthProvider>
+          <SummaryProvider>
+            <App />
+          </SummaryProvider>
+        </AuthProvider>
       </BrowserRouter>
     </CunninghamProvider>
   </StrictMode>,
 );
 ```
 
-Trois couches imbriquées, de l'extérieur vers l'intérieur :
+Chaque couche rend quelque chose de disponible à tout ce qui est en dessous d'elle,
+via le mécanisme de **Context** de React (voir plus bas) :
 
-1. **`StrictMode`** : un mode de développement de React qui aide à repérer des bugs
-   (il n'a aucun effet en production, tu peux l'ignorer pour l'instant).
-2. **`CunninghamProvider`** : fourni par le kit de la Suite. Il rend disponibles à tous
-   les composants en dessous les couleurs, la typographie, les traductions du kit
-   ("Cunningham" est le nom interne du moteur de design system de la Suite Numérique).
-   Sans lui, les composants du kit (`Button`, `Input`...) ne s'afficheraient pas
-   correctement.
-3. **`BrowserRouter`** : active la navigation par URL. Sans lui, `react-router-dom`
-   ne fonctionne pas.
+1. **`StrictMode`** : mode de développement React qui aide à repérer des bugs (aucun
+   effet en production).
+2. **`CunninghamProvider`** : couleurs/typographie/traductions du kit de la Suite.
+3. **`BrowserRouter`** : active la navigation par URL.
+4. **`AuthProvider`** : rend disponible "qui est connecté" (`currentUser`) et les
+   fonctions `login`/`logout` à toutes les pages.
+5. **`SummaryProvider`** : rend disponibles les résumés IA (lecture et modification)
+   à toutes les pages — c'est ce qui permet à l'espace manager et à l'espace employé
+   de lire/modifier **le même** résumé sans se le transmettre explicitement.
 
-Juste au-dessus, `main.jsx` importe aussi trois fichiers CSS/police qui ne sont pas du
-code mais des feuilles de style : le CSS du kit (`@gouvfr-lasuite/ui-components/style`),
-la police Roboto, et les icônes Material Icons — tous fournis par le kit.
+## Les Context : comment "qui est connecté" circule dans l'appli
 
-## Le routing (`App.jsx`)
+Un `Context` React, c'est une boîte de données accessible depuis n'importe quel
+composant en dessous du `Provider` qui la fournit, sans avoir à la faire passer de
+composant en composant ("prop drilling"). Deux fichiers dans `src/context/` :
 
-```jsx
-<Routes>
-  <Route path="/" element={<HomePage />} />
-  <Route path="/utilisateur/:slug" element={<UserPage />} />
-</Routes>
-```
+**`AuthContext.jsx`** : contient un `useState` pour `currentUser` (le collaborateur
+connecté, ou `null`), et deux fonctions :
+- `login(email, password)` : cherche dans `mockData.js` un collaborateur dont l'email
+  et le mot de passe correspondent. Si trouvé, il devient `currentUser` et la fonction
+  le retourne (pour que `LoginPage` sache tout de suite vers quelle page rediriger,
+  sans attendre un nouveau rendu).
+- `logout()` : remet `currentUser` à `null`.
 
-`:slug` est un **paramètre d'URL** : `/utilisateur/amelie-rousseau` fait que
-`UserPage` peut lire `"amelie-rousseau"` via le hook `useParams()`.
+Le hook `useAuth()` (défini dans le même fichier) est juste un raccourci pour aller
+lire ce Context depuis n'importe quel composant : `const { currentUser, logout } = useAuth();`.
 
-## Page d'accueil (`HomePage.jsx`)
+**`SummaryContext.jsx`** : contient un `useState` pour `summaries` (un objet
+`{ [collaboratorId]: { text, validated } }`, initialisé depuis `mockSummaries.js`),
+et trois fonctions : `getSummary(id)`, `updateSummary(id, text)` (remet aussi
+`validated` à `false`), `validateSummary(id)` (passe `validated` à `true`).
 
-Un formulaire contrôlé : chaque champ (`Input` du kit) a sa valeur stockée dans le
-state React (`useState`), et se met à jour à chaque frappe (`onChange`). À la
-soumission (`onSubmit`), on transforme prénom+nom en slug (`slugify`, dans
-`utils/user.js`) et on navigue vers `/utilisateur/<slug>` avec `useNavigate()`.
+⚠️ Ces deux Context ne vivent qu'en mémoire côté navigateur : un rafraîchissement de
+page déconnecte l'utilisateur et remet les résumés à leur valeur de départ. C'est
+attendu pour un prototype sans backend (voir `PLAN.md`).
 
-On passe aussi `state: { firstName, lastName }` à `navigate()` — c'est un moyen de
-transmettre des données à la page suivante sans les mettre dans l'URL (pas utilisé
-pour l'instant dans `UserPage`, mais disponible si besoin).
+## Page de connexion (`LoginPage.jsx`)
 
-## Page collaborateur (`UserPage.jsx`)
+Un formulaire contrôlé classique : `email`/`password` en state React, `Input` et
+`InputPassword` du kit (ce dernier ajoute juste un bouton œil pour afficher/masquer
+le mot de passe). À la soumission, `login(email, password)` est appelé ; s'il ne
+trouve personne, un état `error` local affiche un message sous le champ mot de passe
+(`state="error"` sur les composants du kit). S'il trouve quelqu'un, on navigue vers
+`/manager` ou `/moi` selon `user.accountRole`.
 
-C'est la page la plus dense. Détail des étapes :
+Un `<details>`/`<summary>` HTML (repliable nativement, pas besoin de JS) affiche les
+comptes de test — email + rôle de chacun, mot de passe commun "demo" — puisqu'il n'y
+a pas de vrai backend pour l'instant.
 
-1. **Récupérer le collaborateur** : `useParams()` donne le `slug` de l'URL,
-   `findCollaboratorBySlug(slug)` (dans `utils/user.js`) cherche dans
-   `data/mockData.js` un collaborateur dont le prénom+nom slugifié correspond.
-   Si rien ne correspond → on affiche un message d'erreur et on s'arrête là
-   (`return` anticipé, avant le layout complet).
+## Espace manager (`ManagerPage.jsx`)
 
-2. **Construire la liste des éléments** (`useMemo`) : on filtre `emails` et
-   `documents` du fichier mock pour ne garder que ceux du collaborateur trouvé, on
-   les met dans une forme commune (`{ type, id, icon, title, subtitle, date, ... }`)
-   pour pouvoir les afficher avec le même code, puis on trie par date décroissante.
-   `useMemo` évite de refaire ce calcul à chaque rendu si rien n'a changé — un détail
-   de performance, pas indispensable pour l'instant vu le peu de données, mais bonne
-   pratique dès que la liste peut grossir.
+1. **Protection de la route** : si `currentUser` est `null` ou n'a pas
+   `accountRole === "manager"`, le composant retourne `<Navigate to="/" replace />` —
+   un composant fourni par `react-router-dom` qui redirige immédiatement sans qu'on
+   ait besoin d'un `useEffect`.
 
-3. **Deux états locaux** :
-   - `filter` (`"all" | "mail" | "doc"`) : quel type est sélectionné dans le panneau
-     gauche.
-   - `selected` (un élément de la liste, ou `null`) : quel élément est affiché en
-     détail dans le panneau droit. `null` = panneau fermé.
+2. **L'équipe** : `collaborators.filter((c) => c.managerId === currentUser.id)` — la
+   hiérarchie tient dans ce seul champ `managerId` pour l'instant (voir `PLAN.md` pour
+   la vraie table de relations à venir).
 
-4. **Le layout** : on utilise `MainLayout` du kit, qui fabrique à lui seul la
-   structure "en-tête + panneau gauche + centre + panneau droit". On lui passe du
-   contenu à chaque emplacement :
-   - `icon` → ce qui s'affiche en haut à gauche (lien retour vers l'accueil).
-   - `rightHeaderContent` → ce qui s'affiche en haut à droite (avatar + nom du
-     collaborateur).
-   - `leftPanelContent` → les boutons de filtre.
-   - `children` (entre les balises `<MainLayout>...</MainLayout>`) → le centre,
-     donc la liste.
-   - `rightPanelContent` + `rightPanelIsOpen` → le détail, affiché seulement quand
-     `selected` n'est pas `null`.
+3. **Sélection** : `selectedId` (state) retient quel collaborateur de l'équipe est
+   affiché ; cliquer sur un nom dans la colonne de gauche appelle `handleSelect`, qui
+   change `selectedId` et recharge le brouillon (`draftText`) depuis le résumé actuel
+   de la personne sélectionnée.
 
-   ⚠️ Piège rencontré en construisant cette page : les props de `MainLayout` pour
-   l'en-tête s'appellent `icon` et `rightHeaderContent`, pas `leftIcon`/`rightIcon`
-   comme on pourrait s'y attendre en lisant seulement le composant `Header`. Le nom
-   exact des props d'un composant de bibliothèque n'est pas toujours intuitif — en
-   cas de doute, il faut lire le code source du composant (ici dans
-   `node_modules/@gouvfr-lasuite/ui-components/dist/components/layout/`).
+4. **Édition libre** : le manager tape dans un simple `<textarea>` ; le bouton
+   "Enregistrer" (désactivé tant que `draftText` égale le texte déjà enregistré)
+   appelle `updateSummary(selected.id, draftText)`.
 
-5. **Le panneau droit ne se redimensionne pas nativement** dans le kit (largeur fixe
-   de 300px, non modifiable via une prop). On a surchargé le CSS du kit
-   (`.c__right-panel.open` dans `UserPage.css`) pour l'agrandir par défaut et ajouter
-   `resize: horizontal`, une propriété CSS native qui fait apparaître une poignée de
-   redimensionnement (coin bas-droit) sans JavaScript.
+5. **Mise en page en trois colonnes maison** (`display: flex` avec `flex: 1` / `flex: 2` /
+   `flex: 1` sur les trois `<div>`), pas de composant `MainLayout` du kit ici — voir
+   plus bas pourquoi.
 
-## Les données mockées (`data/mockData.js`)
+## Espace employé (`EmployeePage.jsx`)
 
-Trois tableaux simples : `collaborators`, `emails`, `documents`. Chaque mail/document
-a un champ `collaboratorId` qui le relie à un collaborateur — c'est la même logique
-qu'une vraie base de données relationnelle (clé étrangère), en version très
-simplifiée. Le jour où on branche une vraie API, ce fichier disparaît et les
-composants qui l'utilisent (`UserPage.jsx`) iront chercher les mêmes données via des
-requêtes réseau (probablement avec `fetch` ou `react-query`, comme dans le vrai
-projet `docs`).
+Même principe de protection de route (`accountRole === "employee"`).
+
+- **Résumé** : `draftText` (state local) initialisé depuis
+  `getSummary(currentUser.id).text`. Deux actions : "Enregistrer les modifications"
+  (sauvegarde sans valider) et "Valider ce résumé" (sauvegarde **et** valide en un
+  clic — utile si l'employé n'a pas encore cliqué "Enregistrer" avant de valider).
+  Un `Badge` (`success`/`warning` du kit) affiche le statut `validated`.
+- **Documents** : même calcul qu'avant (mails + documents du collaborateur, triés par
+  date) dans un `useMemo`. Affichés en liste dans la colonne de droite ; cliquer sur
+  un élément le déplie **sur place** (accordéon, `expandedKey` en state) pour montrer
+  son détail, plutôt que de l'ouvrir dans une colonne séparée — plus adapté à une
+  colonne étroite (1/3 de la largeur) qu'un panneau dédié.
+
+## Pourquoi plus de `MainLayout` du kit sur ces deux pages
+
+Les versions précédentes de ce projet utilisaient `MainLayout` (en-tête + panneaux
+gauche/droit) fourni par le kit. Mais ce composant impose des largeurs de panneaux en
+pixels fixes et un mécanisme d'ouverture/fermeture — alors qu'ici on veut des colonnes
+**toujours visibles**, dans des proportions précises (1/4-2/4-1/4, 2/3-1/3). On a donc
+construit ces deux pages avec un simple en-tête maison (`<header>`) + un conteneur
+`display: flex` pour les colonnes, en utilisant toujours les **variables CSS (tokens)**
+du kit pour les couleurs/espacements, mais plus le composant `MainLayout` lui-même.
+Bénéfice mesuré : le JS de production est passé d'environ 695 Ko à 373 Ko, `MainLayout`
+embarquant tout le système de panneaux redimensionnables (`react-resizable-panels`)
+qu'on n'utilise plus du tout.
+
+## Les données mockées
+
+- **`data/mockData.js`** : `collaborators` (avec `email`, `password`, `accountRole`
+  `"manager"` ou `"employee"`, `managerId`), `emails`, `documents` (reliés à un
+  collaborateur par `collaboratorId`, comme une clé étrangère de base de données
+  relationnelle, en très simplifié).
+- **`data/mockSummaries.js`** : un texte de résumé + un statut `validated` par
+  collaborateur **employé** (les managers n'ont pas de résumé pour eux-mêmes dans ce
+  modèle). Le state réel (modifiable pendant que l'appli tourne) vit dans
+  `SummaryContext`, initialisé depuis ce fichier au démarrage.
+
+Le jour où un vrai backend arrive : `mockData.js` et `mockSummaries.js` disparaissent,
+`AuthContext` fait un vrai appel d'authentification au lieu de comparer une liste en
+dur, et `SummaryContext` lit/écrit sur une API au lieu d'un simple `useState`.
 
 ## Ce qui vient du kit vs. ce qu'on a écrit nous-mêmes
 
-- **Composants du kit** (boîtes noires réutilisées telles quelles) : `Button`,
-  `Input`, `MainLayout`, `Badge`, `UserAvatar`, `CunninghamProvider`.
-- **CSS écrit à la main** (`HomePage.css`, `UserPage.css`) : il n'existe pas de
-  composant "Card" ou "liste d'éléments" tout fait dans le kit pour notre cas
-  d'usage précis, donc on a stylé nos propres éléments (`<button className="user-page__item">`,
-  etc.) — mais en réutilisant systématiquement les **variables CSS (tokens)** du kit
-  (`var(--c--globals--colors--brand-550)`, `var(--c--globals--spacings--sm)`...) plutôt
-  que des couleurs ou tailles en dur. C'est ce qui garantit que notre interface reste
-  visuellement cohérente avec le reste de la Suite Numérique, même là où on code
-  nous-mêmes.
+- **Composants du kit** : `Button`, `Input`, `InputPassword`, `Badge`,
+  `CunninghamProvider`.
+- **CSS écrit à la main** (un fichier par page) : il n'existe pas de composant "espace
+  à trois colonnes" ou "résumé éditable" tout fait dans le kit, donc on a stylé nos
+  propres éléments — mais en réutilisant systématiquement les **variables CSS
+  (tokens)** du kit (`var(--c--globals--colors--brand-550)`,
+  `var(--c--globals--spacings--sm)`...) plutôt que des couleurs ou tailles en dur.
+  C'est ce qui garantit que l'interface reste visuellement cohérente avec le reste de
+  la Suite Numérique, même là où on code nous-mêmes.
+
+## Le nettoyage disque du 2026-09-15
+
+En construisant cette version, `node_modules` a été trouvé à 2,9 Go — beaucoup trop
+pour ce projet. La cause : `@gouvfr-lasuite/ui-components` dépend d'une quarantaine de
+sous-paquets `@react-aria/*`, dont chacun redéclare en dépendance la librairie complète
+`react-aria` (et `react-stately`) dans une version légèrement différente de celle
+utilisée à la racine du projet. npm ne pouvant pas fusionner des versions
+incompatibles, il installait une copie complète (~49 Mo) **dans chacun** des ~47
+sous-paquets. Le champ [`overrides`](https://docs.npmjs.com/cli/v10/configuring-npm/package-json#overrides)
+dans `package.json` force maintenant une version unique de `react-aria`/`react-stately`
+pour tout le projet — sûr ici car on n'utilise aucun composant du kit qui dépend de
+cette zone (calendrier, sélecteur de date...). Résultat : 2,9 Go → 375 Mo.
