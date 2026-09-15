@@ -1,4 +1,4 @@
-# Relais Dinum
+# Pass‘on Dinum
 
 ## Backend (`src/backend`)
 

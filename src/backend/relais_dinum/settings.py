@@ -13,8 +13,16 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load src/backend/.env so DOCS_URL/GROQ_API_KEY/etc. don't need to be
+# exported manually before running manage.py. Real environment variables
+# (e.g. set in Docker Compose) still take priority: load_dotenv() does not
+# override a variable that is already set.
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -129,8 +137,16 @@ MAILERS = {
 
 # Credentials are supplied per request, never taken from shared demo accounts.
 DINUM_API_TIMEOUT = float(os.getenv("DINUM_API_TIMEOUT", "10"))
+# When true, /api/<service>/items/ returns static demo data instead of calling
+# the upstream service. Useful when Docs/Drive/Messages aren't running locally.
+DINUM_USE_MOCK = os.getenv("DINUM_USE_MOCK", "false").lower() == "true"
 DINUM_SERVICES = {
     "docs": {"url": os.getenv("DOCS_URL", "http://localhost:8071").rstrip("/"), "cookie": "docs_sessionid", "header": "X-Docs-Session"},
     "drive": {"url": os.getenv("DRIVE_URL", "http://localhost:8072").rstrip("/"), "cookie": "drive_sessionid", "header": "X-Drive-Session"},
     "messages": {"url": os.getenv("MESSAGES_URL", "http://localhost:8901").rstrip("/"), "cookie": os.getenv("MESSAGES_SESSION_COOKIE", "sessionid"), "header": "X-Messages-Session"},
 }
+
+# LLM used by /api/dossier/ (connectors/generation.py), via the groq SDK.
+# Get a free key at https://console.groq.com/keys.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")

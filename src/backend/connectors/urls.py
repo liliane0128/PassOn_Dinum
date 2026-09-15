@@ -1,8 +1,9 @@
 from django.urls import path
-from .views import extraction_items, items
+from .views import dossier, extraction_items, items
 
 urlpatterns = [
     path("extraction/items/", extraction_items),
+    path("dossier/", dossier),
 ]
 for service, resource in (("docs", "documents"), ("drive", "items"), ("messages", "messages")):
     urlpatterns += [

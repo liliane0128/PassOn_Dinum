@@ -119,6 +119,11 @@ def _list_threads(session, mailbox_id, base_url):
         f"{base_url}/api/v1.0/threads/", params={"mailbox_id": mailbox_id}
     )
     response.raise_for_status()
+    # Unlike /messages/ (MessageViewSet sets pagination_class = None),
+    # ThreadViewSet doesn't override pagination_class, so it inherits the
+    # project's default PageNumberPagination and returns a
+    # {"count", "next", "previous", "results"} wrapper, not a bare list
+    # (confirmed against messages/settings.py's DEFAULT_PAGINATION_CLASS).
     return response.json()["results"]
 
 

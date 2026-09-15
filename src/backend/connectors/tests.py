@@ -1,7 +1,7 @@
 import json
 from unittest.mock import patch
 import requests
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 
 def upstream(data, status=200):
@@ -11,6 +11,7 @@ def upstream(data, status=200):
     return response
 
 
+@override_settings(DINUM_USE_MOCK=False)
 class ConnectorAPITests(SimpleTestCase):
     @patch('requests.sessions.Session.send')
     def test_all_connectors(self, send):
@@ -107,6 +108,7 @@ class ConnectorAPITests(SimpleTestCase):
         self.assertEqual(self.client.get('/api/docs/items/', HTTP_X_DOCS_SESSION='session').status_code, 502)
 
 
+@override_settings(DINUM_USE_MOCK=False)
 class ExtractionViewTests(SimpleTestCase):
     def test_requires_at_least_one_credential(self):
         result = self.client.get('/api/extraction/items/')
