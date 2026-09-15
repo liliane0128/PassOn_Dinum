@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -8,30 +8,21 @@ import {
 import { useAuth } from "../context/AuthContext.jsx";
 import { useSummaries } from "../context/SummaryContext.jsx";
 import { getCollaboratorItems } from "../utils/collaboratorItems.js";
+import { generateDossier } from "../api/dossier.js";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
 import { SummaryDetails } from "../components/SummaryDetails.jsx";
+import { CollaboratorItemsList } from "../components/CollaboratorItemsList.jsx";
 import suiteLogo from "../assets/suite-logo.svg";
 import "./EmployeePage.css";
 
 const SUMMARY_HEADING_ID = "employee-summary-heading";
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function EmployeePage() {
   const { currentUser, logout } = useAuth();
   const { getSummary, updateSummary, validateSummary } = useSummaries();
   const { toast } = useToastProvider();
   const navigate = useNavigate();
-  const [expandedKey, setExpandedKey] = useState(null);
 
   const items = useMemo(
     () => getCollaboratorItems(currentUser?.id),
@@ -40,6 +31,33 @@ export function EmployeePage() {
 
   const summary = currentUser ? getSummary(currentUser.id) : { text: "", validated: false };
   const [draftText, setDraftText] = useState(summary.text);
+
+  // Auto-generate the AI summary from the backend's mock data as soon as
+  // this collaborator's own page loads (see connectors/generation.py) --
+  // this only fills the draft, it never auto-validates.
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    generateDossier()
+      .then((result) => {
+        if (cancelled) return;
+        updateSummary(currentUser.id, {
+          text: result.text,
+          actions: result.actions.map((item) => ({ ...item, id: crypto.randomUUID() })),
+          decisions: result.decisions.map((item) => ({ ...item, id: crypto.randomUUID() })),
+          deadlines: result.deadlines.map((item) => ({ ...item, id: crypto.randomUUID() })),
+          blockers: result.blockers.map((item) => ({ ...item, id: crypto.randomUUID() })),
+          documents: result.documents,
+        });
+        setDraftText(result.text);
+      })
+      .catch((err) => {
+        if (!cancelled) toast(`Échec de la génération du résumé IA : ${err.message}`, "error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser]);
 
   if (!currentUser || currentUser.accountRole !== "employee") {
     return <Navigate to="/" replace />;
@@ -143,55 +161,7 @@ export function EmployeePage() {
             <h2 className="employee-page__docs__title">
               Documents utilisés ({items.length})
             </h2>
-
-            {items.length === 0 && (
-              <p className="employee-page__empty">
-                Aucun mail ni document enregistré pour l'instant.
-              </p>
-            )}
-
-            <div className="employee-page__docs__list">
-              {items.map((item) => {
-                const key = `${item.type}-${item.id}`;
-                const isExpanded = expandedKey === key;
-                return (
-                  <div key={key} className="employee-page__docs__item">
-                    <button
-                      className="employee-page__docs__item__header"
-                      onClick={() => setExpandedKey(isExpanded ? null : key)}
-                      aria-expanded={isExpanded}
-                    >
-                      <span className="material-icons employee-page__docs__item__icon">
-                        {item.icon}
-                      </span>
-                      <span className="employee-page__docs__item__text">
-                        <span className="employee-page__docs__item__title">
-                          {item.title}
-                        </span>
-                        <span className="employee-page__docs__item__subtitle">
-                          {item.subtitle}
-                        </span>
-                      </span>
-                      <span className="material-icons employee-page__docs__item__chevron">
-                        {isExpanded ? "expand_less" : "expand_more"}
-                      </span>
-                    </button>
-
-                    {isExpanded && (
-                      <div className="employee-page__docs__item__detail">
-                        <Badge type={item.type === "mail" ? "info" : "accent"}>
-                          {item.type === "mail" ? "Mail" : "Document"}
-                        </Badge>
-                        <p className="employee-page__docs__item__date">
-                          {formatDate(item.date)}
-                        </p>
-                        {item.preview && <p>{item.preview}</p>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <CollaboratorItemsList collaboratorId={currentUser.id} />
           </div>
         </div>
       </div>

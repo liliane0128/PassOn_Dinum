@@ -14,6 +14,7 @@ import { useSummaries } from "../context/SummaryContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
 import { SummaryDetails } from "../components/SummaryDetails.jsx";
+import { CollaboratorItemsList } from "../components/CollaboratorItemsList.jsx";
 import suiteLogo from "../assets/suite-logo.svg";
 import "./ManagerPage.css";
 
@@ -306,30 +307,42 @@ export function ManagerPage() {
                   </Badge>
                 </div>
 
-                <p className="manager-page__summary__hint">
-                  Vous pouvez modifier librement ce résumé, des documents et
-                  mails de {selected.firstName}.
-                </p>
+                {summary.validated ? (
+                  <>
+                    <p className="manager-page__summary__hint">
+                      Vous pouvez modifier librement ce résumé, des documents et
+                      mails de {selected.firstName}.
+                    </p>
 
-                <textarea
-                  className="manager-page__summary__textarea"
-                  aria-labelledby={SUMMARY_HEADING_ID}
-                  value={draftText}
-                  onChange={(e) => setDraftText(e.target.value)}
-                  rows={12}
-                  placeholder="Aucun résumé pour l'instant."
-                />
+                    <textarea
+                      className="manager-page__summary__textarea"
+                      aria-labelledby={SUMMARY_HEADING_ID}
+                      value={draftText}
+                      onChange={(e) => setDraftText(e.target.value)}
+                      rows={12}
+                      placeholder="Aucun résumé pour l'instant."
+                    />
 
-                <div className="manager-page__summary__actions">
-                  <Button
-                    onClick={handleSave}
-                    disabled={draftText === summary.text}
-                  >
-                    Enregistrer les modifications
-                  </Button>
-                </div>
+                    <div className="manager-page__summary__actions">
+                      <Button
+                        onClick={handleSave}
+                        disabled={draftText === summary.text}
+                      >
+                        Enregistrer les modifications
+                      </Button>
+                    </div>
 
-                <SummaryDetails collaboratorId={selected.id} />
+                    <SummaryDetails collaboratorId={selected.id} />
+                  </>
+                ) : (
+                  <>
+                    <p className="manager-page__summary__hint">
+                      {selected.firstName} n'a pas encore validé son résumé IA.
+                      En attendant, voici ses mails et documents.
+                    </p>
+                    <CollaboratorItemsList collaboratorId={selected.id} />
+                  </>
+                )}
               </>
             ) : (
               <p className="manager-page__empty">

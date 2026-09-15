@@ -364,23 +364,26 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onEdit, onRemove })
   );
 }
 
+// docRefs entries are self-contained { id, title, url } objects -- either
+// produced by the backend's /api/dossier/ (real doc/drive/message ids,
+// e.g. "docs:b8eb2e3a-...", with a real url) or built here from the
+// frontend's own mock items when picked manually (url left null). Keeping
+// a single shape means this section never needs to know which side an
+// entry came from.
 function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
   const [selectedKey, setSelectedKey] = useState("");
   const availableItems = getCollaboratorItems(collaboratorId);
-  const selectedItems = docRefs
-    .map((ref) =>
-      availableItems.find((it) => it.type === ref.type && it.id === ref.id),
-    )
-    .filter(Boolean);
   const pickable = availableItems.filter(
-    (it) => !docRefs.some((ref) => ref.type === it.type && ref.id === it.id),
+    (it) => !docRefs.some((ref) => ref.id === `${it.type}:${it.id}`),
   );
 
   function handleSubmit(event) {
     event.preventDefault();
     if (!selectedKey) return;
     const [type, id] = selectedKey.split(":");
-    onAdd(type, id);
+    const item = availableItems.find((it) => it.type === type && it.id === id);
+    if (!item) return;
+    onAdd({ id: selectedKey, title: item.title, url: null });
     setSelectedKey("");
   }
 
@@ -392,23 +395,26 @@ function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
         </span>
         Documents importants
       </h3>
-      {selectedItems.length === 0 ? (
+      {docRefs.length === 0 ? (
         <p className="summary-section__empty">
           Aucun document mis en avant pour l'instant.
         </p>
       ) : (
         <ul className="summary-section__list">
-          {selectedItems.map((it) => (
-            <li key={`${it.type}-${it.id}`}>
+          {docRefs.map((doc) => (
+            <li key={doc.id}>
               <span>
-                <span className="material-icons summary-section__list__icon">
-                  {it.icon}
-                </span>
-                {it.title}
+                {doc.url ? (
+                  <a href={doc.url} target="_blank" rel="noreferrer">
+                    {doc.title}
+                  </a>
+                ) : (
+                  doc.title
+                )}
               </span>
               <ItemActions
-                label={it.title}
-                onRemove={() => onRemove(it.type, it.id, it.title)}
+                label={doc.title}
+                onRemove={() => onRemove(doc.id, doc.title)}
               />
             </li>
           ))}
@@ -422,7 +428,7 @@ function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
           >
             <option value="">Choisir un document...</option>
             {pickable.map((it) => (
-              <option key={`${it.type}-${it.id}`} value={`${it.type}:${it.id}`}>
+              <option key={`${it.type}:${it.id}`} value={`${it.type}:${it.id}`}>
                 {it.title}
               </option>
             ))}
@@ -549,17 +555,15 @@ export function SummaryDetails({ collaboratorId }) {
       <DocumentSection
         collaboratorId={collaboratorId}
         docRefs={summary.documents ?? []}
-        onAdd={(type, id) =>
+        onAdd={(doc) =>
           updateSummary(collaboratorId, {
-            documents: [...(summary.documents ?? []), { type, id }],
+            documents: [...(summary.documents ?? []), doc],
           })
         }
-        onRemove={(type, id, label) =>
+        onRemove={(id, label) =>
           requestRemove(label, () =>
             updateSummary(collaboratorId, {
-              documents: (summary.documents ?? []).filter(
-                (x) => !(x.type === type && x.id === id),
-              ),
+              documents: (summary.documents ?? []).filter((x) => x.id !== id),
             }),
           )
         }
