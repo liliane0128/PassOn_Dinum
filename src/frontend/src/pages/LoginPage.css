@@ -1,0 +1,78 @@
+.login-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--c--contextuals--background--surface--tertiary);
+}
+
+.login-page__main {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--c--globals--spacings--base);
+}
+
+.login-page__theme-toggle {
+  position: absolute;
+  top: var(--c--globals--spacings--base);
+  right: var(--c--globals--spacings--base);
+}
+
+.login-page__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--c--globals--spacings--xl);
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-page__logo {
+  height: 80px;
+  width: auto;
+  display: block;
+}
+
+.login-page__card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--c--globals--spacings--sm);
+  background: var(--c--contextuals--background--surface--primary);
+  border: 1px solid var(--c--contextuals--border--surface--primary);
+  border-radius: 8px;
+  padding: var(--c--globals--spacings--lg);
+}
+
+.login-page__title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.login-page__subtitle {
+  margin: 0 0 var(--c--globals--spacings--xs);
+  color: var(--c--globals--colors--gray-550);
+  font-size: 0.875rem;
+}
+
+.login-page__hint {
+  margin-top: var(--c--globals--spacings--xs);
+  font-size: 0.8125rem;
+  color: var(--c--globals--colors--gray-550);
+}
+
+.login-page__hint summary {
+  cursor: pointer;
+  color: var(--c--globals--colors--brand-650);
+}
+
+.login-page__hint ul {
+  margin: var(--c--globals--spacings--xs) 0;
+  padding-left: 1.25rem;
+}
+
+.login-page__hint p {
+  margin: 0;
+}

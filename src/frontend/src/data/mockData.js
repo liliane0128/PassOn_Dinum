@@ -1,31 +1,52 @@
+// Mot de passe de test identique pour tous les comptes ("demo") : pas de vrai
+// backend d'authentification pour l'instant, ce sont des comptes mockés en
+// attendant le vrai système annoncé.
+const TEST_PASSWORD = "demo";
+
 export const collaborators = [
   {
     id: "c1",
     firstName: "Amélie",
     lastName: "Rousseau",
-    role: "Cheffe de projet",
+    jobTitle: "Cheffe de projet",
     team: "Produit",
+    email: "amelie.rousseau@entreprise.fr",
+    password: TEST_PASSWORD,
+    accountRole: "manager",
+    managerId: null,
   },
   {
     id: "c2",
     firstName: "Thomas",
     lastName: "Lefèvre",
-    role: "Développeur backend",
+    jobTitle: "Développeur backend",
     team: "Tech",
+    email: "thomas.lefevre@entreprise.fr",
+    password: TEST_PASSWORD,
+    accountRole: "employee",
+    managerId: "c1",
   },
   {
     id: "c3",
     firstName: "Sofia",
     lastName: "Martins",
-    role: "Designer UX/UI",
+    jobTitle: "Designer UX/UI",
     team: "Produit",
+    email: "sofia.martins@entreprise.fr",
+    password: TEST_PASSWORD,
+    accountRole: "employee",
+    managerId: "c1",
   },
   {
     id: "c4",
     firstName: "Karim",
     lastName: "Belhadj",
-    role: "Responsable RH",
+    jobTitle: "Responsable RH",
     team: "RH",
+    email: "karim.belhadj@entreprise.fr",
+    password: TEST_PASSWORD,
+    accountRole: "employee",
+    managerId: "c1",
   },
 ];
 
