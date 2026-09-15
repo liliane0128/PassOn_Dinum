@@ -95,7 +95,7 @@ def list_items(session, base_url=BASE_URL):
         f"{base_url}/api/v1.0/messages/", params={"mailbox_id": mailbox_id}
     )
     response.raise_for_status()
-    return response.json()
+    return response.json()["results"]
 
 
 def get_item(session, item_id, base_url=BASE_URL):
