@@ -1,3 +1,6 @@
+# Backend seul : Django sur http://localhost:8000, sans nginx ni frontend.
+# Pour la pile complète (nginx + frontend compilé + Django sur :8090), voir le
+# docker-compose.yml et le Makefile à la racine du dépôt.
 services:
   web:
     build: .
@@ -18,3 +21,24 @@ services:
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # Django utilise encore SQLite (settings.py) : ce service est en place pour
+  # la migration vers postgres, il n'est pas encore branché. Ses identifiants
+  # viennent du .env à la racine (voir template.env).
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../../database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

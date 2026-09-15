@@ -29,13 +29,23 @@ for what the nginx layer does and why.
 
 ## Working on a single part
 
-Backend alone — Django on **http://localhost:8000**, no frontend, no nginx:
+Backend alone — Django on **http://localhost:8000**, no frontend, no nginx.
+From the repository root (this is `make`'s default target):
 
 ```bash
-cd src/backend
-make up
-make down
+make run     # starts Django + the postgres container, opens the browser
+make build   # rebuilds their images
+make stop    # stops them
 ```
+
+This stack reads the repository-root `.env` for the postgres credentials.
+Copy `template.env` to `.env` on a fresh clone. Django itself still uses
+SQLite, so the postgres service is in place for a future migration but is not
+wired up yet.
+
+Note that you cannot log in from this stack: the login screen is served by the
+frontend, and the session cookies need the app and the API on one origin, which
+is what `make up` provides.
 
 Frontend alone — Vite dev server with hot reload on **http://localhost:5173**,
 mock data, no backend:

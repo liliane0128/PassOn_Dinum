@@ -1,12 +1,16 @@
 node_modules
+node_modules/
 dist
+dist/
 
 venv/
+.venv/
 __pycache__/
 *.pyc
+*.py[cod]
 db.sqlite3
 .env
-*.py[cod]
-.venv/
-node_modules/
-dist/
+
+# Données du conteneur postgres (src/backend/docker-compose.yml).
+database
+.hidden
