@@ -33,9 +33,12 @@ Endpoints (from the schema above):
 Local test account: impress / impress.
 """
 
+import base64
 import re
 
+import pycrdt
 import requests
+from bs4 import BeautifulSoup
 
 BASE_URL = "http://localhost:8071"
 DEFAULT_USERNAME = "impress"
@@ -95,6 +98,36 @@ def get_item(session, item_id, base_url=BASE_URL):
     return response.json()
 
 
+def get_content(session, item_id, base_url=BASE_URL):
+    """Return a document's plain-text body.
+
+    Document bodies live outside the metadata endpoints entirely: neither
+    list_items() nor get_item() above returns any text (Impress's
+    DocumentSerializer has no content field, and demo/unedited documents
+    leave `excerpt` null too). The body is fetched separately from
+    GET /documents/{id}/content/, which streams a base64-encoded Yjs CRDT
+    update straight from S3, not JSON or Markdown.
+
+    This mirrors Impress's own base64_yjs_to_text() helper
+    (core/utils/yjs.py): decode the base64, replay the update into a fresh
+    pycrdt.Doc, read the BlockNote structure out of the "document-store"
+    XmlFragment (that key name is a BlockNote/Impress convention, see
+    frontend's getXmlFragment('document-store')), then strip the XML tags.
+    """
+    response = session.get(
+        f"{base_url.rstrip('/')}/api/v1.0/documents/{item_id}/content/"
+    )
+    response.raise_for_status()
+    if not response.content:
+        return ""
+
+    raw_update = base64.b64decode(response.content)
+    doc = pycrdt.Doc()
+    doc.apply_update(raw_update)
+    xml_fragment = str(doc.get("document-store", type=pycrdt.XmlFragment))
+    return BeautifulSoup(xml_fragment, "lxml-xml").get_text(separator=" ", strip=True)
+
+
 if __name__ == "__main__":
     session = login()
     print("Logged in as:", session.get(f"{BASE_URL}/api/v1.0/users/me/").json())
@@ -108,3 +141,7 @@ if __name__ == "__main__":
         detail = get_item(session, items[0]["id"])
         print("\nFull detail of the first document:")
         print(detail)
+
+        content = get_content(session, items[0]["id"])
+        print("\nContent of the first document:")
+        print(content if content else "(empty document)")
