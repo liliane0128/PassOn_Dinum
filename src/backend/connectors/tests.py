@@ -16,8 +16,8 @@ class ConnectorAPITests(SimpleTestCase):
     def test_all_connectors(self, send):
         cases = [
             ('docs', 'HTTP_X_DOCS_SESSION', [upstream({'results': [{'title': 'Doc'}]})], [{'title': 'Doc'}], 'documents/'),
-            ('drive', 'HTTP_X_DRIVE_SESSION', [upstream({'results': [{'title': 'File'}]})], [{'title': 'File'}], 'items/'),
-            ('messages', 'HTTP_X_MESSAGES_SESSION', [upstream([{'id': 'mailbox-1'}]), upstream([])], [], 'messages/?mailbox_id=mailbox-1'),
+            ('drive', 'HTTP_X_DRIVE_SESSION', [upstream({'results': [{'title': 'File'}]})], [{'title': 'File'}], 'items/?is_creator_me=true'),
+            ('messages', 'HTTP_X_MESSAGES_SESSION', [upstream([{'id': 'mailbox-1'}]), upstream({'results': [{'id': 'thread-1'}]}), upstream([{'id': 'msg-1', 'subject': 'Hi'}])], [{'id': 'msg-1', 'subject': 'Hi'}], 'messages/?thread_id=thread-1'),
         ]
         for service, header, responses, data, suffix in cases:
             with self.subTest(service=service):
@@ -30,6 +30,28 @@ class ConnectorAPITests(SimpleTestCase):
                 self.assertEqual(send.call_args.kwargs['timeout'], 10)
                 self.assertFalse(send.call_args.kwargs['allow_redirects'])
                 self.assertEqual(result['Cache-Control'], 'private, no-store')
+
+    @patch('requests.sessions.Session.send')
+    def test_messages_fans_out_across_mailboxes(self, send):
+        # A user can have more than one mailbox (personal + shared); an
+        # earlier version only ever looked at mailboxes[0] and silently
+        # dropped everything else. list_items() now walks every mailbox.
+        send.side_effect = [
+            upstream([{'id': 'mailbox-1'}, {'id': 'mailbox-2'}]),
+            upstream({'results': [{'id': 'thread-1'}]}),
+            upstream([{'id': 'msg-1', 'subject': 'From mailbox 1'}]),
+            upstream({'results': [{'id': 'thread-2'}]}),
+            upstream([{'id': 'msg-2', 'subject': 'From mailbox 2'}]),
+        ]
+        result = self.client.get('/api/messages/items/', HTTP_X_MESSAGES_SESSION='session')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(
+            result.json(),
+            {'service': 'messages', 'data': [
+                {'id': 'msg-1', 'subject': 'From mailbox 1'},
+                {'id': 'msg-2', 'subject': 'From mailbox 2'},
+            ]},
+        )
 
     @patch('requests.sessions.Session.send')
     def test_detail_routes_and_aliases(self, send):
@@ -71,9 +93,14 @@ class ConnectorAPITests(SimpleTestCase):
             self.assertEqual(self.client.get('/api/docs/items/', HTTP_X_DOCS_SESSION='session').status_code, status)
 
     @patch('requests.sessions.Session.send')
-    def test_empty_mailboxes_and_invalid_json(self, send):
+    def test_no_mailboxes_and_invalid_json(self, send):
+        # An account with zero mailboxes has zero messages -- that's a
+        # legitimate empty result now that list_items() fans out across
+        # every mailbox instead of requiring at least one to exist.
         send.return_value = upstream([])
-        self.assertEqual(self.client.get('/api/messages/items/', HTTP_X_MESSAGES_SESSION='session').status_code, 502)
+        result = self.client.get('/api/messages/items/', HTTP_X_MESSAGES_SESSION='session')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json(), {'service': 'messages', 'data': []})
         send.return_value = upstream({})
         self.assertEqual(self.client.get('/api/docs/items/', HTTP_X_DOCS_SESSION='session').status_code, 502)
         send.return_value._content = b'not json'

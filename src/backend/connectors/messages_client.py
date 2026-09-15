@@ -10,25 +10,54 @@ docs_client.py for the full writeup): Keycloak's session cookies are marked
 `Secure` even over plain http, so they must be stripped after the initial GET
 or the login POST fails with "Restart login cookie not found".
 
+Session cookie name: st_messages_sessionid (SESSION_COOKIE_NAME in Messages'
+settings.py -- not the generic "sessionid" the unified API's .env.example
+used to default to; that mismatch made the unified /api/messages/ proxy
+401 with a valid session until MESSAGES_SESSION_COOKIE was corrected).
+
 Endpoints (from http://localhost:8901/api/v1.0/swagger.json):
-- GET /api/v1.0/mailboxes/                       -> mailboxes owned by the user
-- GET /api/v1.0/messages/?mailbox_id={mailbox_id} -> messages in that mailbox
+- GET /api/v1.0/mailboxes/                        -> mailboxes owned by the user
+- GET /api/v1.0/threads/?mailbox_id={mailbox_id}  -> threads in that mailbox
+- GET /api/v1.0/messages/?thread_id={thread_id}   -> messages in that thread
 - GET /api/v1.0/messages/{id}/                    -> single message
 
-`mailbox_id` is required for the list endpoint: the IsAllowedToAccess
-permission (core/api/permissions.py) rejects a plain list request with 403
-("You do not have permission to perform this action.") unless a mailbox_id
-(or thread_id) query param is given, even though `get_queryset` itself
-already scopes results to the current user. list_items() below fetches the
-user's first mailbox to supply this automatically.
+`mailbox_id` satisfies the IsAllowedToAccess permission on /threads/, but
+does *not* actually filter /messages/ -- GET /messages/?mailbox_id=... is
+accepted (200) and always returns an empty list, even for a mailbox with
+real threads, because mailbox_id there is only a permission check, not a
+queryset filter (see IsAllowedToAccess in core/api/permissions.py); only
+thread_id filters it. So list_items() below fans out across *every*
+mailbox the user has (personal identity, plus any shared mailbox they've
+been given access to -- Messages is a "collaborative inbox", shared
+mailboxes are a first-class feature, not an edge case): for each mailbox
+it lists threads (GET /threads/?mailbox_id=..., which does return real
+data), then for each thread fetches its messages by thread_id, and
+flattens everything into one list. An earlier version only looked at
+`mailboxes[0]` ("the user's first mailbox") -- for a single-mailbox
+account (the default test account below) that's the whole picture, but
+for any account with shared mailboxes it silently missed every message
+outside whichever mailbox happened to sort first, with no error to signal
+it. Request count now scales with mailbox and thread count (one round
+trip per mailbox for its threads, one more per thread for its messages);
+fine for local/dev-sized inboxes, not something to point at production
+scale without pagination.
 
 Local test account: user1@example.local / user1 (created by `make superuser`
-as part of `make bootstrap`).
+as part of `make bootstrap`). Its mailbox is genuinely empty -- the light
+bootstrap seeds no demo mail data for this project (unlike Docs' `make
+demo`). For an account with real threads/messages to test against, run
+(against the already-running light stack, no separate e2e compose stack
+needed):
 
-Note: this local instance was only bootstrapped with the light stack
-(`make bootstrap`, no demo data command exists for this project as it does
-for Docs), so the test account's mailbox is genuinely empty. list_items()
-below will correctly return an empty list -- that's real state, not a bug.
+    docker compose exec -e DJANGO_CONFIGURATION=E2E backend-dev-light \
+        python manage.py e2e_demo
+
+(DJANGO_CONFIGURATION=E2E is required one-off: the `e2e` app that provides
+this command is only registered under Messages' E2E settings class, not
+Development, which the light stack normally runs under.) This creates
+user.e2e.{chromium,firefox,webkit}@example.local / password "e2e", each
+with ~5 real threads (outbox delivery-status fixtures, inbox threads, and
+for firefox/webkit a real inbound-delivered message with an HTML body).
 """
 
 import re
@@ -79,23 +108,37 @@ def login(base_url=BASE_URL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWOR
     return session
 
 
-def _get_default_mailbox_id(session, base_url):
+def _list_mailboxes(session, base_url):
     response = session.get(f"{base_url}/api/v1.0/mailboxes/")
     response.raise_for_status()
-    mailboxes = response.json()
-    if not mailboxes:
-        raise RuntimeError("This account has no mailboxes.")
-    return mailboxes[0]["id"]
+    return response.json()
 
 
-def list_items(session, base_url=BASE_URL):
-    """Return the messages in the user's (first) mailbox."""
-    mailbox_id = _get_default_mailbox_id(session, base_url)
+def _list_threads(session, mailbox_id, base_url):
     response = session.get(
-        f"{base_url}/api/v1.0/messages/", params={"mailbox_id": mailbox_id}
+        f"{base_url}/api/v1.0/threads/", params={"mailbox_id": mailbox_id}
     )
     response.raise_for_status()
     return response.json()["results"]
+
+
+def list_items(session, base_url=BASE_URL):
+    """Return the messages across all of the user's mailboxes.
+
+    See the module docstring: mailbox_id doesn't filter /messages/, and a
+    user can have more than one mailbox (personal + shared), so this walks
+    every mailbox -> its threads -> each thread's messages, and flattens
+    the result.
+    """
+    items = []
+    for mailbox in _list_mailboxes(session, base_url):
+        for thread in _list_threads(session, mailbox["id"], base_url):
+            response = session.get(
+                f"{base_url}/api/v1.0/messages/", params={"thread_id": thread["id"]}
+            )
+            response.raise_for_status()
+            items.extend(response.json())
+    return items
 
 
 def get_item(session, item_id, base_url=BASE_URL):
@@ -111,7 +154,7 @@ if __name__ == "__main__":
     print("Logged in, mailboxes:", mailboxes)
 
     items = list_items(session)
-    print(f"\n{len(items)} messages in the first mailbox.")
+    print(f"\n{len(items)} messages across all mailboxes.")
     if items:
         for item in items[:3]:
             print(" -", item["id"], item.get("subject"))
