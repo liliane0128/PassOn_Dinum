@@ -1,9 +1,10 @@
 import { createContext, useContext, useState } from "react";
-import { collaborators } from "../data/mockData.js";
+import { useCollaborators } from "./CollaboratorsContext.jsx";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const { collaborators } = useCollaborators();
   const [currentUser, setCurrentUser] = useState(null);
 
   function login(email, password) {
