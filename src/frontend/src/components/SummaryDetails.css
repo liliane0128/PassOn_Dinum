@@ -12,7 +12,7 @@
   align-items: center;
   gap: var(--c--globals--spacings--3xs);
   margin: 0 0 var(--c--globals--spacings--xs);
-  font-size: 0.9375rem;
+  font-size: 1.25rem;
   font-weight: 600;
 }
 
@@ -61,7 +61,14 @@
   flex-shrink: 0;
 }
 
-.summary-section__list li button {
+.summary-section__list__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--c--globals--spacings--2xs);
+}
+
+.summary-section__list__actions button {
   flex-shrink: 0;
   display: flex;
   border: none;
@@ -71,22 +78,33 @@
   color: var(--c--globals--colors--gray-550);
 }
 
-.summary-section__list li button .material-icons {
+.summary-section__list__actions button .material-icons {
   font-size: 16px;
 }
 
-.summary-section__list li button:hover {
+.summary-section__list__edit:hover {
+  color: var(--c--globals--colors--brand-550);
+}
+
+.summary-section__list__remove:hover {
   color: var(--c--globals--colors--error-550);
 }
 
-.summary-section__form {
+.summary-section__form,
+.summary-section__edit-form {
   display: flex;
   gap: var(--c--globals--spacings--3xs);
 }
 
+.summary-section__edit-form {
+  flex: 1;
+}
+
 .summary-section__form input[type="text"],
 .summary-section__form input[type="date"],
-.summary-section__form select {
+.summary-section__form select,
+.summary-section__edit-form input[type="text"],
+.summary-section__edit-form input[type="date"] {
   flex: 1;
   min-width: 0;
   padding: var(--c--globals--spacings--3xs) var(--c--globals--spacings--xs);
@@ -96,6 +114,7 @@
   font-size: 0.8125rem;
 }
 
-.summary-section__form--deadline input[type="text"] {
+.summary-section__form--deadline input[type="text"],
+.summary-section__edit-form--deadline input[type="text"] {
   flex: 2;
 }

@@ -78,15 +78,10 @@
   margin-bottom: var(--c--globals--spacings--xs);
 }
 
-.employee-page__summary__icon {
-  color: var(--c--globals--colors--brand-550);
-  font-size: 28px;
-}
-
 .employee-page__summary__title {
   flex: 1;
   font-weight: 600;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
 }
 
 .employee-page__summary__hint {
@@ -124,7 +119,7 @@
 
 .employee-page__docs__title {
   margin: 0 0 var(--c--globals--spacings--sm);
-  font-size: 1rem;
+  font-size: 1.125rem;
 }
 
 .employee-page__empty {
@@ -175,14 +170,14 @@
 
 .employee-page__docs__item__title {
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .employee-page__docs__item__subtitle {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--c--globals--colors--gray-550);
   overflow: hidden;
   text-overflow: ellipsis;
