@@ -1,0 +1,199 @@
+.user-page__brand {
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--c--globals--colors--brand-550);
+}
+
+.user-page__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--c--globals--spacings--md);
+}
+
+.user-page__identity__consultation {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--c--globals--spacings--xs);
+}
+
+.user-page__identity__divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--c--globals--colors--gray-450);
+}
+
+.user-page__identity__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.user-page__identity__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c--globals--colors--gray-450);
+  white-space: nowrap;
+}
+
+.user-page__identity__icon {
+  font-size: 20px;
+  color: var(--c--globals--colors--brand-550);
+}
+
+.user-page__identity__name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.user-page__identity__role {
+  font-size: 0.75rem;
+  color: var(--c--globals--colors--gray-550);
+}
+
+.user-page__identity__switch {
+  align-self: center;
+  font-size: 0.8125rem;
+  color: var(--c--globals--colors--brand-550);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.user-page__identity__switch:hover {
+  text-decoration: underline;
+}
+
+.user-page__filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--c--globals--spacings--3xs);
+  padding: var(--c--globals--spacings--sm);
+}
+
+.user-page__list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--c--globals--spacings--sm);
+  gap: var(--c--globals--spacings--3xs);
+}
+
+.user-page__empty {
+  color: var(--c--globals--colors--gray-550);
+  padding: var(--c--globals--spacings--base);
+}
+
+.user-page__item {
+  display: flex;
+  align-items: center;
+  gap: var(--c--globals--spacings--sm);
+  width: 100%;
+  text-align: left;
+  padding: var(--c--globals--spacings--sm);
+  border: 1px solid var(--c--contextuals--border--surface--primary);
+  border-radius: 6px;
+  background: var(--c--contextuals--background--surface--primary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.user-page__item:hover {
+  background: var(--c--contextuals--background--semantic--neutral--tertiary);
+}
+
+.user-page__item__icon {
+  color: var(--c--globals--colors--brand-550);
+  flex-shrink: 0;
+}
+
+.user-page__item__text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.user-page__item__title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-page__item__subtitle {
+  font-size: 0.8125rem;
+  color: var(--c--globals--colors--gray-550);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-page__item__date {
+  font-size: 0.75rem;
+  color: var(--c--globals--colors--gray-550);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Le kit fixe la largeur du panneau droit à 300px sans l'exposer en prop :
+   on l'agrandit par défaut. Le redimensionnement se fait via handleResizeStart
+   (UserPage.jsx), le CSS `resize` natif ne fonctionnant pas sur un enfant flex. */
+.c__main-layout .c__right-panel.open {
+  width: 480px;
+}
+
+.user-page__detail {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: var(--c--globals--spacings--base);
+}
+
+.user-page__resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.user-page__resize-handle:hover,
+.user-page__resize-handle:active {
+  background: var(--c--globals--colors--brand-300);
+}
+
+.user-page__detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.user-page__detail__subtitle {
+  color: var(--c--globals--colors--gray-550);
+  margin: var(--c--globals--spacings--3xs) 0 0;
+}
+
+.user-page__detail__date {
+  font-size: 0.8125rem;
+  color: var(--c--globals--colors--gray-450);
+  margin: var(--c--globals--spacings--3xs) 0 var(--c--globals--spacings--sm);
+}
+
+.user-page__detail__preview {
+  line-height: 1.5;
+}
+
+.user-page__not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--c--globals--spacings--sm);
+  max-width: 480px;
+  margin: 10vh auto;
+  padding: 0 var(--c--globals--spacings--base);
+}
