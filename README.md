@@ -25,3 +25,8 @@ npm run dev
 Runs by default on **http://localhost:5173**.
 
 See `src/frontend/PLAN.md` and `src/frontend/DOCUMENTATION.md` for the project's scope and design decisions.
+
+## Service APIs
+
+Docs, Drive, and Messages now share read-only Django routes under `/api/`.
+See [connector setup, authentication, and limitations](src/backend/connectors/README.md).
