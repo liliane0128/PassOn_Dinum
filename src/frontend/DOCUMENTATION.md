@@ -191,6 +191,30 @@ dur, et `SummaryContext` lit/écrit sur une API au lieu d'un simple `useState`.
   C'est ce qui garantit que l'interface reste visuellement cohérente avec le reste de
   la Suite Numérique, même là où on code nous-mêmes.
 
+## Comment l'appli est servie (ajout du 2026-09-15)
+
+Deux façons de lancer le front, selon ce que tu fais :
+
+- **En développement** : `npm run dev` comme avant, serveur Vite sur
+  http://localhost:5173, rechargement à chaud. C'est ce qu'il faut utiliser pour
+  travailler sur l'interface.
+- **Avec tout le reste** : `make up` à la racine du dépôt. Un serveur **nginx**
+  compile l'appli (`npm run build`) et sert le résultat sur
+  http://localhost:8080, en renvoyant au passage tout ce qui commence par
+  `/api/` vers le Django du projet.
+
+L'intérêt du second mode : le front et l'API sont sur **la même origine**. Le
+jour où `mockData.js` sera remplacé par de vrais appels réseau, il suffira
+d'écrire `fetch("/api/...")` — pas d'URL de backend à configurer, pas de CORS à
+gérer, et les cookies de session fonctionnent naturellement. C'est aussi ce qui
+fait qu'un rafraîchissement sur `/manager` ou `/moi` ne renvoie pas une erreur
+404 : nginx est configuré pour retourner `index.html` sur toute URL qui ne
+correspond pas à un fichier, et laisser React Router décider de la suite.
+
+Attention : dans ce mode l'appli est **compilée dans l'image Docker**, donc une
+modification du front n'apparaît qu'après un nouveau `make up`. Les détails de
+configuration sont dans [`src/server/README.md`](../server/README.md).
+
 ## Le nettoyage disque du 2026-09-15
 
 En construisant cette version, `node_modules` a été trouvé à 2,9 Go — beaucoup trop
