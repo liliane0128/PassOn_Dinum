@@ -105,3 +105,54 @@ class ConnectorAPITests(SimpleTestCase):
         self.assertEqual(self.client.get('/api/docs/items/', HTTP_X_DOCS_SESSION='session').status_code, 502)
         send.return_value._content = b'not json'
         self.assertEqual(self.client.get('/api/docs/items/', HTTP_X_DOCS_SESSION='session').status_code, 502)
+
+
+class ExtractionViewTests(SimpleTestCase):
+    def test_requires_at_least_one_credential(self):
+        result = self.client.get('/api/extraction/items/')
+        self.assertEqual(result.status_code, 401)
+
+    def test_rejects_invalid_session(self):
+        result = self.client.get('/api/extraction/items/', HTTP_X_DOCS_SESSION='a;b')
+        self.assertEqual(result.status_code, 400)
+
+    def test_rejects_query_parameters(self):
+        result = self.client.get('/api/extraction/items/?page=2', HTTP_X_MESSAGES_SESSION='session')
+        self.assertEqual(result.status_code, 400)
+
+    @patch('connectors.extraction.normalize_items')
+    @patch('connectors.docs_client.list_items')
+    def test_skips_services_with_no_credential(self, list_items, normalize_items):
+        list_items.return_value = [{'id': 'd1'}]
+        normalize_items.return_value = [{'id': 'docs:d1', 'title': 'Doc'}]
+        result = self.client.get('/api/extraction/items/', HTTP_X_DOCS_SESSION='session')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json(), {'items': [{'id': 'docs:d1', 'title': 'Doc'}], 'errors': {}})
+        list_items.assert_called_once()
+
+    @patch('connectors.extraction.normalize_items')
+    @patch('connectors.drive_client.list_items')
+    @patch('connectors.docs_client.list_items')
+    def test_merges_multiple_services(self, docs_list, drive_list, normalize_items):
+        docs_list.return_value = [{'id': 'd1'}]
+        drive_list.return_value = [{'id': 'f1'}]
+        normalize_items.side_effect = [
+            [{'id': 'docs:d1', 'title': 'Doc'}],
+            [{'id': 'drive:f1', 'title': 'File'}],
+        ]
+        result = self.client.get(
+            '/api/extraction/items/', HTTP_X_DOCS_SESSION='s1', HTTP_X_DRIVE_SESSION='s2',
+        )
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()['items'], [
+            {'id': 'docs:d1', 'title': 'Doc'},
+            {'id': 'drive:f1', 'title': 'File'},
+        ])
+        self.assertEqual(result.json()['errors'], {})
+
+    @patch('connectors.messages_client.list_items')
+    def test_records_error_without_failing_whole_request(self, list_items):
+        list_items.side_effect = requests.Timeout()
+        result = self.client.get('/api/extraction/items/', HTTP_X_MESSAGES_SESSION='session')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json(), {'items': [], 'errors': {'messages': 'upstream_timeout'}})
