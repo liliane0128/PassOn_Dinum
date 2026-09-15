@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, InputPassword } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
-import { collaborators } from "../data/mockData.js";
+import { useCollaborators } from "../context/CollaboratorsContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
 import suiteLogo from "../assets/suite-logo.svg";
@@ -21,13 +21,20 @@ function getRememberedEmail() {
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { collaborators } = useCollaborators();
   const [email, setEmail] = useState(getRememberedEmail);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
+  // Change de clé après chaque tentative pour forcer InputPassword à se
+  // réinitialiser (elle gère elle-même l'affichage/masquage en interne, sans
+  // prop pour le contrôler) : le mot de passe redevient masqué qu'on
+  // réussisse ou échoue, plutôt que de rester visible à l'écran.
+  const [passwordFieldKey, setPasswordFieldKey] = useState(0);
+  const submitButtonRef = useRef(null);
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  function attemptLogin() {
     const user = login(email, password);
+    setPasswordFieldKey((key) => key + 1);
     if (!user) {
       setError(true);
       return;
@@ -39,6 +46,30 @@ export function LoginPage() {
       // stockage indisponible : tant pis, l'email ne sera pas mémorisé.
     }
     navigate(user.accountRole === "manager" ? "/manager" : "/moi");
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    // Le bouton œil "afficher le mot de passe" est un <button> sans
+    // type="button" dans la librairie UI : dans un <form>, ça vaut submit
+    // par défaut, donc le cliquer déclenche aussi ce handler. On ignore la
+    // tentative de connexion si ce n'est pas notre vrai bouton qui l'a
+    // déclenchée.
+    const submitter = event.nativeEvent.submitter;
+    if (submitter && submitter !== submitButtonRef.current) return;
+    attemptLogin();
+  }
+
+  // La touche Entrée dans un champ texte déclenche une "soumission
+  // implicite" du formulaire : le navigateur simule un clic sur le premier
+  // bouton submit du DOM, qui est ici l'œil "afficher le mot de passe" (avant
+  // notre bouton "Se connecter"). Ça révèle le mot de passe au lieu de
+  // connecter. On intercepte Entrée nous-mêmes pour éviter ce clic simulé.
+  function handleKeyDown(event) {
+    if (event.key === "Enter" && event.target.tagName === "INPUT") {
+      event.preventDefault();
+      attemptLogin();
+    }
   }
 
   return (
@@ -55,7 +86,11 @@ export function LoginPage() {
             className="login-page__logo"
           />
 
-          <form className="login-page__card" onSubmit={handleSubmit}>
+          <form
+            className="login-page__card"
+            onSubmit={handleSubmit}
+            onKeyDown={handleKeyDown}
+          >
             <h1 className="login-page__title">Pass'on</h1>
             <p className="login-page__subtitle">
               Connectez-vous pour accéder à votre espace.
@@ -71,6 +106,7 @@ export function LoginPage() {
             />
 
             <InputPassword
+              key={passwordFieldKey}
               label="Mot de passe"
               fullWidth
               state={error ? "error" : "default"}
@@ -79,7 +115,7 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
 
-            <Button type="submit" fullWidth>
+            <Button ref={submitButtonRef} type="submit" fullWidth>
               Se connecter
             </Button>
 

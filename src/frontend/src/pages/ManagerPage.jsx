@@ -4,11 +4,13 @@ import {
   Badge,
   Button,
   ConfirmationModal,
+  DeleteConfirmationModal,
+  Input,
   useToastProvider,
 } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useCollaborators } from "../context/CollaboratorsContext.jsx";
 import { useSummaries } from "../context/SummaryContext.jsx";
-import { collaborators } from "../data/mockData.js";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
 import { SummaryDetails } from "../components/SummaryDetails.jsx";
@@ -19,6 +21,7 @@ const SUMMARY_HEADING_ID = "manager-summary-heading";
 
 export function ManagerPage() {
   const { currentUser, logout } = useAuth();
+  const { collaborators, addCollaborator, removeCollaborator } = useCollaborators();
   const { getSummary, updateSummary } = useSummaries();
   const { toast } = useToastProvider();
   const navigate = useNavigate();
@@ -33,6 +36,14 @@ export function ManagerPage() {
   const [draftText, setDraftText] = useState(summary?.text ?? "");
   const [pendingShare, setPendingShare] = useState(false);
 
+  const [isAddingCollaborator, setIsAddingCollaborator] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newCollaboratorError, setNewCollaboratorError] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState(null);
+
   if (!currentUser || currentUser.accountRole !== "manager") {
     return <Navigate to="/" replace />;
   }
@@ -46,6 +57,57 @@ export function ManagerPage() {
     }
     setSelectedId(collaborator.id);
     setDraftText(getSummary(collaborator.id).text);
+  }
+
+  function resetAddCollaboratorForm() {
+    setNewFirstName("");
+    setNewLastName("");
+    setNewJobTitle("");
+    setNewEmail("");
+    setNewCollaboratorError(false);
+  }
+
+  function handleCancelAddCollaborator() {
+    setIsAddingCollaborator(false);
+    resetAddCollaboratorForm();
+  }
+
+  function handleAddCollaborator(event) {
+    event.preventDefault();
+    const firstName = newFirstName.trim();
+    const lastName = newLastName.trim();
+    const email = newEmail.trim().toLowerCase();
+    if (!firstName || !lastName || !email || !email.includes("@")) {
+      setNewCollaboratorError(true);
+      return;
+    }
+    const collaborator = addCollaborator({
+      firstName,
+      lastName,
+      jobTitle: newJobTitle.trim(),
+      team: currentUser.team,
+      email,
+      managerId: currentUser.id,
+    });
+    toast(`${firstName} ${lastName} a été ajouté à votre équipe.`, "success");
+    setIsAddingCollaborator(false);
+    resetAddCollaboratorForm();
+    handleSelect(collaborator);
+  }
+
+  function handleRemoveCollaboratorDecide(decision) {
+    if (decision === "delete" && pendingRemove) {
+      removeCollaborator(pendingRemove.id);
+      if (selectedId === pendingRemove.id) {
+        setSelectedId(null);
+        setDraftText("");
+      }
+      toast(
+        `${pendingRemove.firstName} ${pendingRemove.lastName} a été retiré de votre équipe.`,
+        "success",
+      );
+    }
+    setPendingRemove(null);
   }
 
   function handleSave() {
@@ -125,23 +187,103 @@ export function ManagerPage() {
               </p>
             )}
             {team.map((c) => (
-              <button
-                key={c.id}
-                className={
-                  c.id === selectedId
-                    ? "manager-page__team__item manager-page__team__item--active"
-                    : "manager-page__team__item"
-                }
-                onClick={() => handleSelect(c)}
-              >
-                <span className="manager-page__team__item__name">
-                  {c.firstName} {c.lastName}
-                </span>
-                <span className="manager-page__team__item__role">
-                  {c.jobTitle}
-                </span>
-              </button>
+              <div key={c.id} className="manager-page__team__row">
+                <button
+                  className={
+                    c.id === selectedId
+                      ? "manager-page__team__item manager-page__team__item--active"
+                      : "manager-page__team__item"
+                  }
+                  onClick={() => handleSelect(c)}
+                >
+                  <span className="manager-page__team__item__name">
+                    {c.firstName} {c.lastName}
+                  </span>
+                  <span className="manager-page__team__item__role">
+                    {c.jobTitle}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="manager-page__team__item__remove"
+                  onClick={() => setPendingRemove(c)}
+                  aria-label={`Retirer ${c.firstName} ${c.lastName} de l'équipe`}
+                >
+                  <span className="material-icons">close</span>
+                </button>
+              </div>
             ))}
+
+            {isAddingCollaborator ? (
+              <form
+                className="manager-page__team__add-form"
+                onSubmit={handleAddCollaborator}
+              >
+                <Input
+                  label="Prénom"
+                  fullWidth
+                  state={newCollaboratorError ? "error" : "default"}
+                  value={newFirstName}
+                  onChange={(e) => {
+                    setNewFirstName(e.target.value);
+                    setNewCollaboratorError(false);
+                  }}
+                />
+                <Input
+                  label="Nom"
+                  fullWidth
+                  state={newCollaboratorError ? "error" : "default"}
+                  value={newLastName}
+                  onChange={(e) => {
+                    setNewLastName(e.target.value);
+                    setNewCollaboratorError(false);
+                  }}
+                />
+                <Input
+                  label="Poste"
+                  fullWidth
+                  value={newJobTitle}
+                  onChange={(e) => setNewJobTitle(e.target.value)}
+                />
+                <Input
+                  label="Email professionnel"
+                  type="email"
+                  fullWidth
+                  state={newCollaboratorError ? "error" : "default"}
+                  text={
+                    newCollaboratorError
+                      ? "Prénom, nom et email valide requis."
+                      : undefined
+                  }
+                  value={newEmail}
+                  onChange={(e) => {
+                    setNewEmail(e.target.value);
+                    setNewCollaboratorError(false);
+                  }}
+                />
+                <div className="manager-page__team__add-form__actions">
+                  <Button type="submit" fullWidth>
+                    Ajouter
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    fullWidth
+                    onClick={handleCancelAddCollaborator}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => setIsAddingCollaborator(true)}
+              >
+                Ajouter un collaborateur
+              </Button>
+            )}
           </nav>
 
           <div className="manager-page__summary">
@@ -231,6 +373,17 @@ export function ManagerPage() {
           ? `${selected.firstName} n'a pas encore validé ce résumé. L'envoyer quand même ?`
           : null}
       </ConfirmationModal>
+
+      <DeleteConfirmationModal
+        isOpen={pendingRemove !== null}
+        onClose={() => setPendingRemove(null)}
+        onDecide={handleRemoveCollaboratorDecide}
+        title="Retirer ce collaborateur ?"
+      >
+        {pendingRemove
+          ? `Voulez-vous vraiment retirer ${pendingRemove.firstName} ${pendingRemove.lastName} de votre équipe ? Son résumé et son compte ne seront plus accessibles.`
+          : null}
+      </DeleteConfirmationModal>
     </div>
   );
 }

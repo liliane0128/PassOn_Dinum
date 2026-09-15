@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, DeleteConfirmationModal } from "@gouvfr-lasuite/ui-components";
 import { useSummaries } from "../context/SummaryContext.jsx";
-import { collaborators } from "../data/mockData.js";
+import { useCollaborators } from "../context/CollaboratorsContext.jsx";
 import { getCollaboratorItems } from "../utils/collaboratorItems.js";
 import "./SummaryDetails.css";
 
@@ -245,8 +245,11 @@ function DeadlineSection({ items, onAdd, onEdit, onRemove }) {
   );
 }
 
-function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
+function ContactSection({ collaboratorId, contactIds, onAdd, onEdit, onRemove }) {
+  const { collaborators } = useCollaborators();
   const [selectedId, setSelectedId] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editSelection, setEditSelection] = useState("");
   const contacts = contactIds
     .map((id) => collaborators.find((c) => c.id === id))
     .filter(Boolean);
@@ -261,6 +264,24 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
     setSelectedId("");
   }
 
+  function startEdit(contact) {
+    setEditingId(contact.id);
+    setEditSelection("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditSelection("");
+  }
+
+  function handleEditSubmit(event, oldId) {
+    event.preventDefault();
+    if (!editSelection) return;
+    onEdit(oldId, editSelection);
+    setEditingId(null);
+    setEditSelection("");
+  }
+
   return (
     <div className="summary-section">
       <h3 className="summary-section__title">
@@ -271,20 +292,54 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
         <p className="summary-section__empty">Aucun contact clé pour l'instant.</p>
       ) : (
         <ul className="summary-section__list">
-          {contacts.map((c) => (
-            <li key={c.id}>
-              <span>
-                <strong>
-                  {c.firstName} {c.lastName}
-                </strong>{" "}
-                — {c.jobTitle}
-              </span>
-              <ItemActions
-                label={`${c.firstName} ${c.lastName}`}
-                onRemove={() => onRemove(c.id, `${c.firstName} ${c.lastName}`)}
-              />
-            </li>
-          ))}
+          {contacts.map((c) =>
+            editingId === c.id ? (
+              <li key={c.id}>
+                <form
+                  className="summary-section__edit-form"
+                  onSubmit={(e) => handleEditSubmit(e, c.id)}
+                >
+                  <select
+                    value={editSelection}
+                    onChange={(e) => setEditSelection(e.target.value)}
+                    autoFocus
+                  >
+                    <option value="">Choisir un remplaçant...</option>
+                    {available.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.firstName} {opt.lastName} — {opt.jobTitle}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" variant="secondary" size="small">
+                    Enregistrer
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    size="small"
+                    onClick={cancelEdit}
+                  >
+                    Annuler
+                  </Button>
+                </form>
+              </li>
+            ) : (
+              <li key={c.id}>
+                <span>
+                  <strong>
+                    {c.firstName} {c.lastName}
+                  </strong>{" "}
+                  — {c.jobTitle}
+                </span>
+                <ItemActions
+                  label={`${c.firstName} ${c.lastName}`}
+                  onEdit={available.length > 0 ? () => startEdit(c) : undefined}
+                  onRemove={() => onRemove(c.id, `${c.firstName} ${c.lastName}`)}
+                />
+              </li>
+            ),
+          )}
         </ul>
       )}
       {available.length > 0 && (
@@ -508,6 +563,13 @@ export function SummaryDetails({ collaboratorId }) {
         onAdd={(id) =>
           updateSummary(collaboratorId, {
             contactIds: [...(summary.contactIds ?? []), id],
+          })
+        }
+        onEdit={(oldId, newId) =>
+          updateSummary(collaboratorId, {
+            contactIds: (summary.contactIds ?? []).map((x) =>
+              x === oldId ? newId : x,
+            ),
           })
         }
         onRemove={(id, label) =>
