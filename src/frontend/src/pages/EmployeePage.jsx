@@ -5,6 +5,7 @@ import {
   Button,
   useToastProvider,
 } from "@gouvfr-lasuite/ui-components";
+import { generateDossier } from "../api/dossier.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useSummaries } from "../context/SummaryContext.jsx";
 import { getCollaboratorItems } from "../utils/collaboratorItems.js";
@@ -40,6 +41,7 @@ export function EmployeePage() {
 
   const summary = currentUser ? getSummary(currentUser.id) : { text: "", validated: false };
   const [draftText, setDraftText] = useState(summary.text);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   if (!currentUser || currentUser.accountRole !== "employee") {
     return <Navigate to="/" replace />;
@@ -47,6 +49,34 @@ export function EmployeePage() {
 
   const fullName = `${currentUser.firstName} ${currentUser.lastName}`;
   const hasUnsavedChanges = draftText !== summary.text;
+
+  // `withIds` adds the client-side id the manual "Ajouter" flow already uses
+  // (see SummaryDetails.jsx) -- the backend doesn't invent one, since it's
+  // only meaningful for this session's React state, not the summary itself.
+  function withIds(list) {
+    return (list ?? []).map((item) => ({ id: crypto.randomUUID(), ...item }));
+  }
+
+  async function handleGenerate() {
+    setIsGenerating(true);
+    try {
+      const result = await generateDossier();
+      updateSummary(currentUser.id, {
+        text: result.text,
+        actions: withIds(result.actions),
+        decisions: withIds(result.decisions),
+        deadlines: withIds(result.deadlines),
+        blockers: withIds(result.blockers),
+        documents: result.documents,
+      });
+      setDraftText(result.text);
+      toast("Résumé généré par l'IA.", "success");
+    } catch (error) {
+      toast(`Échec de la génération : ${error.message}`, "error");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
 
   function handleSave() {
     updateSummary(currentUser.id, { text: draftText });
@@ -113,6 +143,15 @@ export function EmployeePage() {
               documents. Relisez-le, modifiez-le si besoin, puis validez-le :
               c'est cette version que votre manager consultera.
             </p>
+
+            <Button
+              variant="secondary"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              icon={<span className="material-icons">auto_awesome</span>}
+            >
+              {isGenerating ? "Génération en cours..." : "Générer avec l'IA"}
+            </Button>
 
             <textarea
               className="employee-page__summary__textarea"

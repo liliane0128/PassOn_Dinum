@@ -309,13 +309,41 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
   );
 }
 
+// A docRef is either a local reference the user picked manually
+// ({type: "mail"|"doc", id}, resolved below against getCollaboratorItems'
+// mock data), or a self-contained entry the AI-generated summary produced
+// directly ({id, title, url} -- no lookup needed, and no "type" matching the
+// mock convention since it came from the real Docs/Drive/Messages ids).
+function resolveDocRef(ref, availableItems) {
+  if (ref.url) {
+    return {
+      key: ref.id,
+      icon: "auto_awesome",
+      title: ref.title,
+      url: ref.url,
+      type: ref.type,
+      id: ref.id,
+    };
+  }
+  const found = availableItems.find(
+    (it) => it.type === ref.type && it.id === ref.id,
+  );
+  if (!found) return null;
+  return {
+    key: `${found.type}-${found.id}`,
+    icon: found.icon,
+    title: found.title,
+    url: null,
+    type: found.type,
+    id: found.id,
+  };
+}
+
 function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
   const [selectedKey, setSelectedKey] = useState("");
   const availableItems = getCollaboratorItems(collaboratorId);
-  const selectedItems = docRefs
-    .map((ref) =>
-      availableItems.find((it) => it.type === ref.type && it.id === ref.id),
-    )
+  const resolvedItems = docRefs
+    .map((ref) => resolveDocRef(ref, availableItems))
     .filter(Boolean);
   const pickable = availableItems.filter(
     (it) => !docRefs.some((ref) => ref.type === it.type && ref.id === it.id),
@@ -337,19 +365,25 @@ function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
         </span>
         Documents importants
       </h3>
-      {selectedItems.length === 0 ? (
+      {resolvedItems.length === 0 ? (
         <p className="summary-section__empty">
           Aucun document mis en avant pour l'instant.
         </p>
       ) : (
         <ul className="summary-section__list">
-          {selectedItems.map((it) => (
-            <li key={`${it.type}-${it.id}`}>
+          {resolvedItems.map((it) => (
+            <li key={it.key}>
               <span>
                 <span className="material-icons summary-section__list__icon">
                   {it.icon}
                 </span>
-                {it.title}
+                {it.url ? (
+                  <a href={it.url} target="_blank" rel="noreferrer">
+                    {it.title}
+                  </a>
+                ) : (
+                  it.title
+                )}
               </span>
               <ItemActions
                 label={it.title}
