@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -124,4 +125,11 @@ MAILERS = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
+}
+
+# Local API bridges. Session credentials belong to each incoming request.
+DINUM_API_TIMEOUT = float(os.getenv("DINUM_API_TIMEOUT", "10"))
+DINUM_SERVICES = {
+    "docs": {"url": os.getenv("DOCS_URL", "http://localhost:8071"), "cookie": "docs_sessionid", "header": "X-Docs-Session"},
+    "drive": {"url": os.getenv("DRIVE_URL", "http://localhost:8072"), "cookie": "drive_sessionid", "header": "X-Drive-Session"},
 }

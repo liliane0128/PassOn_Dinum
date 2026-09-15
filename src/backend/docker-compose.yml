@@ -3,8 +3,13 @@ services:
     build: .
     container_name: django_web
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
     environment:
-      - PYTHONUNBUFFERED=1
+      PYTHONUNBUFFERED: "1"
+      DOCS_URL: ${DOCS_URL:-http://host.docker.internal:8071}
+      DRIVE_URL: ${DRIVE_URL:-http://host.docker.internal:8072}
+      DINUM_API_TIMEOUT: ${DINUM_API_TIMEOUT:-10}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
