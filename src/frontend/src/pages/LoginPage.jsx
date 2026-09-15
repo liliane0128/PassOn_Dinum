@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, InputPassword } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -39,14 +39,21 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  // Change de clé après chaque tentative pour forcer InputPassword à se
+  // réinitialiser (elle gère elle-même l'affichage/masquage en interne, sans
+  // prop pour le contrôler) : le mot de passe redevient masqué qu'on
+  // réussisse ou échoue, plutôt que de rester visible à l'écran.
+  const [passwordFieldKey, setPasswordFieldKey] = useState(0);
+  const submitButtonRef = useRef(null);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function attemptLogin() {
+    if (submitting) return;
     setSubmitting(true);
-    // Le mot de passe part au backend, qui le vérifie auprès de Drive : rien
-    // n'est comparé ici, contrairement à la version mockée.
+    // Le mot de passe part au backend, qui le fait vérifier par Drive : rien
+    // n'est comparé ici.
     const { user, error: failure } = await login(email, password);
     setSubmitting(false);
+    setPasswordFieldKey((key) => key + 1);
     if (!user) {
       setError(failure);
       return;
@@ -58,6 +65,30 @@ export function LoginPage() {
       // stockage indisponible : tant pis, l'email ne sera pas mémorisé.
     }
     navigate(user.accountRole === "manager" ? "/manager" : "/moi");
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    // Le bouton œil "afficher le mot de passe" est un <button> sans
+    // type="button" dans la librairie UI : dans un <form>, ça vaut submit
+    // par défaut, donc le cliquer déclenche aussi ce handler. On ignore la
+    // tentative de connexion si ce n'est pas notre vrai bouton qui l'a
+    // déclenchée.
+    const submitter = event.nativeEvent.submitter;
+    if (submitter && submitter !== submitButtonRef.current) return;
+    attemptLogin();
+  }
+
+  // La touche Entrée dans un champ texte déclenche une "soumission
+  // implicite" du formulaire : le navigateur simule un clic sur le premier
+  // bouton submit du DOM, qui est ici l'œil "afficher le mot de passe" (avant
+  // notre bouton "Se connecter"). Ça révèle le mot de passe au lieu de
+  // connecter. On intercepte Entrée nous-mêmes pour éviter ce clic simulé.
+  function handleKeyDown(event) {
+    if (event.key === "Enter" && event.target.tagName === "INPUT") {
+      event.preventDefault();
+      attemptLogin();
+    }
   }
 
   return (
@@ -74,7 +105,11 @@ export function LoginPage() {
             className="login-page__logo"
           />
 
-          <form className="login-page__card" onSubmit={handleSubmit}>
+          <form
+            className="login-page__card"
+            onSubmit={handleSubmit}
+            onKeyDown={handleKeyDown}
+          >
             <h1 className="login-page__title">Pass'on</h1>
             <p className="login-page__subtitle">
               Connectez-vous pour accéder à votre espace.
@@ -91,6 +126,7 @@ export function LoginPage() {
             />
 
             <InputPassword
+              key={passwordFieldKey}
               label="Mot de passe"
               fullWidth
               state={error ? "error" : "default"}
@@ -100,7 +136,7 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
 
-            <Button type="submit" fullWidth disabled={submitting}>
+            <Button ref={submitButtonRef} type="submit" fullWidth disabled={submitting}>
               {submitting ? "Connexion..." : "Se connecter"}
             </Button>
 
@@ -109,6 +145,9 @@ export function LoginPage() {
               <p>
                 Ceux de <strong>Drive</strong> : la connexion est vérifiée par
                 l'instance Drive locale, il n'y a pas de compte propre à Pass'on.
+                Les collaborateurs ajoutés depuis l'espace manager n'ont donc pas
+                de mot de passe utilisable ici tant qu'ils n'existent pas dans
+                Drive.
               </p>
               <p>
                 Comptes de démonstration de Drive :{" "}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, DeleteConfirmationModal } from "@gouvfr-lasuite/ui-components";
 import { useSummaries } from "../context/SummaryContext.jsx";
-import { collaborators } from "../data/mockData.js";
+import { useCollaborators } from "../context/CollaboratorsContext.jsx";
 import { getCollaboratorItems } from "../utils/collaboratorItems.js";
 import "./SummaryDetails.css";
 
@@ -245,8 +245,11 @@ function DeadlineSection({ items, onAdd, onEdit, onRemove }) {
   );
 }
 
-function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
+function ContactSection({ collaboratorId, contactIds, onAdd, onEdit, onRemove }) {
+  const { collaborators } = useCollaborators();
   const [selectedId, setSelectedId] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editSelection, setEditSelection] = useState("");
   const contacts = contactIds
     .map((id) => collaborators.find((c) => c.id === id))
     .filter(Boolean);
@@ -261,6 +264,24 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
     setSelectedId("");
   }
 
+  function startEdit(contact) {
+    setEditingId(contact.id);
+    setEditSelection("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditSelection("");
+  }
+
+  function handleEditSubmit(event, oldId) {
+    event.preventDefault();
+    if (!editSelection) return;
+    onEdit(oldId, editSelection);
+    setEditingId(null);
+    setEditSelection("");
+  }
+
   return (
     <div className="summary-section">
       <h3 className="summary-section__title">
@@ -271,20 +292,54 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
         <p className="summary-section__empty">Aucun contact clé pour l'instant.</p>
       ) : (
         <ul className="summary-section__list">
-          {contacts.map((c) => (
-            <li key={c.id}>
-              <span>
-                <strong>
-                  {c.firstName} {c.lastName}
-                </strong>{" "}
-                — {c.jobTitle}
-              </span>
-              <ItemActions
-                label={`${c.firstName} ${c.lastName}`}
-                onRemove={() => onRemove(c.id, `${c.firstName} ${c.lastName}`)}
-              />
-            </li>
-          ))}
+          {contacts.map((c) =>
+            editingId === c.id ? (
+              <li key={c.id}>
+                <form
+                  className="summary-section__edit-form"
+                  onSubmit={(e) => handleEditSubmit(e, c.id)}
+                >
+                  <select
+                    value={editSelection}
+                    onChange={(e) => setEditSelection(e.target.value)}
+                    autoFocus
+                  >
+                    <option value="">Choisir un remplaçant...</option>
+                    {available.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.firstName} {opt.lastName} — {opt.jobTitle}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" variant="secondary" size="small">
+                    Enregistrer
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    size="small"
+                    onClick={cancelEdit}
+                  >
+                    Annuler
+                  </Button>
+                </form>
+              </li>
+            ) : (
+              <li key={c.id}>
+                <span>
+                  <strong>
+                    {c.firstName} {c.lastName}
+                  </strong>{" "}
+                  — {c.jobTitle}
+                </span>
+                <ItemActions
+                  label={`${c.firstName} ${c.lastName}`}
+                  onEdit={available.length > 0 ? () => startEdit(c) : undefined}
+                  onRemove={() => onRemove(c.id, `${c.firstName} ${c.lastName}`)}
+                />
+              </li>
+            ),
+          )}
         </ul>
       )}
       {available.length > 0 && (
@@ -309,23 +364,26 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
   );
 }
 
+// docRefs entries are self-contained { id, title, url } objects -- either
+// produced by the backend's /api/dossier/ (real doc/drive/message ids,
+// e.g. "docs:b8eb2e3a-...", with a real url) or built here from the
+// frontend's own mock items when picked manually (url left null). Keeping
+// a single shape means this section never needs to know which side an
+// entry came from.
 function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
   const [selectedKey, setSelectedKey] = useState("");
   const availableItems = getCollaboratorItems(collaboratorId);
-  const selectedItems = docRefs
-    .map((ref) =>
-      availableItems.find((it) => it.type === ref.type && it.id === ref.id),
-    )
-    .filter(Boolean);
   const pickable = availableItems.filter(
-    (it) => !docRefs.some((ref) => ref.type === it.type && ref.id === it.id),
+    (it) => !docRefs.some((ref) => ref.id === `${it.type}:${it.id}`),
   );
 
   function handleSubmit(event) {
     event.preventDefault();
     if (!selectedKey) return;
     const [type, id] = selectedKey.split(":");
-    onAdd(type, id);
+    const item = availableItems.find((it) => it.type === type && it.id === id);
+    if (!item) return;
+    onAdd({ id: selectedKey, title: item.title, url: null });
     setSelectedKey("");
   }
 
@@ -337,23 +395,26 @@ function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
         </span>
         Documents importants
       </h3>
-      {selectedItems.length === 0 ? (
+      {docRefs.length === 0 ? (
         <p className="summary-section__empty">
           Aucun document mis en avant pour l'instant.
         </p>
       ) : (
         <ul className="summary-section__list">
-          {selectedItems.map((it) => (
-            <li key={`${it.type}-${it.id}`}>
+          {docRefs.map((doc) => (
+            <li key={doc.id}>
               <span>
-                <span className="material-icons summary-section__list__icon">
-                  {it.icon}
-                </span>
-                {it.title}
+                {doc.url ? (
+                  <a href={doc.url} target="_blank" rel="noreferrer">
+                    {doc.title}
+                  </a>
+                ) : (
+                  doc.title
+                )}
               </span>
               <ItemActions
-                label={it.title}
-                onRemove={() => onRemove(it.type, it.id, it.title)}
+                label={doc.title}
+                onRemove={() => onRemove(doc.id, doc.title)}
               />
             </li>
           ))}
@@ -367,7 +428,7 @@ function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
           >
             <option value="">Choisir un document...</option>
             {pickable.map((it) => (
-              <option key={`${it.type}-${it.id}`} value={`${it.type}:${it.id}`}>
+              <option key={`${it.type}:${it.id}`} value={`${it.type}:${it.id}`}>
                 {it.title}
               </option>
             ))}
@@ -476,6 +537,13 @@ export function SummaryDetails({ collaboratorId }) {
             contactIds: [...(summary.contactIds ?? []), id],
           })
         }
+        onEdit={(oldId, newId) =>
+          updateSummary(collaboratorId, {
+            contactIds: (summary.contactIds ?? []).map((x) =>
+              x === oldId ? newId : x,
+            ),
+          })
+        }
         onRemove={(id, label) =>
           requestRemove(label, () =>
             updateSummary(collaboratorId, {
@@ -487,17 +555,15 @@ export function SummaryDetails({ collaboratorId }) {
       <DocumentSection
         collaboratorId={collaboratorId}
         docRefs={summary.documents ?? []}
-        onAdd={(type, id) =>
+        onAdd={(doc) =>
           updateSummary(collaboratorId, {
-            documents: [...(summary.documents ?? []), { type, id }],
+            documents: [...(summary.documents ?? []), doc],
           })
         }
-        onRemove={(type, id, label) =>
+        onRemove={(id, label) =>
           requestRemove(label, () =>
             updateSummary(collaboratorId, {
-              documents: (summary.documents ?? []).filter(
-                (x) => !(x.type === type && x.id === id),
-              ),
+              documents: (summary.documents ?? []).filter((x) => x.id !== id),
             }),
           )
         }

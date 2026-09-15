@@ -50,10 +50,16 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
 - **`proxy_read_timeout 300s` on `/api/`** — `/api/dossier/` lists items from
   three upstream services and then waits on an LLM call. nginx's 60s default
   would cut that off and return 504.
-- **`proxy_set_header Host $host`** — `$host` drops the `:8090` port, which
-  matches Django's `DEBUG` fallback for `ALLOWED_HOSTS` (`localhost`,
-  `127.0.0.1`, `[::1]`). Passing `$http_host` instead would send
-  `localhost:8090` and require an explicit `ALLOWED_HOSTS` entry.
+- **`proxy_set_header Host $http_host`, never `$host`** — `$host` drops the
+  port, and Django compares the browser's `Origin` header
+  (`http://localhost:8090`) against its own host when checking CSRF on a POST.
+  Without the port that check fails with *"Origin checking failed"* and every
+  login is rejected with a 403 before the credentials are even read. `curl`
+  sends no `Origin` header, so it never reveals this — testing a POST route
+  from the terminal alone will happily pass while the app is broken. Use
+  `curl -H "Origin: http://localhost:8090"` to reproduce what a browser does.
+  `ALLOWED_HOSTS` is unaffected either way: Django strips the port before
+  validating the host.
 - **`expires 1y` on `/assets/`, not `add_header Cache-Control`** — Vite writes
   content-hashed filenames there, so they can be cached hard. A location-level
   `add_header` would drop the `X-Frame-Options` and `X-Robots-Tag` headers
