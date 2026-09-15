@@ -16,12 +16,12 @@
 .app-footer__cta__title {
   margin: 0;
   font-weight: 600;
-  font-size: 1.5rem;
+  font-size: 1.625rem;
 }
 
 .app-footer__cta__subtitle {
   margin: 0;
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   color: var(--c--globals--colors--gray-550);
 }
 

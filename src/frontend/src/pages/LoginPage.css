@@ -48,13 +48,13 @@
 
 .login-page__title {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
 }
 
 .login-page__subtitle {
   margin: 0 0 var(--c--globals--spacings--xs);
   color: var(--c--globals--colors--gray-550);
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
 }
 
 .login-page__hint {

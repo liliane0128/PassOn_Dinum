@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@gouvfr-lasuite/ui-components";
+import { Button, DeleteConfirmationModal } from "@gouvfr-lasuite/ui-components";
 import { useSummaries } from "../context/SummaryContext.jsx";
 import { collaborators } from "../data/mockData.js";
 import { getCollaboratorItems } from "../utils/collaboratorItems.js";
@@ -13,8 +13,35 @@ function formatDate(iso) {
   });
 }
 
-function TextListSection({ icon, title, items, onAdd, onRemove, placeholder }) {
+function ItemActions({ label, onEdit, onRemove }) {
+  return (
+    <div className="summary-section__list__actions">
+      {onEdit && (
+        <button
+          type="button"
+          className="summary-section__list__edit"
+          onClick={onEdit}
+          aria-label={`Modifier « ${label} »`}
+        >
+          <span className="material-icons">edit</span>
+        </button>
+      )}
+      <button
+        type="button"
+        className="summary-section__list__remove"
+        onClick={onRemove}
+        aria-label={`Retirer « ${label} »`}
+      >
+        <span className="material-icons">close</span>
+      </button>
+    </div>
+  );
+}
+
+function TextListSection({ icon, title, items, onAdd, onEdit, onRemove, placeholder }) {
   const [draft, setDraft] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -22,6 +49,25 @@ function TextListSection({ icon, title, items, onAdd, onRemove, placeholder }) {
     if (!label) return;
     onAdd(label);
     setDraft("");
+  }
+
+  function startEdit(item) {
+    setEditingId(item.id);
+    setEditDraft(item.label);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft("");
+  }
+
+  function handleEditSubmit(event, id) {
+    event.preventDefault();
+    const label = editDraft.trim();
+    if (!label) return;
+    onEdit(id, label);
+    setEditingId(null);
+    setEditDraft("");
   }
 
   return (
@@ -34,18 +80,43 @@ function TextListSection({ icon, title, items, onAdd, onRemove, placeholder }) {
         <p className="summary-section__empty">Aucun élément pour l'instant.</p>
       ) : (
         <ul className="summary-section__list">
-          {items.map((item) => (
-            <li key={item.id}>
-              <span>{item.label}</span>
-              <button
-                type="button"
-                onClick={() => onRemove(item.id)}
-                aria-label={`Retirer « ${item.label} »`}
-              >
-                <span className="material-icons">close</span>
-              </button>
-            </li>
-          ))}
+          {items.map((item) =>
+            editingId === item.id ? (
+              <li key={item.id}>
+                <form
+                  className="summary-section__edit-form"
+                  onSubmit={(e) => handleEditSubmit(e, item.id)}
+                >
+                  <input
+                    type="text"
+                    value={editDraft}
+                    onChange={(e) => setEditDraft(e.target.value)}
+                    autoFocus
+                  />
+                  <Button type="submit" variant="secondary" size="small">
+                    Enregistrer
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    size="small"
+                    onClick={cancelEdit}
+                  >
+                    Annuler
+                  </Button>
+                </form>
+              </li>
+            ) : (
+              <li key={item.id}>
+                <span>{item.label}</span>
+                <ItemActions
+                  label={item.label}
+                  onEdit={() => startEdit(item)}
+                  onRemove={() => onRemove(item.id, item.label)}
+                />
+              </li>
+            ),
+          )}
         </ul>
       )}
       <form className="summary-section__form" onSubmit={handleSubmit}>
@@ -63,9 +134,12 @@ function TextListSection({ icon, title, items, onAdd, onRemove, placeholder }) {
   );
 }
 
-function DeadlineSection({ items, onAdd, onRemove }) {
+function DeadlineSection({ items, onAdd, onEdit, onRemove }) {
   const [label, setLabel] = useState("");
   const [date, setDate] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editDate, setEditDate] = useState("");
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -73,6 +147,27 @@ function DeadlineSection({ items, onAdd, onRemove }) {
     onAdd(label.trim(), date);
     setLabel("");
     setDate("");
+  }
+
+  function startEdit(item) {
+    setEditingId(item.id);
+    setEditLabel(item.label);
+    setEditDate(item.date);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditLabel("");
+    setEditDate("");
+  }
+
+  function handleEditSubmit(event, id) {
+    event.preventDefault();
+    if (!editLabel.trim() || !editDate) return;
+    onEdit(id, editLabel.trim(), editDate);
+    setEditingId(null);
+    setEditLabel("");
+    setEditDate("");
   }
 
   return (
@@ -85,20 +180,50 @@ function DeadlineSection({ items, onAdd, onRemove }) {
         <p className="summary-section__empty">Aucune échéance pour l'instant.</p>
       ) : (
         <ul className="summary-section__list">
-          {items.map((item) => (
-            <li key={item.id}>
-              <span>
-                {item.label} — {formatDate(item.date)}
-              </span>
-              <button
-                type="button"
-                onClick={() => onRemove(item.id)}
-                aria-label={`Retirer « ${item.label} »`}
-              >
-                <span className="material-icons">close</span>
-              </button>
-            </li>
-          ))}
+          {items.map((item) =>
+            editingId === item.id ? (
+              <li key={item.id}>
+                <form
+                  className="summary-section__edit-form summary-section__edit-form--deadline"
+                  onSubmit={(e) => handleEditSubmit(e, item.id)}
+                >
+                  <input
+                    type="text"
+                    value={editLabel}
+                    onChange={(e) => setEditLabel(e.target.value)}
+                    autoFocus
+                  />
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                  />
+                  <Button type="submit" variant="secondary" size="small">
+                    Enregistrer
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    size="small"
+                    onClick={cancelEdit}
+                  >
+                    Annuler
+                  </Button>
+                </form>
+              </li>
+            ) : (
+              <li key={item.id}>
+                <span>
+                  {item.label} — {formatDate(item.date)}
+                </span>
+                <ItemActions
+                  label={item.label}
+                  onEdit={() => startEdit(item)}
+                  onRemove={() => onRemove(item.id, item.label)}
+                />
+              </li>
+            ),
+          )}
         </ul>
       )}
       <form
@@ -154,13 +279,10 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onRemove }) {
                 </strong>{" "}
                 — {c.jobTitle}
               </span>
-              <button
-                type="button"
-                onClick={() => onRemove(c.id)}
-                aria-label={`Retirer ${c.firstName} ${c.lastName}`}
-              >
-                <span className="material-icons">close</span>
-              </button>
+              <ItemActions
+                label={`${c.firstName} ${c.lastName}`}
+                onRemove={() => onRemove(c.id, `${c.firstName} ${c.lastName}`)}
+              />
             </li>
           ))}
         </ul>
@@ -229,13 +351,10 @@ function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
                 </span>
                 {it.title}
               </span>
-              <button
-                type="button"
-                onClick={() => onRemove(it.type, it.id)}
-                aria-label={`Retirer ${it.title}`}
-              >
-                <span className="material-icons">close</span>
-              </button>
+              <ItemActions
+                label={it.title}
+                onRemove={() => onRemove(it.type, it.id, it.title)}
+              />
             </li>
           ))}
         </ul>
@@ -269,10 +388,19 @@ function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
 export function SummaryDetails({ collaboratorId }) {
   const { getSummary, updateSummary } = useSummaries();
   const summary = getSummary(collaboratorId);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   function addToList(field, item) {
     updateSummary(collaboratorId, {
       [field]: [...(summary[field] ?? []), item],
+    });
+  }
+
+  function editInList(field, id, changes) {
+    updateSummary(collaboratorId, {
+      [field]: (summary[field] ?? []).map((x) =>
+        x.id === id ? { ...x, ...changes } : x,
+      ),
     });
   }
 
@@ -282,6 +410,19 @@ export function SummaryDetails({ collaboratorId }) {
     });
   }
 
+  // Toute suppression d'un élément déjà enregistré passe par cette
+  // confirmation, plutôt que de retirer l'élément directement au clic.
+  function requestRemove(label, onConfirm) {
+    setPendingDelete({ label, onConfirm });
+  }
+
+  function handleDeleteDecide(decision) {
+    if (decision === "delete" && pendingDelete) {
+      pendingDelete.onConfirm();
+    }
+    setPendingDelete(null);
+  }
+
   return (
     <div className="summary-details">
       <TextListSection
@@ -289,7 +430,10 @@ export function SummaryDetails({ collaboratorId }) {
         title="Actions en cours"
         items={summary.actions ?? []}
         onAdd={(label) => addToList("actions", { id: crypto.randomUUID(), label })}
-        onRemove={(id) => removeFromList("actions", id)}
+        onEdit={(id, label) => editInList("actions", id, { label })}
+        onRemove={(id, label) =>
+          requestRemove(label, () => removeFromList("actions", id))
+        }
         placeholder="Nouvelle action..."
       />
       <TextListSection
@@ -297,7 +441,10 @@ export function SummaryDetails({ collaboratorId }) {
         title="Décisions importantes"
         items={summary.decisions ?? []}
         onAdd={(label) => addToList("decisions", { id: crypto.randomUUID(), label })}
-        onRemove={(id) => removeFromList("decisions", id)}
+        onEdit={(id, label) => editInList("decisions", id, { label })}
+        onRemove={(id, label) =>
+          requestRemove(label, () => removeFromList("decisions", id))
+        }
         placeholder="Nouvelle décision..."
       />
       <DeadlineSection
@@ -305,14 +452,20 @@ export function SummaryDetails({ collaboratorId }) {
         onAdd={(label, date) =>
           addToList("deadlines", { id: crypto.randomUUID(), label, date })
         }
-        onRemove={(id) => removeFromList("deadlines", id)}
+        onEdit={(id, label, date) => editInList("deadlines", id, { label, date })}
+        onRemove={(id, label) =>
+          requestRemove(label, () => removeFromList("deadlines", id))
+        }
       />
       <TextListSection
         icon="report_problem"
         title="Points de blocage"
         items={summary.blockers ?? []}
         onAdd={(label) => addToList("blockers", { id: crypto.randomUUID(), label })}
-        onRemove={(id) => removeFromList("blockers", id)}
+        onEdit={(id, label) => editInList("blockers", id, { label })}
+        onRemove={(id, label) =>
+          requestRemove(label, () => removeFromList("blockers", id))
+        }
         placeholder="Nouveau point de blocage..."
       />
       <ContactSection
@@ -323,10 +476,12 @@ export function SummaryDetails({ collaboratorId }) {
             contactIds: [...(summary.contactIds ?? []), id],
           })
         }
-        onRemove={(id) =>
-          updateSummary(collaboratorId, {
-            contactIds: (summary.contactIds ?? []).filter((x) => x !== id),
-          })
+        onRemove={(id, label) =>
+          requestRemove(label, () =>
+            updateSummary(collaboratorId, {
+              contactIds: (summary.contactIds ?? []).filter((x) => x !== id),
+            }),
+          )
         }
       />
       <DocumentSection
@@ -337,14 +492,25 @@ export function SummaryDetails({ collaboratorId }) {
             documents: [...(summary.documents ?? []), { type, id }],
           })
         }
-        onRemove={(type, id) =>
-          updateSummary(collaboratorId, {
-            documents: (summary.documents ?? []).filter(
-              (x) => !(x.type === type && x.id === id),
-            ),
-          })
+        onRemove={(type, id, label) =>
+          requestRemove(label, () =>
+            updateSummary(collaboratorId, {
+              documents: (summary.documents ?? []).filter(
+                (x) => !(x.type === type && x.id === id),
+              ),
+            }),
+          )
         }
       />
+      <DeleteConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onDecide={handleDeleteDecide}
+      >
+        {pendingDelete
+          ? `Voulez-vous vraiment supprimer « ${pendingDelete.label} » ? Cette action est irréversible.`
+          : null}
+      </DeleteConfirmationModal>
     </div>
   );
 }

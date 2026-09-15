@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import {
   Badge,
   Button,
-  Input,
+  ConfirmationModal,
   useToastProvider,
 } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -16,15 +16,6 @@ import suiteLogo from "../assets/suite-logo.svg";
 import "./ManagerPage.css";
 
 const SUMMARY_HEADING_ID = "manager-summary-heading";
-
-function formatDateTime(iso) {
-  return new Date(iso).toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function ManagerPage() {
   const { currentUser, logout } = useAuth();
@@ -40,11 +31,7 @@ export function ManagerPage() {
   const selected = team.find((c) => c.id === selectedId) ?? null;
   const summary = selected ? getSummary(selected.id) : null;
   const [draftText, setDraftText] = useState(summary?.text ?? "");
-  const [recipientEmails, setRecipientEmails] = useState([]);
-  const [emailDraft, setEmailDraft] = useState("");
-  const [emailError, setEmailError] = useState(false);
-  // { [collaboratorId]: [{ to: ["email@...", ...], at: isoString }, ...] }
-  const [shareLogs, setShareLogs] = useState({});
+  const [pendingShare, setPendingShare] = useState(false);
 
   if (!currentUser || currentUser.accountRole !== "manager") {
     return <Navigate to="/" replace />;
@@ -59,9 +46,6 @@ export function ManagerPage() {
     }
     setSelectedId(collaborator.id);
     setDraftText(getSummary(collaborator.id).text);
-    setRecipientEmails([]);
-    setEmailDraft("");
-    setEmailError(false);
   }
 
   function handleSave() {
@@ -70,41 +54,26 @@ export function ManagerPage() {
     toast(`Résumé de ${selected.firstName} enregistré.`, "success");
   }
 
-  function handleAddRecipient(event) {
-    event.preventDefault();
-    const email = emailDraft.trim().toLowerCase();
-    if (!email || !email.includes("@") || email.includes(" ")) {
-      setEmailError(true);
+  // Ouvre l'application mail pour envoyer ce résumé ; le lien réel sera
+  // branché côté backend plus tard (voir PLAN.md).
+  function sendMail() {
+    toast(`Ouverture de l'application mail pour ${selected.firstName}...`, "info");
+  }
+
+  function handleShare() {
+    if (!selected) return;
+    if (!summary.validated) {
+      setPendingShare(true);
       return;
     }
-    if (!recipientEmails.includes(email)) {
-      setRecipientEmails((prev) => [...prev, email]);
+    sendMail();
+  }
+
+  function handleShareDecide(decision) {
+    if (decision === "yes") {
+      sendMail();
     }
-    setEmailDraft("");
-    setEmailError(false);
-  }
-
-  function handleRemoveRecipient(email) {
-    setRecipientEmails((prev) => prev.filter((e) => e !== email));
-  }
-
-  // Envoi simulé : aucun mail n'est réellement envoyé pour l'instant, c'est
-  // prévu pour plus tard (voir PLAN.md). On garde juste une trace locale pour
-  // que l'action ait un retour visible.
-  function handleShare() {
-    if (!selected || recipientEmails.length === 0) return;
-    setShareLogs((prev) => ({
-      ...prev,
-      [selected.id]: [
-        { to: recipientEmails, at: new Date().toISOString() },
-        ...(prev[selected.id] ?? []),
-      ],
-    }));
-    toast(
-      `Résumé de ${selected.firstName} envoyé à ${recipientEmails.length} destinataire${recipientEmails.length > 1 ? "s" : ""} (simulé).`,
-      "success",
-    );
-    setRecipientEmails([]);
+    setPendingShare(false);
   }
 
   function handleLogout() {
@@ -179,9 +148,6 @@ export function ManagerPage() {
             {selected ? (
               <>
                 <div className="manager-page__summary__header">
-                  <span className="material-icons manager-page__summary__icon">
-                    auto_awesome
-                  </span>
                   <div className="manager-page__summary__heading">
                     <h2
                       id={SUMMARY_HEADING_ID}
@@ -241,79 +207,12 @@ export function ManagerPage() {
             ) : (
               <>
                 <p className="manager-page__share__hint">
-                  Envoyer le résumé de {selected.firstName} à une ou plusieurs
-                  adresses mail. L'envoi est simulé pour l'instant — l'envoi
-                  réel par mail sera branché plus tard.
+                  Envoyer le résumé de {selected.firstName} par mail.
                 </p>
 
-                <form
-                  className="manager-page__share__form"
-                  onSubmit={handleAddRecipient}
-                >
-                  <Input
-                    label="Adresse mail"
-                    type="email"
-                    list="known-emails"
-                    fullWidth
-                    state={emailError ? "error" : "default"}
-                    text={emailError ? "Adresse invalide." : undefined}
-                    value={emailDraft}
-                    onChange={(e) => {
-                      setEmailDraft(e.target.value);
-                      setEmailError(false);
-                    }}
-                  />
-                  <datalist id="known-emails">
-                    {collaborators
-                      .filter((c) => c.id !== selected.id)
-                      .map((c) => (
-                        <option key={c.id} value={c.email} />
-                      ))}
-                  </datalist>
-                  <Button type="submit" variant="secondary" fullWidth>
-                    Ajouter ce destinataire
-                  </Button>
-                </form>
-
-                {recipientEmails.length > 0 && (
-                  <ul className="manager-page__share__chips">
-                    {recipientEmails.map((email) => (
-                      <li key={email} className="manager-page__share__chip">
-                        <span>{email}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveRecipient(email)}
-                          aria-label={`Retirer ${email}`}
-                        >
-                          <span className="material-icons">close</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <Button
-                  fullWidth
-                  onClick={handleShare}
-                  disabled={recipientEmails.length === 0}
-                >
-                  Envoyer ({recipientEmails.length})
+                <Button fullWidth onClick={handleShare}>
+                  Envoyer par mail
                 </Button>
-
-                {(shareLogs[selected.id]?.length ?? 0) > 0 && (
-                  <div className="manager-page__share__log">
-                    <h3 className="manager-page__share__log__title">
-                      Envois récents
-                    </h3>
-                    <ul>
-                      {shareLogs[selected.id].map((entry, index) => (
-                        <li key={index}>
-                          {formatDateTime(entry.at)} → {entry.to.join(", ")}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -321,6 +220,17 @@ export function ManagerPage() {
       </div>
 
       <AppFooter />
+
+      <ConfirmationModal
+        isOpen={pendingShare}
+        onClose={() => setPendingShare(false)}
+        onDecide={handleShareDecide}
+        title="Résumé non validé"
+      >
+        {selected
+          ? `${selected.firstName} n'a pas encore validé ce résumé. L'envoyer quand même ?`
+          : null}
+      </ConfirmationModal>
     </div>
   );
 }

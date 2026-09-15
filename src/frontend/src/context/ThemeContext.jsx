@@ -30,7 +30,9 @@ export function ThemeProvider({ children }) {
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <CunninghamProvider theme={theme}>{children}</CunninghamProvider>
+      <CunninghamProvider theme={theme} currentLocale="fr-FR">
+        {children}
+      </CunninghamProvider>
     </ThemeContext.Provider>
   );
 }

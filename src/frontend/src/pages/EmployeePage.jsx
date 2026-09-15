@@ -97,9 +97,6 @@ export function EmployeePage() {
         <div className="employee-page__split">
           <div className="employee-page__summary">
             <div className="employee-page__summary__header">
-              <span className="material-icons employee-page__summary__icon">
-                auto_awesome
-              </span>
               <span
                 id={SUMMARY_HEADING_ID}
                 className="employee-page__summary__title"
