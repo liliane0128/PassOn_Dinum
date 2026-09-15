@@ -1,0 +1,34 @@
+# Full stack: nginx serves the built frontend and proxies /api/ to Django.
+# nginx is the only published port -- http://localhost:8080.
+#
+# `src/backend/docker-compose.yml` still exists for backend-only work (Django
+# alone on port 8000); the two stacks use different project and container
+# names, so they can run side by side.
+name: passon
+
+services:
+  web:
+    build: ./src/backend
+    container_name: passon_web
+    # Deliberately not published: nginx reaches it over the compose network,
+    # and the browser reaches it through http://localhost:8080/api/.
+    expose:
+      - "8000"
+    volumes:
+      - ./src/backend:/app
+    # No environment block on purpose: settings.py calls load_dotenv() on
+    # /app/.env, which this mount provides, so src/backend/.env stays the one
+    # place where DOCS_URL, DINUM_USE_MOCK, GROQ_API_KEY... are configured.
+    # (Compose-level variables would silently win over that file.)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  nginx:
+    build:
+      context: .
+      dockerfile: src/server/Dockerfile
+    container_name: passon_nginx
+    ports:
+      - "8080:8080"
+    depends_on:
+      - web
