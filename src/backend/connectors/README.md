@@ -43,33 +43,60 @@ without any of the three upstream services actually running.
 
 ## Running this
 
-1. **Install dependencies** (from `src/backend`):
+All commands below are run from `src/backend`:
+
+```sh
+cd src/backend
+```
+
+1. **Create the virtualenv and install dependencies:**
    ```sh
    python3 -m venv venv
-   source venv/bin/activate
    ./venv/bin/pip install -r requirements.txt
    ```
-2. **Configure**: copy `.env.example` to `.env` and fill it in.
-   - To just try the pipeline with fake data, set `DINUM_USE_MOCK=true` and
-     skip straight to step 4 -- no upstream services or credentials needed.
-   - To hit the real Docs/Drive/Messages, set `DOCS_URL`/`DRIVE_URL`/
-     `MESSAGES_URL` to wherever those are running, and start those three
-     projects separately (they are not part of this repo).
+   (Using `./venv/bin/python` / `./venv/bin/pip` directly, as every command
+   below does, avoids needing to remember whether you've `source
+   venv/bin/activate`d in the current shell.)
+2. **Configure**: copy `.env.example` to `.env`, then edit `.env`:
+   ```sh
+   cp .env.example .env
+   ```
+   - To just try the pipeline with fake data, leave `DINUM_USE_MOCK=true` (the
+     `.env.example` default) and skip straight to step 5 -- no upstream
+     services or credentials needed.
+   - To hit the real Docs/Drive/Messages, set `DINUM_USE_MOCK=false` and point
+     `DOCS_URL`/`DRIVE_URL`/`MESSAGES_URL` at wherever those are running (start
+     those three projects separately -- they are not part of this repo).
    - For `/api/dossier/`, set `GROQ_API_KEY` (a free key from
      https://console.groq.com/keys works fine for testing).
-3. **Run the checks**:
+
+   `settings.py` loads `.env` automatically (`load_dotenv()`) -- you do not
+   need to `export` these variables yourself. The one exception: if a
+   variable of the same name is *already* exported in your shell (from an
+   earlier `export DINUM_USE_MOCK=...`, for example), that shell value wins
+   over `.env` and silently shadows it. If a setting doesn't seem to be taking
+   effect, run `echo $VAR_NAME` to check, or just open a fresh terminal.
+3. **Set up the database:**
    ```sh
-   DINUM_USE_MOCK=true python manage.py check
-   python manage.py test connectors
+   ./venv/bin/python manage.py migrate
    ```
-4. **Run the server** (Django does not load `.env` automatically -- either
-   `export` the variables first, or prefix the command with them):
+4. **Run the checks:**
    ```sh
-   DINUM_USE_MOCK=true python manage.py runserver
+   ./venv/bin/python manage.py check
+   ./venv/bin/python manage.py test connectors
+   ```
+5. **Run the server:**
+   ```sh
+   ./venv/bin/python manage.py runserver
    ```
    Or via Docker: `docker compose up --build -d` (reads `.env` through
-   Compose's `env_file`/`environment` interpolation, which does work).
-5. **Try it**:
+   Compose's `env_file`/`environment` interpolation).
+
+   **After every edit to `.env`, restart this process** (Ctrl-C, then rerun)
+   -- unlike `.py` file changes, which the dev server's autoreloader picks up
+   by itself, a running process never re-reads `.env`; it only loads it once,
+   at startup.
+6. **Try it** (in another terminal, while the server from step 5 is running):
    ```sh
    curl http://localhost:8000/api/docs/items/ -H "X-Docs-Session: mock"
    curl http://localhost:8000/api/dossier/ -o handover_dossier.md
@@ -105,9 +132,11 @@ Example after setting DRIVE_SESSION locally to your session value:
 curl -H "X-Drive-Session: $DRIVE_SESSION" http://localhost:8000/api/drive/items/
 ```
 
-Configuration: copy `src/backend/.env.example` to `.env` for Compose.
-For host-run Django, export service URLs using `localhost` instead of
-`host.docker.internal`; Django does not load `.env` automatically.
+Note on `.env`'s `DOCS_URL`/`DRIVE_URL`/`MESSAGES_URL` defaults: they point at
+`host.docker.internal`, which only resolves from *inside* a Docker container
+(used when running via `docker compose up`). Running `manage.py runserver`
+directly on the host instead, set them to `localhost` (e.g.
+`DOCS_URL=http://localhost:8071`) or requests will fail to connect.
 
 Docs and Drive lists return the first page only. Messages reads every mailbox
 the caller has access to (personal plus any shared mailbox), not just the
@@ -184,4 +213,5 @@ three), unless `DINUM_USE_MOCK=true`. Also requires `GROQ_API_KEY` for the
 LLM call -- without it, the endpoint returns
 `500 {"error": "llm_not_configured"}` instead of crashing.
 
-Run `python manage.py check` and `python manage.py test connectors`.
+Run `./venv/bin/python manage.py check` and
+`./venv/bin/python manage.py test connectors`.

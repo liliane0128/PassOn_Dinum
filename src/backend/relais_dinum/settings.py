@@ -46,10 +46,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -150,3 +152,12 @@ DINUM_SERVICES = {
 # Get a free key at https://console.groq.com/keys.
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+
+# Lets the frontend dev server (a different origin) call the /api/ routes
+# above directly from the browser. Default matches Vite's default port;
+# override with a comma-separated list via FRONTEND_ORIGINS if it differs.
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173").split(",")
+    if origin.strip()
+]

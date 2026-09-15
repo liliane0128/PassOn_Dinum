@@ -2,7 +2,7 @@
 import requests
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from groq import APIError as GroqAPIError
 from . import docs_client, drive_client, messages_client
@@ -226,7 +226,7 @@ def dossier(request):
         return JsonResponse({"error": "no_data_to_summarize"}, status=422)
 
     try:
-        markdown = generation.generate_dossier(items_)
+        summary = generation.generate_dossier(items_)
     except ImproperlyConfigured:
         # GROQ_API_KEY not set -- a server misconfiguration, not something
         # the caller can fix.
@@ -241,7 +241,6 @@ def dossier(request):
     except RuntimeError:
         return JsonResponse({"error": "llm_empty_response"}, status=502)
 
-    response = HttpResponse(markdown, content_type="text/markdown; charset=utf-8")
-    response["Content-Disposition"] = 'attachment; filename="handover_dossier.md"'
+    response = JsonResponse(summary)
     response["Cache-Control"] = "private, no-store"
     return response
