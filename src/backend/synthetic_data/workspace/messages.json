@@ -1,0 +1,296 @@
+[
+  {
+    "id": "mail-006",
+    "subject": "Degats inondation - boulangerie Au Bon Levain",
+    "sender": {"name": "Thierry Lemaire", "email": "contact@aubonlevain-verneuil.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-08-20T08:15:00Z",
+    "textBody": [{"content": "Bonjour Madame Vasseur, suite aux inondations de samedi, mon atelier en sous-sol est completement inonde, les fours et tout mon stock de farine sont detruits. Je ne sais pas comment declarer cela, pouvez-vous m'indiquer la marche a suivre ? Cordialement, Thierry Lemaire"}]
+  },
+  {
+    "id": "mail-005",
+    "subject": "RE: Rapport d'expertise degats boulangerie Au Bon Levain",
+    "sender": {"name": "Julien Fontaine", "email": "j.fontaine@expertise-batiment.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-08-22T13:00:00Z",
+    "textBody": [{"content": "Bonjour Madame Vasseur, je passerai constater les degats chez M. Lemaire cette semaine, je vous transmettrai le rapport complet sous une semaine. Cordialement, Julien Fontaine"}]
+  },
+  {
+    "id": "mail-001",
+    "subject": "Dossier catastrophe naturelle - inclusion boulangerie Au Bon Levain",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Chef de service", "email": "chef.service@verneuil-aveyron.fr"}],
+    "sent_at": "2026-08-28T15:10:00Z",
+    "textBody": [{"content": "Bonjour, je te confirme que j'ai integre la situation de la boulangerie Au Bon Levain (M. Thierry Lemaire) au dossier communal de demande de reconnaissance de catastrophe naturelle. Les degats constates (atelier en sous-sol inonde, fours et stock de farine detruits) remplissent les criteres. Cordialement, Sophie"}]
+  },
+  {
+    "id": "mail-008",
+    "subject": "Transmission dossier communal catastrophe naturelle",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Marc Dubreuil", "email": "marc.dubreuil@prefecture-aveyron.gouv.fr"}],
+    "sent_at": "2026-09-05T10:30:00Z",
+    "textBody": [{"content": "Bonjour, veuillez trouver ci-joint le dossier communal complet de demande de reconnaissance de catastrophe naturelle pour Verneuil-sur-Aveyron, incluant le cas de la boulangerie Au Bon Levain. Je reste disponible pour toute precision. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-007",
+    "subject": "RE: Transmission dossier communal catastrophe naturelle",
+    "sender": {"name": "Marc Dubreuil", "email": "marc.dubreuil@prefecture-aveyron.gouv.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-08T09:00:00Z",
+    "textBody": [{"content": "Bonjour Madame Vasseur, bien recu votre dossier, je l'ai enregistre a la prefecture. Je ne peux pas encore vous confirmer sa transmission effective a la commission interministerielle, cette etape est traitee par un autre service, je me renseigne. Cordialement, Marc Dubreuil"}]
+  },
+  {
+    "id": "mail-004",
+    "subject": "Suivi de votre dossier - delai de declaration a votre assurance",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Thierry Lemaire", "email": "contact@aubonlevain-verneuil.fr"}],
+    "sent_at": "2026-09-11T09:30:00Z",
+    "textBody": [{"content": "Bonjour Monsieur Lemaire, je vous informe qu'une fois l'arrete de reconnaissance publie au Journal Officiel, vous disposerez de 10 jours pour declarer officiellement le sinistre a votre assurance, au-dela de ce delai vous perdriez votre droit a indemnisation. Je vous tiendrai informe de la publication. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-003",
+    "subject": "RE: Rapport d'expertise degats boulangerie Au Bon Levain",
+    "sender": {"name": "Julien Fontaine", "email": "j.fontaine@expertise-batiment.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-13T17:45:00Z",
+    "textBody": [{"content": "Bonjour Madame Vasseur, je suis desole du retard, j'ai pris du retard sur mes constats suite a un surcroit d'interventions apres les inondations. Je vous transmettrai le rapport complet dans les meilleurs delais. Cordialement, Julien Fontaine"}]
+  },
+  {
+    "id": "mail-002",
+    "subject": "Relance - confirmation transmission dossier communal a la commission interministerielle",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Marc Dubreuil", "email": "marc.dubreuil@prefecture-aveyron.gouv.fr"}],
+    "sent_at": "2026-09-14T10:00:00Z",
+    "textBody": [{"content": "Bonjour, pourriez-vous me confirmer que le dossier communal de demande de reconnaissance catastrophe naturelle (incluant le cas de la boulangerie Au Bon Levain) a bien ete transmis a la commission interministerielle ? La commission se reunit le 22 octobre, je souhaite m'assurer que tout est en ordre avant cette date. Merci, Sophie Vasseur"}]
+  },
+
+  {
+    "id": "mail-009",
+    "subject": "Confirmation commande remplacement chaudiere",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "ThermoPlus", "email": "contact@thermoplus-chauffage.fr"}],
+    "sent_at": "2026-08-10T11:00:00Z",
+    "textBody": [{"content": "Bonjour, je vous confirme la commande pour le remplacement de la chaudiere de l'ecole Jean Moulin, bon de commande signe ci-joint. Le debut des travaux est prevu le 26 octobre, pendant les vacances scolaires. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-010",
+    "subject": "Occupation ecole Jean Moulin par le centre de loisirs - vacances de la Toussaint",
+    "sender": {"name": "Nadia Cherif", "email": "n.cherif@centreloisirs-verneuil.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-02T14:00:00Z",
+    "textBody": [{"content": "Bonjour Madame Vasseur, je vous informe que le centre de loisirs utilisera les locaux de l'ecole Jean Moulin pendant toutes les vacances de la Toussaint, y compris la semaine du 26 octobre, pour accueillir les enfants. Merci de le prendre en compte dans votre planification. Cordialement, Nadia Cherif"}]
+  },
+  {
+    "id": "mail-011",
+    "subject": "Demande de report - travaux chaudiere ecole Jean Moulin",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "ThermoPlus", "email": "contact@thermoplus-chauffage.fr"}],
+    "sent_at": "2026-09-03T09:30:00Z",
+    "textBody": [{"content": "Bonjour, suite a une occupation des locaux par le centre de loisirs pendant les vacances de la Toussaint, le debut des travaux prevu le 26 octobre n'est plus possible. Pourriez-vous me proposer un nouveau creneau ? Merci de votre retour rapide. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-012",
+    "subject": "RE: Demande de report - travaux chaudiere ecole Jean Moulin",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "ThermoPlus", "email": "contact@thermoplus-chauffage.fr"}],
+    "sent_at": "2026-09-14T11:00:00Z",
+    "textBody": [{"content": "Bonjour, je me permets de relancer ma demande du 3 septembre concernant le report des travaux de la chaudiere de l'ecole Jean Moulin. Je n'ai pas encore recu de nouvelle proposition de creneau. Merci de revenir vers moi rapidement. Cordialement, Sophie Vasseur"}]
+  },
+
+  {
+    "id": "mail-013",
+    "subject": "Devis corrige - renouvellement postes informatiques",
+    "sender": {"name": "Service commercial InfoPro", "email": "commercial@infopro-solutions.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-08-20T10:15:00Z",
+    "textBody": [{"content": "Bonjour Madame Vasseur, suite a une hausse du cout des composants, nous vous transmettons un devis corrige pour le renouvellement de vos 14 postes informatiques : 11 800 EUR TTC (au lieu de 10 900 EUR initialement). Ce devis est valable jusqu'au 30 septembre 2026. Cordialement, InfoPro Solutions"}]
+  },
+  {
+    "id": "mail-014",
+    "subject": "Demande de validation budgetaire - renouvellement informatique",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Adjoint au maire - finances", "email": "adjoint.finances@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-01T09:00:00Z",
+    "textBody": [{"content": "Bonjour, je sollicite votre validation budgetaire pour le renouvellement de 14 postes informatiques, devis corrige a 11 800 EUR TTC, valable jusqu'au 30 septembre. Merci de traiter cette demande rapidement compte tenu du delai. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-015",
+    "subject": "RE: Demande de validation budgetaire - renouvellement informatique",
+    "sender": {"name": "Adjoint au maire - finances", "email": "adjoint.finances@verneuil-aveyron.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-05T16:00:00Z",
+    "textBody": [{"content": "Bonjour Sophie, je suis favorable sur le principe a ce renouvellement, mais la validation formelle doit encore passer par la commission finances. Je transmets le dossier. Cordialement"}]
+  },
+  {
+    "id": "mail-016",
+    "subject": "Relance - validation budgetaire renouvellement informatique",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Service finances", "email": "finances@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-14T09:00:00Z",
+    "textBody": [{"content": "Bonjour, je me permets de relancer sur la validation du dossier de renouvellement informatique (14 postes, devis 11 800 EUR), le devis expire le 30 septembre. Pourriez-vous me confirmer que la commission finances a bien ete saisie ? Merci, Sophie Vasseur"}]
+  },
+
+  {
+    "id": "mail-017",
+    "subject": "Confirmation autorisation occupation domaine public - fete d'automne",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Service voirie", "email": "voirie@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-12T09:00:00Z",
+    "textBody": [{"content": "Bonjour, pourriez-vous confirmer que l'arrete d'autorisation d'occupation du domaine public pour la fete d'automne (place de la Mairie) a bien ete signe ? Nous en avons besoin avant l'evenement. Merci, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-018",
+    "subject": "Planning definitif - prestation sonorisation fete d'automne",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "SonoEvent", "email": "contact@sonoevent.fr"}],
+    "sent_at": "2026-09-13T14:00:00Z",
+    "textBody": [{"content": "Bonjour, je dois encore vous transmettre le planning definitif de la journee (horaires des concerts et interventions) pour la fete d'automne. Je vous l'envoie d'ici la fin de semaine. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-019",
+    "subject": "Attestation d'assurance - stand fete d'automne",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Association Verneuil Loisirs", "email": "contact@verneuil-loisirs.fr"}],
+    "sent_at": "2026-09-11T10:00:00Z",
+    "textBody": [{"content": "Bonjour, pour finaliser votre participation a la fete d'automne, merci de nous transmettre votre attestation d'assurance responsabilite civile pour le stand. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-020",
+    "subject": "RE: Attestation d'assurance - stand fete d'automne",
+    "sender": {"name": "Association Verneuil Loisirs", "email": "contact@verneuil-loisirs.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-13T16:00:00Z",
+    "textBody": [{"content": "Bonjour, nous n'avons pas encore l'attestation a jour, notre assureur nous la transmet generalement sous quelques jours. Nous vous la ferons suivre des reception. Cordialement, Association Verneuil Loisirs"}]
+  },
+  {
+    "id": "mail-021",
+    "subject": "Plan de stationnement - fete d'automne",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Service voirie", "email": "voirie@verneuil-aveyron.fr"}],
+    "sent_at": "2026-08-25T09:00:00Z",
+    "textBody": [{"content": "Bonjour, le plan de stationnement pour la fete d'automne est valide, rien a signaler de mon cote. Merci pour votre reactivite. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-022",
+    "subject": "Confirmation food truck - fete d'automne",
+    "sender": {"name": "Le Camion Gourmand", "email": "contact@camiongourmand.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-08-28T12:00:00Z",
+    "textBody": [{"content": "Bonjour, c'est confirme, nous serons presents a la fete d'automne avec notre camion. A bientot ! Le Camion Gourmand"}]
+  },
+  {
+    "id": "mail-023",
+    "subject": "Confirmation programmation musicale - fete d'automne",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "SonoEvent", "email": "contact@sonoevent.fr"}],
+    "sent_at": "2026-09-01T10:00:00Z",
+    "textBody": [{"content": "Bonjour, la programmation musicale est validee : groupe local a 15h, fanfare a 17h. Rien d'autre a prevoir pour l'instant de ce cote. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-024",
+    "subject": "Merci aux benevoles - fete d'automne",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Liste benevoles", "email": "benevoles-fete@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-05T17:00:00Z",
+    "textBody": [{"content": "Bonjour a tous, merci pour votre inscription comme benevoles pour la fete d'automne, la liste des creneaux est complete. A bientot ! Sophie Vasseur"}]
+  },
+
+  {
+    "id": "mail-025",
+    "subject": "Demande de mise a disposition de salle",
+    "sender": {"name": "Les Amis du Patrimoine", "email": "contact@amisdupatrimoine-verneuil.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-06-10T10:00:00Z",
+    "textBody": [{"content": "Bonjour, notre association souhaiterait disposer regulierement d'une salle municipale pour ses reunions mensuelles. Pourriez-vous nous indiquer la procedure ? Cordialement, Les Amis du Patrimoine"}]
+  },
+  {
+    "id": "mail-026",
+    "subject": "Projet de convention - mise a disposition de salle",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Les Amis du Patrimoine", "email": "contact@amisdupatrimoine-verneuil.fr"}],
+    "sent_at": "2026-06-21T09:00:00Z",
+    "textBody": [{"content": "Bonjour, veuillez trouver ci-joint un projet de convention de mise a disposition de salle. N'hesitez pas a nous faire part de vos remarques. Cordialement, Sophie Vasseur"}]
+  },
+  {
+    "id": "mail-027",
+    "subject": "RE: Projet de convention - mise a disposition de salle",
+    "sender": {"name": "Les Amis du Patrimoine", "email": "contact@amisdupatrimoine-verneuil.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-07-02T11:00:00Z",
+    "textBody": [{"content": "Bonjour, le projet nous convient, nous souhaiterions juste decaler nos creneaux du mardi au jeudi soir. Pourriez-vous ajuster la convention en ce sens ? Cordialement, Les Amis du Patrimoine"}]
+  },
+  {
+    "id": "mail-028",
+    "subject": "Convention signee - Les Amis du Patrimoine",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Les Amis du Patrimoine", "email": "contact@amisdupatrimoine-verneuil.fr"}],
+    "sent_at": "2026-09-04T09:00:00Z",
+    "textBody": [{"content": "Bonjour, veuillez trouver ci-joint la convention signee par les deux parties. Le dossier est desormais clos de notre cote, n'hesitez pas a nous contacter en cas de besoin. Cordialement, Sophie Vasseur"}]
+  },
+
+  {
+    "id": "mail-029",
+    "subject": "Confirmation commande papier A4",
+    "sender": {"name": "Fournitures Pro", "email": "commandes@fournitures-pro.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-02T08:00:00Z",
+    "textBody": [{"content": "Bonjour, votre commande de 20 ramettes de papier A4 est confirmee, livraison sous 3 jours. Cordialement, Fournitures Pro"}]
+  },
+  {
+    "id": "mail-030",
+    "subject": "Livraison cartouches imprimante",
+    "sender": {"name": "Fournitures Pro", "email": "commandes@fournitures-pro.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-05T08:00:00Z",
+    "textBody": [{"content": "Bonjour, vos cartouches d'imprimante ont ete livrees a l'accueil de la mairie. Cordialement, Fournitures Pro"}]
+  },
+  {
+    "id": "mail-031",
+    "subject": "Devis mobilier de bureau",
+    "sender": {"name": "BureauConcept", "email": "devis@bureauconcept.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-09T10:00:00Z",
+    "textBody": [{"content": "Bonjour, veuillez trouver ci-joint notre devis pour deux chaises de bureau ergonomiques suite a votre demande. Cordialement, BureauConcept"}]
+  },
+  {
+    "id": "mail-032",
+    "subject": "Commande enveloppes",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Fournitures Pro", "email": "commandes@fournitures-pro.fr"}],
+    "sent_at": "2026-09-11T08:30:00Z",
+    "textBody": [{"content": "Bonjour, pourriez-vous nous commander 500 enveloppes format A4 avec en-tete mairie ? Merci, Sophie Vasseur"}]
+  },
+
+  {
+    "id": "mail-033",
+    "subject": "Newsletter interne - mairie de Verneuil-sur-Aveyron - septembre",
+    "sender": {"name": "Communication mairie", "email": "communication@verneuil-aveyron.fr"},
+    "to": [{"name": "Tous les services", "email": "tous-services@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-08T09:00:00Z",
+    "textBody": [{"content": "Bonjour a tous, retrouvez dans cette newsletter les actualites du mois : horaires d'ouverture modifies pendant les travaux de voirie, resultats du concours photo communal, et rappel sur le tri selectif. Bonne lecture ! Le service communication"}]
+  },
+  {
+    "id": "mail-034",
+    "subject": "Invitation - reunion generale de service",
+    "sender": {"name": "Direction generale des services", "email": "dgs@verneuil-aveyron.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-09-10T09:00:00Z",
+    "textBody": [{"content": "Bonjour, vous etes invitee a la reunion generale de service du 25 septembre a 14h en salle du conseil. Ordre du jour a suivre. Cordialement, DGS"}]
+  },
+  {
+    "id": "mail-035",
+    "subject": "Conges valides",
+    "sender": {"name": "Ressources humaines", "email": "rh@verneuil-aveyron.fr"},
+    "to": [{"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"}],
+    "sent_at": "2026-08-16T10:00:00Z",
+    "textBody": [{"content": "Bonjour, vos conges du 24 au 28 aout sont valides. Bonnes vacances ! Le service RH"}]
+  },
+  {
+    "id": "mail-036",
+    "subject": "Cloture dossier - eclairage public rue de la Mairie",
+    "sender": {"name": "Sophie Vasseur", "email": "sophie.vasseur@verneuil-aveyron.fr"},
+    "to": [{"name": "Service technique", "email": "technique@verneuil-aveyron.fr"}],
+    "sent_at": "2026-07-20T15:00:00Z",
+    "textBody": [{"content": "Bonjour, je confirme que la reparation de l'eclairage public rue de la Mairie est terminee et validee. Dossier clos. Cordialement, Sophie Vasseur"}]
+  }
+]

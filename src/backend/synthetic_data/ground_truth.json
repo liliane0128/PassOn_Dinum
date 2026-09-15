@@ -1,0 +1,206 @@
+{
+  "employee": {
+    "name": "Sophie Vasseur",
+    "role": "Instructrice au service affaires generales",
+    "organization": "Mairie de Verneuil-sur-Aveyron",
+    "departure_in": "three weeks"
+  },
+  "projects": [
+    {
+      "id": "catnat-inondations",
+      "name": "Catastrophe naturelle - inondations",
+      "priority": "urgent",
+      "status": "active",
+      "decisions": [
+        {
+          "label": "La boulangerie Au Bon Levain remplit les criteres et a ete integree au dossier communal.",
+          "evidence_ids": ["mail-001", "doc-001", "drive-004"]
+        }
+      ],
+      "pending_actions": [
+        {
+          "label": "Obtenir le rapport d'expertise des degats de la boulangerie Au Bon Levain.",
+          "evidence_ids": ["doc-002", "mail-005", "mail-003"]
+        },
+        {
+          "label": "Relancer la prefecture pour confirmer que le dossier communal a bien ete transmis a la commission interministerielle.",
+          "evidence_ids": ["doc-002", "mail-002", "mail-007"]
+        }
+      ],
+      "deadlines": [
+        {
+          "label": "Reunion de la commission interministerielle -- le dossier doit etre complet avant cette date.",
+          "date": "2026-10-22",
+          "evidence_ids": ["doc-002", "mail-002"]
+        },
+        {
+          "label": "Declaration du sinistre a l'assurance par M. Lemaire, dans les 10 jours suivant la publication de l'arrete au Journal Officiel (date de publication inconnue a ce jour).",
+          "date": null,
+          "evidence_ids": ["mail-004"]
+        }
+      ],
+      "blockers": [
+        {
+          "label": "Le rapport d'expertise des degats n'est toujours pas arrive ; l'expert a pris du retard par rapport a son engagement initial.",
+          "evidence_ids": ["mail-003"]
+        }
+      ],
+      "contacts": [
+        {"name": "Thierry Lemaire", "role": "Boulanger sinistre (Au Bon Levain)", "evidence_ids": ["mail-006", "mail-004"]},
+        {"name": "Marc Dubreuil", "role": "Correspondant prefecture pour le dossier de reconnaissance", "evidence_ids": ["mail-002", "mail-007", "mail-008"]},
+        {"name": "Julien Fontaine", "role": "Expert ayant realise le constat des degats", "evidence_ids": ["mail-005", "mail-003"]}
+      ],
+      "key_documents": [
+        {"label": "Dossier de demande de reconnaissance catastrophe naturelle", "evidence_ids": ["doc-001", "drive-002"]},
+        {"label": "Photos et rapport de constat des degats", "evidence_ids": ["drive-001"]},
+        {"label": "Echanges mails avec la prefecture sur l'etat d'avancement", "evidence_ids": ["drive-003", "mail-002", "mail-007", "mail-008"]}
+      ],
+      "notes_for_testers": [
+        "mail-005 (22 aout, l'expert promet un rapport 'sous une semaine') est perime par mail-003 (13 septembre, l'expert annonce du retard) -- teste le raisonnement temporel / preference pour l'information la plus recente.",
+        "mail-007 (la prefecture confirme seulement avoir 'enregistre' le dossier, pas sa transmission effective a la commission) -- le systeme ne doit pas conclure que l'action de relance est terminee.",
+        "doc-004 (formulaire type, generique, date de janvier) est rattache au projet mais n'est pas un document important pour CETTE affaire -- teste le filtrage de pertinence a l'interieur meme d'un projet actif."
+      ]
+    },
+    {
+      "id": "chauffage-ecole",
+      "name": "Remplacement chaudiere - ecole Jean Moulin",
+      "priority": "active",
+      "status": "active",
+      "decisions": [
+        {
+          "label": "Le remplacement de la chaudiere est approuve, ThermoPlus est retenu et le bon de commande est signe.",
+          "evidence_ids": ["doc-006", "drive-007", "mail-009"]
+        }
+      ],
+      "pending_actions": [
+        {
+          "label": "Obtenir de ThermoPlus une confirmation du nouveau creneau de travaux (le 26 octobre n'est plus disponible, aucune reponse recue a ce jour).",
+          "evidence_ids": ["mail-011", "mail-012"]
+        }
+      ],
+      "deadlines": [],
+      "blockers": [
+        {
+          "label": "ThermoPlus n'a pas repondu a la demande de report malgre une relance.",
+          "evidence_ids": ["mail-011", "mail-012"]
+        }
+      ],
+      "contacts": [
+        {"name": "ThermoPlus", "role": "Prestataire retenu pour le remplacement de la chaudiere", "evidence_ids": ["mail-009", "mail-011", "mail-012"]},
+        {"name": "Nadia Cherif", "role": "Coordinatrice centre de loisirs, occupation des locaux pendant les travaux prevus", "evidence_ids": ["mail-010"]}
+      ],
+      "key_documents": [
+        {"label": "Bon de commande signe avec ThermoPlus", "evidence_ids": ["drive-007"]},
+        {"label": "Planning initial des travaux (perime, mentionne encore le 26 octobre)", "evidence_ids": ["drive-008"]}
+      ],
+      "notes_for_testers": [
+        "doc-005 (10 juillet) et drive-008 (12 aout) mentionnent encore le 26 octobre comme date de demarrage -- ce sont des informations perimees depuis mail-010 (2 septembre) et mail-011 (3 septembre). Le systeme doit reconnaitre que la date initiale n'est plus valable, sans pour autant inventer une nouvelle date puisqu'aucune n'a ete confirmee.",
+        "Aucune reponse de ThermoPlus a ce jour (mail-012, 14 septembre) -- l'action en cours doit rester 'en attente de confirmation', pas 'traitee'."
+      ]
+    },
+    {
+      "id": "renouvellement-informatique",
+      "name": "Renouvellement du parc informatique (14 postes)",
+      "priority": "active",
+      "status": "active",
+      "decisions": [
+        {
+          "label": "Approbation de principe donnee par l'adjoint aux finances ; validation formelle encore requise par la commission finances.",
+          "evidence_ids": ["mail-015"]
+        }
+      ],
+      "pending_actions": [
+        {
+          "label": "Obtenir la validation budgetaire formelle par la commission finances avant l'expiration du devis.",
+          "evidence_ids": ["mail-014", "mail-015", "mail-016"]
+        }
+      ],
+      "deadlines": [
+        {
+          "label": "Expiration du devis corrige (11 800 EUR) aupres d'InfoPro Solutions.",
+          "date": "2026-09-30",
+          "evidence_ids": ["drive-010", "mail-013"]
+        }
+      ],
+      "blockers": [
+        {
+          "label": "La validation formelle de la commission finances n'est pas confirmee, le devis expire bientot.",
+          "evidence_ids": ["mail-016"]
+        }
+      ],
+      "contacts": [
+        {"name": "Adjoint au maire - finances", "role": "A donne un accord de principe, doit faire valider par la commission finances", "evidence_ids": ["mail-014", "mail-015"]}
+      ],
+      "key_documents": [
+        {"label": "Devis corrige (11 800 EUR, le plus recent, valable jusqu'au 30 septembre)", "evidence_ids": ["drive-010"]}
+      ],
+      "notes_for_testers": [
+        "drive-009 (V1, 5 juin, 10 900 EUR) est perime par drive-010 (V2 corrige, 20 aout, 11 800 EUR) -- teste la capacite a identifier la version la plus recente/correcte d'un devis quand deux versions coexistent.",
+        "Le devis expire le 30 septembre : c'est une echeance reelle avec une date precise, contrairement au cas CAT NAT ou la date est inconnue."
+      ]
+    },
+    {
+      "id": "fete-automne",
+      "name": "Fete d'automne communale",
+      "priority": "medium",
+      "status": "active",
+      "decisions": [],
+      "pending_actions": [
+        {
+          "label": "Confirmer la signature de l'arrete d'autorisation d'occupation du domaine public.",
+          "evidence_ids": ["mail-017", "drive-011"]
+        },
+        {
+          "label": "Envoyer le planning definitif de la journee au prestataire de sonorisation (SonoEvent).",
+          "evidence_ids": ["mail-018"]
+        },
+        {
+          "label": "Recuperer l'attestation d'assurance de l'association Verneuil Loisirs pour son stand.",
+          "evidence_ids": ["mail-019", "mail-020"]
+        }
+      ],
+      "deadlines": [],
+      "blockers": [],
+      "contacts": [
+        {"name": "SonoEvent", "role": "Prestataire sonorisation, planning definitif a lui envoyer", "evidence_ids": ["mail-018", "mail-023"]},
+        {"name": "Association Verneuil Loisirs", "role": "Doit fournir son attestation d'assurance", "evidence_ids": ["mail-019", "mail-020"]}
+      ],
+      "key_documents": [
+        {"label": "Programme final de la fete d'automne", "evidence_ids": ["doc-008"]},
+        {"label": "Projet d'arrete d'occupation du domaine public (en attente)", "evidence_ids": ["drive-011"]}
+      ],
+      "notes_for_testers": [
+        "Ce projet a beaucoup de trafic mail (mail-017 a mail-024, 8 messages) mais seuls 3 restent vraiment 'a faire' (mail-017/drive-011, mail-018, mail-019/mail-020) ; mail-021, mail-022, mail-023, mail-024 sont des confirmations de points deja regles (stationnement, food truck, programmation musicale, benevoles) -- teste si le systeme confond volume de messages et importance/priorite reelle du projet."
+      ]
+    },
+    {
+      "id": "convention-salle-amis-patrimoine",
+      "name": "Convention de mise a disposition de salle - Les Amis du Patrimoine",
+      "priority": "low",
+      "status": "closed",
+      "decisions": [
+        {
+          "label": "Convention signee par les deux parties le 3 septembre 2026 ; copie finale envoyee a l'association.",
+          "evidence_ids": ["doc-010", "drive-012", "mail-028"]
+        }
+      ],
+      "pending_actions": [],
+      "deadlines": [],
+      "blockers": [],
+      "contacts": [
+        {"name": "Les Amis du Patrimoine", "role": "Association beneficiaire de la convention (dossier clos)", "evidence_ids": ["mail-025", "mail-028"]}
+      ],
+      "key_documents": [
+        {"label": "Convention signee", "evidence_ids": ["doc-010", "drive-012"]}
+      ],
+      "notes_for_testers": [
+        "Ce dossier a un historique de 7 items (juin a septembre : mail-025, doc-009, mail-026, mail-027, doc-010, drive-012, mail-028) mais le dernier message (mail-028, 4 septembre) declare explicitement le dossier clos, sans action restante. Le systeme ne doit PAS inventer une action en cours simplement parce qu'il y a beaucoup de documents/historique -- c'est le test cle de ce projet."
+      ]
+    }
+  ],
+  "not_projects": {
+    "note": "Les items ci-dessous ne doivent PAS ressortir comme des projets de passation prioritaires -- ce sont du bruit administratif de routine ou hors-perimetre.",
+    "office_supplies_evidence_ids": ["mail-029", "mail-030", "drive-013", "mail-031", "mail-032"],
+    "general_noise_evidence_ids": ["mail-033", "mail-034", "doc-011", "mail-035", "mail-036"]
+  }
+}

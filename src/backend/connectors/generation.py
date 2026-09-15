@@ -12,7 +12,7 @@ src/frontend/src/context/SummaryContext.jsx / SummaryDetails.jsx):
       "text": "free-text prose summary",
       "actions": [{"label": "..."}],
       "decisions": [{"label": "..."}],
-      "deadlines": [{"label": "...", "date": "YYYY-MM-DD"}],
+      "deadlines": [{"label": "...", "date": "YYYY-MM-DD" | null}],
       "blockers": [{"label": "..."}],
       "documents": [{"id": "docs:<id>", "title": "...", "url": "https://..."}]
     }
@@ -49,20 +49,32 @@ Respond with a single JSON object with exactly these fields:
 - "text": a short prose paragraph (2-4 sentences) summarizing the overall \
 handover situation, in French.
 - "actions": array of {"label": "..."} -- tasks or actions not yet completed.
-- "decisions": array of {"label": "..."} -- decisions that were made and \
-affect the work.
-- "deadlines": array of {"label": "...", "date": "YYYY-MM-DD"} -- dates or \
-deadlines to respect. Only include an entry here if a specific date can be \
-determined from the item's content or its "date" field; do not guess a date.
-- "blockers": array of {"label": "..."} -- problems or blockers preventing \
-progress.
+- "decisions": array of {"label": "..."} -- decisions that have ALREADY been \
+made and affect the work. Do not include something that is still pending, \
+conditional on a future event, or not yet final -- that belongs under \
+"deadlines" or "blockers" instead if it fits there.
+- "deadlines": array of {"label": "...", "date": "YYYY-MM-DD" or null} -- \
+dates or deadlines to respect. If a specific date is stated or can be \
+computed from the item's content or its "date" field, use it. If the \
+deadline is real but its trigger date isn't known yet (e.g. "within 10 days \
+of a future publication that hasn't happened"), still include it with \
+"date": null and describe the trigger clearly in the label -- never invent a \
+date, but never drop a real deadline just because the exact date isn't \
+known yet.
+- "blockers": array of {"label": "..."} -- problems or blockers that are \
+ALREADY happening right now, stated in the items. Do not include a \
+hypothetical future consequence that hasn't happened (e.g. "the dossier \
+might be incomplete by the deadline" is not a blocker unless an item \
+actually states it is incomplete today).
 - "documents": array of item "id" strings (verbatim, e.g. "docs:b8eb2e3a-...") \
 -- the documents, files, or emails that matter most for this handover.
 
 Every "label" must be a short, clear sentence, in French. Only include an \
 item in a category if its content clearly fits there (do not force a \
 classification) -- an empty array is a valid, correct answer for a category \
-with nothing to report. For "documents", only use "id" values that actually \
+with nothing to report. Only state what the items actually say: do not \
+infer a fact, a risk, or an outcome that isn't stated or directly implied by \
+the source content. For "documents", only use "id" values that actually \
 appear in the given item list -- never invent one.
 
 Respond with only the JSON object: no introduction, no conclusion, no \
