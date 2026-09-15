@@ -118,7 +118,12 @@ Responses use `{"service": "docs", "data": ...}`. The data is the existing
 connector result, without changing its schema.
 
 Each call uses the caller's upstream session, supplied by the header above or
-its cookie. Docs uses `docs_sessionid`, Drive uses `drive_sessionid`, Messages
+its cookie. For Drive there is a third source: the session stored when the user
+logged in through `/api/auth/login/`, which walks Drive's OIDC flow and keeps
+the resulting cookie server-side (see `../accounts/README.md`). A logged-in
+caller therefore needs no `X-Drive-Session` of its own. An explicit header or
+cookie still takes precedence, so manual calls behave exactly as described here,
+and Docs and Messages are unaffected. Docs uses `docs_sessionid`, Drive uses `drive_sessionid`, Messages
 uses `st_messages_sessionid` (its `SESSION_COOKIE_NAME`; override via
 `MESSAGES_SESSION_COOKIE` if a deployment changes it). Headers take precedence
 over cookies. No shared account or automatic demo login is used by the Django

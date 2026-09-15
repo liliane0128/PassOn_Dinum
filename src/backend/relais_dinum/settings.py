@@ -144,9 +144,16 @@ DINUM_API_TIMEOUT = float(os.getenv("DINUM_API_TIMEOUT", "10"))
 DINUM_USE_MOCK = os.getenv("DINUM_USE_MOCK", "false").lower() == "true"
 DINUM_SERVICES = {
     "docs": {"url": os.getenv("DOCS_URL", "http://localhost:8071").rstrip("/"), "cookie": "docs_sessionid", "header": "X-Docs-Session"},
-    "drive": {"url": os.getenv("DRIVE_URL", "http://localhost:8072").rstrip("/"), "cookie": "drive_sessionid", "header": "X-Drive-Session"},
+    "drive": {"url": os.getenv("DRIVE_URL", "http://localhost:8071").rstrip("/"), "cookie": "drive_sessionid", "header": "X-Drive-Session"},
     "messages": {"url": os.getenv("MESSAGES_URL", "http://localhost:8901").rstrip("/"), "cookie": os.getenv("MESSAGES_SESSION_COOKIE", "sessionid"), "header": "X-Messages-Session"},
 }
+
+# Host that Drive and Keycloak know each other by. Login walks Drive's OIDC
+# redirect chain (accounts/drive_auth.py), and the URLs in it -- including the
+# redirect_uri Keycloak validates -- are built from the host the caller
+# presents. DRIVE_URL says where to *reach* Drive (host.docker.internal from a
+# container); this says which host to *claim* while doing so.
+DRIVE_PUBLIC_HOST = os.getenv("DRIVE_PUBLIC_HOST", "localhost")
 
 # LLM used by /api/dossier/ (connectors/generation.py), via the groq SDK.
 # Get a free key at https://console.groq.com/keys.

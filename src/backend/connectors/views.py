@@ -9,6 +9,7 @@ from . import docs_client, drive_client, messages_client
 from . import generation
 from . import extraction
 from . import mock_clients, mock_data
+from accounts.session import CREDENTIAL_KEY as LOGIN_CREDENTIAL_KEY
 
 REAL_CLIENTS = {"docs": docs_client, "drive": drive_client, "messages": messages_client}
 MOCK_CLIENTS = {
@@ -41,6 +42,18 @@ def _is_valid_credential(credential):
     return not any(ord(ch) < 33 or ord(ch) > 126 or ch in ';,"\\' for ch in credential)
 
 
+def _session_credential(request, service):
+    """The credential our own login flow stored, if it covers this service.
+
+    Only Drive is covered: logging in walks Drive's OIDC flow and ends up with
+    a Drive session (see accounts/drive_auth.py). Docs and Messages each have
+    their own, so they keep requiring an explicit header or cookie.
+    """
+    if service != "drive":
+        return None
+    return request.session.get(LOGIN_CREDENTIAL_KEY)
+
+
 def _resolve_client(request, service):
     """Validate the caller's credential and pick the real/mock client for it.
 
@@ -53,7 +66,14 @@ def _resolve_client(request, service):
     if settings.DINUM_USE_MOCK:
         session = UpstreamSession()
         return session, MOCK_CLIENTS[service], None
-    credential = request.headers.get(config["header"]) or request.COOKIES.get(config["cookie"])
+    credential = (
+        request.headers.get(config["header"])
+        or request.COOKIES.get(config["cookie"])
+        # Falls back to the Drive session obtained at login (accounts/views.py),
+        # so a logged-in caller needs no credential of their own. Explicit
+        # headers and cookies still win, leaving manual calls unchanged.
+        or _session_credential(request, service)
+    )
     if not credential:
         return None, None, failure(service, "authentication_required", 401)
     if not _is_valid_credential(credential):
@@ -125,7 +145,11 @@ def extraction_items(request):
     credentials = {}
     for service in REAL_CLIENTS:
         config = settings.DINUM_SERVICES[service]
-        credential = request.headers.get(config["header"]) or request.COOKIES.get(config["cookie"])
+        credential = (
+            request.headers.get(config["header"])
+            or request.COOKIES.get(config["cookie"])
+            or _session_credential(request, service)
+        )
         if credential and not _is_valid_credential(credential):
             return failure(service, "invalid_session", 400)
         credentials[service] = credential

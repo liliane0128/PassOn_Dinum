@@ -11,7 +11,7 @@ make down  # stops them
 make logs  # follows both containers' logs
 ```
 
-Everything is on **http://localhost:8080**:
+Everything is on **http://localhost:8090**:
 
 | URL | Served by |
 | --- | --- |
@@ -49,9 +49,27 @@ npm run dev
 See `src/frontend/PLAN.md` and `src/frontend/DOCUMENTATION.md` for the
 project's scope and design decisions.
 
+## Logging in
+
+Pass‘on has no accounts of its own: users log in with their **Drive** email and
+password, which is checked against the local Drive instance. A successful login
+also yields the Drive session needed to read that person's documents.
+
+| Route | Method |
+| --- | --- |
+| `/api/auth/login/` | POST `{"email": ..., "password": ...}` |
+| `/api/auth/logout/` | POST |
+| `/api/auth/me/` | GET |
+
+With the default `DINUM_USE_MOCK=true`, demo accounts are accepted without Drive
+running. To check credentials against a real Drive, set `DINUM_USE_MOCK=false`
+and `DRIVE_URL` in `src/backend/.env`, and start Drive separately.
+See [the accounts doc](src/backend/accounts/README.md) for the routes, the CSRF
+handshake the frontend needs, and the Keycloak quirks involved.
+
 ## Service APIs
 
 Docs, Drive, and Messages share read-only Django routes under `/api/`.
 See [connector setup, authentication, and limitations](src/backend/connectors/README.md).
-Those routes are reachable at `http://localhost:8080/api/` through the full
+Those routes are reachable at `http://localhost:8090/api/` through the full
 stack, and at `http://localhost:8000/api/` when running the backend alone.

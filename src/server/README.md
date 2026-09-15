@@ -11,11 +11,11 @@ environment.
 
 nginx removes that problem by putting both behind one origin. It serves the
 compiled frontend from disk and forwards everything Django owns to the `web`
-container, so the browser only ever talks to **http://localhost:8080** and the
+container, so the browser only ever talks to **http://localhost:8090** and the
 frontend can call `/api/...` as a plain relative URL.
 
 ```
-browser ---> nginx (:8080) ---> /           static files (React build)
+browser ---> nginx (:8090) ---> /           static files (React build)
                            \--> /api/       web:8000  (Django)
                             \-> /admin/     web:8000
                              \> /static/    web:8000  (admin CSS/JS)
@@ -50,16 +50,20 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
 - **`proxy_read_timeout 300s` on `/api/`** — `/api/dossier/` lists items from
   three upstream services and then waits on an LLM call. nginx's 60s default
   would cut that off and return 504.
-- **`proxy_set_header Host $host`** — `$host` drops the `:8080` port, which
+- **`proxy_set_header Host $host`** — `$host` drops the `:8090` port, which
   matches Django's `DEBUG` fallback for `ALLOWED_HOSTS` (`localhost`,
   `127.0.0.1`, `[::1]`). Passing `$http_host` instead would send
-  `localhost:8080` and require an explicit `ALLOWED_HOSTS` entry.
+  `localhost:8090` and require an explicit `ALLOWED_HOSTS` entry.
 - **`expires 1y` on `/assets/`, not `add_header Cache-Control`** — Vite writes
   content-hashed filenames there, so they can be cached hard. A location-level
   `add_header` would drop the `X-Frame-Options` and `X-Robots-Tag` headers
   inherited from the server block; `expires` does not. `/index.html` is
   explicitly not cached, otherwise a rebuilt app would keep asking for the
   previous build's hashed filenames.
+- **Port 8090, not the more obvious 8080** — Drive's Keycloak publishes on
+  8080, and the login flow needs Drive running (see
+  `src/backend/accounts/README.md`), so the two would collide on any machine
+  where both are up.
 - **Django is not published on a host port** — the compose file exposes it to
   nginx only, so there is a single way in and no second URL to keep in sync.
   `src/backend/docker-compose.yml` still publishes port 8000 for backend-only
@@ -73,12 +77,13 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
 
 ## Not done here
 
-- **Upstream services are still on their own origins.** The connectors API asks
-  for `X-Docs-Session` / `X-Drive-Session` / `X-Messages-Session` headers
-  because Docs/Drive/Messages cookies do not cross ports. nginx could proxy
-  those three under this origin as well and make their cookies work directly,
-  but that changes the API's authentication contract, so it has not been done
-  unilaterally.
+- **Docs and Messages are still on their own origins.** The connectors API asks
+  for `X-Docs-Session` / `X-Messages-Session` headers because those services'
+  cookies do not cross ports. Drive no longer needs one — logging in stores its
+  session server-side (`src/backend/accounts/README.md`) — but the same is not
+  yet done for the other two. nginx could alternatively proxy them under this
+  origin, which changes the API's authentication contract, so it has not been
+  done unilaterally.
 - **Django still runs through `runserver`**, the development server. nginx does
   not change that; a real deployment would put gunicorn (or similar) behind it
   and serve collected static files from disk rather than proxying `/static/`.

@@ -1,9 +1,9 @@
-# Runs the whole app (nginx + frontend build + Django) on http://localhost:8080.
+# Runs the whole app (nginx + frontend build + Django) on http://localhost:8090.
 # For backend-only work, `cd src/backend && make up` still runs Django alone.
 
 up: src/backend/.env
 	docker compose up -d --build
-	@echo "Pass'on is running on http://localhost:8080"
+	@echo "Pass'on is running on http://localhost:8090"
 
 down:
 	docker compose down

@@ -200,7 +200,7 @@ Deux façons de lancer le front, selon ce que tu fais :
   travailler sur l'interface.
 - **Avec tout le reste** : `make up` à la racine du dépôt. Un serveur **nginx**
   compile l'appli (`npm run build`) et sert le résultat sur
-  http://localhost:8080, en renvoyant au passage tout ce qui commence par
+  http://localhost:8090, en renvoyant au passage tout ce qui commence par
   `/api/` vers le Django du projet.
 
 L'intérêt du second mode : le front et l'API sont sur **la même origine**. Le

@@ -1,5 +1,5 @@
 # Full stack: nginx serves the built frontend and proxies /api/ to Django.
-# nginx is the only published port -- http://localhost:8080.
+# nginx is the only published port -- http://localhost:8090.
 #
 # `src/backend/docker-compose.yml` still exists for backend-only work (Django
 # alone on port 8000); the two stacks use different project and container
@@ -10,8 +10,11 @@ services:
   web:
     build: ./src/backend
     container_name: passon_web
+    # Sessions (used by the login flow) live in the database, so the tables
+    # have to exist before the server accepts a request.
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
     # Deliberately not published: nginx reaches it over the compose network,
-    # and the browser reaches it through http://localhost:8080/api/.
+    # and the browser reaches it through http://localhost:8090/api/.
     expose:
       - "8000"
     volumes:
@@ -29,6 +32,6 @@ services:
       dockerfile: src/server/Dockerfile
     container_name: passon_nginx
     ports:
-      - "8080:8080"
+      - "8090:8090"
     depends_on:
       - web

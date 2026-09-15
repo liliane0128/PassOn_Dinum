@@ -20,4 +20,4 @@ FROM nginx:1.25-alpine
 COPY src/server/conf.d/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=frontend-build /build/dist /usr/share/nginx/html
 
-EXPOSE 8080
+EXPOSE 8090

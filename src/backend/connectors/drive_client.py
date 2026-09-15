@@ -1,6 +1,6 @@
 """Client for the local Drive service.
 
-Drive runs at http://localhost:8072. It authenticates through Keycloak (OIDC
+Drive runs at http://localhost:8071. It authenticates through Keycloak (OIDC
 authorization code flow), same mechanism as Docs and Messages (see
 docs_client.py for the full writeup on the Keycloak login quirk with Secure
 cookies over plain http).
@@ -33,7 +33,7 @@ import re
 
 import requests
 
-BASE_URL = os.getenv("DRIVE_URL", "http://localhost:8072")
+BASE_URL = os.getenv("DRIVE_URL", "http://localhost:8071")
 DEFAULT_USERNAME = "drive"
 DEFAULT_PASSWORD = "drive"
 
