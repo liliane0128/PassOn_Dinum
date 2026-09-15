@@ -11,6 +11,7 @@ services:
       - .:/app
     environment:
       PYTHONUNBUFFERED: "1"
+      DJANGO_AUTO_MIGRATE: "1"
       DOCS_URL: ${DOCS_URL:-http://host.docker.internal:8071}
       DRIVE_URL: ${DRIVE_URL:-http://host.docker.internal:8071}
       MESSAGES_URL: ${MESSAGES_URL:-http://host.docker.internal:8901}
@@ -19,8 +20,16 @@ services:
       DINUM_USE_MOCK: ${DINUM_USE_MOCK:-false}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - postgres
+    networks:
+      - backend   # can talk to db
+      - frontend  # can talk to other services / be exposed
 
   # Django utilise encore SQLite (settings.py) : ce service est en place pour
   # la migration vers postgres, il n'est pas encore branché. Ses identifiants
@@ -37,8 +46,15 @@ services:
       - "5432:5432"
     volumes:
       - ../../database:/var/lib/postgresql/data
+    networks:
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+networks:
+  backend:
+    internal: true
+  frontend:

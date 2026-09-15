@@ -35,6 +35,22 @@ down:
 logs:
 	docker compose logs -f
 
+ps:
+	@docker compose -f ./src/backend/docker-compose.yml --env-file ./.env ps
+
+
+help:
+	@echo "Option available:"
+	@echo "    run: Start every container and launched a firefox tab with the site"
+	@echo "    build: Build every container"
+	@echo "    re: Build an run every container"
+	@echo "    stop: Stop every container"
+	@echo "    logs CONTAINER=NAME: Show the logs of one/every container.s"
+	@echo "    ps: Show the states of every container"
+	@echo "    help: Show this message"
+
+re: up
+
 # Le backend lit ce fichier au démarrage : on le crée depuis l'exemple au
 # premier lancement (mode mock, aucun service externe requis).
 src/backend/.env:
