@@ -76,7 +76,7 @@ export function ManagerPage() {
     setPendingShare(false);
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     if (
       selected &&
       draftText !== summary.text &&
@@ -86,7 +86,7 @@ export function ManagerPage() {
     ) {
       return;
     }
-    logout();
+    await logout();
     navigate("/");
   }
 

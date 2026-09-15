@@ -76,9 +76,15 @@ const response = await fetch("/api/auth/login/", {
 });
 ```
 
-There is no role in the response yet. The interface currently decides between
-the manager and employee views from `accountRole` in its own mock data; Drive's
-`/users/me/` has no equivalent field, so where that comes from is still an open
+The frontend is wired to these routes: `src/frontend/src/api/auth.js` makes the
+calls and `src/frontend/src/context/AuthContext.jsx` holds the session.
+
+There is no role in the response. The interface decides between the manager and
+employee views from `accountRole`, which Drive's `/users/me/` has no equivalent
+for, so `toAppUser()` in `AuthContext.jsx` bridges the gap by matching the Drive
+account to a mock collaborator by email; an account with no match opens the
+employee view with empty content. That bridge is the last piece of the login
+still leaning on mock data — where the role should really come from is an open
 question (see `src/frontend/PLAN.md`).
 
 ## Running it against a real Drive

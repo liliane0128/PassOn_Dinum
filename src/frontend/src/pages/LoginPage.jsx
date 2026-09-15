@@ -2,13 +2,27 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, InputPassword } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
-import { collaborators } from "../data/mockData.js";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
 import suiteLogo from "../assets/suite-logo.svg";
 import "./LoginPage.css";
 
 const LAST_EMAIL_KEY = "passon-last-email";
+
+// Les codes viennent du backend (`src/backend/accounts/views.py`). Distinguer
+// "mauvais identifiants" de "Drive injoignable" évite de chercher une faute de
+// frappe quand c'est le service qui est éteint.
+const ERROR_MESSAGES = {
+  invalid_credentials: "Email ou mot de passe incorrect.",
+  drive_unreachable: "Drive est injoignable. Vérifiez qu'il est démarré.",
+  drive_timeout: "Drive met trop de temps à répondre. Réessayez.",
+  unexpected_response: "Réponse inattendue de Drive. Réessayez plus tard.",
+  network_error: "Impossible de contacter le serveur.",
+};
+
+function errorMessage(code) {
+  return ERROR_MESSAGES[code] ?? "Connexion impossible pour le moment.";
+}
 
 function getRememberedEmail() {
   try {
@@ -23,16 +37,21 @@ export function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState(getRememberedEmail);
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    const user = login(email, password);
+    setSubmitting(true);
+    // Le mot de passe part au backend, qui le vérifie auprès de Drive : rien
+    // n'est comparé ici, contrairement à la version mockée.
+    const { user, error: failure } = await login(email, password);
+    setSubmitting(false);
     if (!user) {
-      setError(true);
+      setError(failure);
       return;
     }
-    setError(false);
+    setError(null);
     try {
       localStorage.setItem(LAST_EMAIL_KEY, email);
     } catch {
@@ -66,6 +85,7 @@ export function LoginPage() {
               type="email"
               fullWidth
               state={error ? "error" : "default"}
+              disabled={submitting}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -74,25 +94,28 @@ export function LoginPage() {
               label="Mot de passe"
               fullWidth
               state={error ? "error" : "default"}
-              text={error ? "Email ou mot de passe incorrect." : undefined}
+              text={error ? errorMessage(error) : undefined}
+              disabled={submitting}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
 
-            <Button type="submit" fullWidth>
-              Se connecter
+            <Button type="submit" fullWidth disabled={submitting}>
+              {submitting ? "Connexion..." : "Se connecter"}
             </Button>
 
             <details className="login-page__hint">
-              <summary>Comptes de test (prototype, pas de vrai backend)</summary>
-              <ul>
-                {collaborators.map((c) => (
-                  <li key={c.id}>
-                    {c.email} — {c.accountRole === "manager" ? "manager" : "employé"}
-                  </li>
-                ))}
-              </ul>
-              <p>Mot de passe pour tous les comptes : demo</p>
+              <summary>Quels identifiants utiliser ?</summary>
+              <p>
+                Ceux de <strong>Drive</strong> : la connexion est vérifiée par
+                l'instance Drive locale, il n'y a pas de compte propre à Pass'on.
+              </p>
+              <p>
+                Comptes de démonstration de Drive :{" "}
+                <code>drive@drive.world</code> (mot de passe <code>drive</code>)
+                ou <code>paige.turner@library.book</code> (mot de passe{" "}
+                <code>pass</code>).
+              </p>
             </details>
           </form>
         </div>

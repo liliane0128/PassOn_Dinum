@@ -35,7 +35,8 @@ Interface interne d'entreprise permettant, quand un collaborateur est absent ou 
 
 ### Fonctionnel
 - [ ] **Vraie table de relations hiérarchiques** (N-1/N+1) côté base de données, pour remplacer le champ `managerId` mocké — tu as indiqué que ça se précisera plus tard.
-- [ ] **Vraie authentification** : le login actuel compare juste email/mot de passe à une liste en dur, sans session persistée (tout est perdu au rechargement de la page) ni sécurité réelle (mots de passe en clair dans le code). À remplacer quand le backend arrivera.
+- [x] **Vraie authentification** (2026-09-15) : la connexion se fait avec les identifiants **Drive**, vérifiés par l'instance Drive locale via son flux OIDC/Keycloak (`POST /api/auth/login/`). Plus aucun mot de passe dans le code, et la session survit au rechargement de la page (cookie de session serveur). Voir `src/backend/accounts/README.md`.
+- [ ] **Rôle et hiérarchie côté backend** : Drive ne connaît ni `accountRole` ni `managerId`. En attendant, `toAppUser()` (dans `AuthContext.jsx`) relie le compte Drive au collaborateur mocké de même email pour retrouver son rôle ; un compte Drive sans équivalent mocké ouvre l'espace employé avec un contenu vide. C'est la dernière dépendance de la connexion aux données mockées.
 - [ ] **Résumé IA réel** : remplacer `mockSummaries.js` par un vrai appel à un modèle IA à partir des mails/documents.
 - [ ] Décider si l'employé peut voir le statut "vu par le manager" ou une trace des modifications du manager sur son résumé (actuellement le manager peut modifier sans que l'employé soit notifié).
 - [ ] **Envoi réel par mail** : le partage de résumé depuis l'espace manager est aujourd'hui simulé (juste gardé en mémoire, perdu au rafraîchissement) — à brancher sur un vrai envoi de mail quand le backend sera là.

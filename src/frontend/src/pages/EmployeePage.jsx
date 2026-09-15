@@ -59,7 +59,7 @@ export function EmployeePage() {
     toast("Résumé validé — votre manager pourra le consulter.", "success");
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     if (
       hasUnsavedChanges &&
       !window.confirm(
@@ -68,7 +68,7 @@ export function EmployeePage() {
     ) {
       return;
     }
-    logout();
+    await logout();
     navigate("/");
   }
 

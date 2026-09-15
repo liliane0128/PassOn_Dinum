@@ -61,8 +61,10 @@ also yields the Drive session needed to read that person's documents.
 | `/api/auth/logout/` | POST |
 | `/api/auth/me/` | GET |
 
-With the default `DINUM_USE_MOCK=true`, demo accounts are accepted without Drive
-running. To check credentials against a real Drive, set `DINUM_USE_MOCK=false`
+The login screen of the app uses these routes, so signing in there signs you into
+Drive's data as well.
+
+With `DINUM_USE_MOCK=true`, demo accounts are accepted without Drive running. To check credentials against a real Drive, set `DINUM_USE_MOCK=false`
 and `DRIVE_URL` in `src/backend/.env`, and start Drive separately.
 See [the accounts doc](src/backend/accounts/README.md) for the routes, the CSRF
 handshake the frontend needs, and the Keycloak quirks involved.
