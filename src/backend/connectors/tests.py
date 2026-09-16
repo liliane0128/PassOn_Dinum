@@ -1,5 +1,9 @@
 import json
+from unittest import mock
 from unittest.mock import patch
+
+from accounts.session import CREDENTIAL_KEYS
+from django.test import Client, TestCase, override_settings
 import requests
 from django.test import SimpleTestCase, override_settings
 
@@ -158,3 +162,33 @@ class ExtractionViewTests(SimpleTestCase):
         result = self.client.get('/api/extraction/items/', HTTP_X_MESSAGES_SESSION='session')
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json(), {'items': [], 'errors': {'messages': 'upstream_timeout'}})
+
+
+class DossierFailurePathTests(TestCase):
+    """One upstream failing must not take the whole request down with it.
+
+    Storing the session of a *failed* fetch left a None in the map, and
+    closing them afterwards raised AttributeError -- so any upstream error
+    surfaced as a 500 that said nothing, and the interface reported it as the
+    AI having failed.
+    """
+
+    @override_settings(DINUM_USE_MOCK=False)
+    def test_an_upstream_error_is_reported_not_crashed(self):
+        from django.http import JsonResponse
+
+        client = Client()
+        session = client.session
+        session[CREDENTIAL_KEYS["drive"]] = "drive-cookie"
+        session.save()
+
+        refusal = JsonResponse(
+            {"service": "drive", "error": "upstream_unavailable"}, status=502
+        )
+        with mock.patch(
+            "connectors.views._fetch_raw_items", return_value=(None, None, refusal)
+        ):
+            response = client.get("/api/dossier/")
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(json.loads(response.content)["error"], "upstream_unavailable")

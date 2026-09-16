@@ -8,11 +8,15 @@ they log in later" work.
 
 import json
 
+import requests
+from django.conf import settings
+from django.db.models import Q
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods
 
+from accounts import oidc_login
 from accounts.collaborators import as_json
-from accounts.session import USER_KEY
+from accounts.session import CREDENTIAL_KEYS, USER_KEY
 
 from .models import Collaborator
 
@@ -128,3 +132,96 @@ def team_member(request, collaborator_id):
 
     member.delete()
     return JsonResponse({}, status=200)
+
+
+# Drive's directory is the authority on who exists: an address typed by hand
+# reaches someone only if it matches an account there. Searching it instead of
+# typing removes the whole class of mistake -- a typo, a personal address, a
+# colleague who left.
+SEARCH_MIN_LENGTH = 2
+SEARCH_LIMIT = 10
+
+
+def _drive_directory(request, query):
+    """Accounts matching `query` in Drive, as [(email, full_name)].
+
+    Uses the Drive session stored at login: Drive answers for the person
+    asking, and that is the only credential we hold. If it is missing or the
+    call fails, the search falls back to what we already know locally rather
+    than failing outright.
+    """
+    credential = request.session.get(CREDENTIAL_KEYS["drive"])
+    if not credential:
+        return []
+
+    config = settings.DINUM_SERVICES["drive"]
+    session = requests.Session()
+    session.cookies.set(config["cookie"], credential)
+    try:
+        response = oidc_login.service_request(
+            session,
+            "drive",
+            "GET",
+            f"{oidc_login.public_base_url('drive')}/api/v1.0/users/",
+            params={"q": query},
+        )
+        if response.status_code != 200:
+            return []
+        return [
+            (user["email"], user.get("full_name") or user["email"])
+            for user in response.json()
+            if user.get("email")
+        ]
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        return []
+    finally:
+        session.close()
+
+
+@require_GET
+def search(request):
+    """People a manager could add to their team, by name or address.
+
+    Two sources, merged on the email address: Drive's directory (anyone with
+    an account, whether or not they have ever opened Pass'on) and our own
+    collaborators (including those a manager added by hand, who may have no
+    Drive account yet). Each result says whether they can actually be added,
+    so the interface can explain rather than let the click fail.
+    """
+    manager, error = _current_manager(request)
+    if error:
+        return error
+
+    query = (request.GET.get("q") or "").strip()
+    if len(query) < SEARCH_MIN_LENGTH:
+        return JsonResponse({"results": []})
+
+    known = {
+        person.email.lower(): person
+        for person in Collaborator.objects.filter(
+            Q(email__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+        )[: SEARCH_LIMIT * 2]
+    }
+
+    found = {}
+    for email, full_name in _drive_directory(request, query):
+        found[email.lower()] = {"email": email, "fullName": full_name}
+    for email, person in known.items():
+        found.setdefault(email, {"email": person.email, "fullName": person.full_name})
+
+    results = []
+    for email, entry in sorted(found.items()):
+        person = known.get(email)
+        if person is not None and person.id == manager.id:
+            status = "yourself"
+        elif person is not None and person.manager_id == manager.id:
+            status = "on_your_team"
+        elif person is not None and person.manager_id is not None:
+            status = "on_another_team"
+        else:
+            status = "available"
+        results.append({**entry, "status": status})
+
+    return JsonResponse({"results": results[:SEARCH_LIMIT]})

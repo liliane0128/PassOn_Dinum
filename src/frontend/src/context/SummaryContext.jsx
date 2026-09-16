@@ -1,5 +1,6 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useToastProvider } from "@gouvfr-lasuite/ui-components";
+import { useAuth } from "./AuthContext.jsx";
 import * as handoverApi from "../api/handover.js";
 
 const SummaryContext = createContext(null);
@@ -20,17 +21,31 @@ const EMPTY_SUMMARY = {
 // qu'un cache local, chargé à la demande pour chaque collaborateur affiché.
 export function SummaryProvider({ children }) {
   const { toast } = useToastProvider();
+  const { currentUser } = useAuth();
   const [summaries, setSummaries] = useState({});
   // Ids déjà demandés au serveur, pour ne pas relancer la même requête à
   // chaque rendu (`getSummary` est appelé pendant le rendu des pages).
   const requested = useRef(new Set());
 
+  // Ce cache appartient à la session qui l'a rempli : sans ça, se déconnecter
+  // puis se reconnecter sous un autre compte afficherait ce que le précédent
+  // avait lu -- un manager verrait la passation de son collaborateur telle
+  // qu'elle était avant que celui-ci ne la valide.
+  useEffect(() => {
+    setSummaries({});
+    requested.current.clear();
+  }, [currentUser?.id]);
+
   function store(collaboratorId, data) {
     setSummaries((prev) => ({ ...prev, [collaboratorId]: { ...EMPTY_SUMMARY, ...data } }));
   }
 
-  function load(collaboratorId) {
-    if (!collaboratorId || requested.current.has(collaboratorId)) return;
+  // `requested` marque une passation comme *demandée*, pas comme obtenue : un
+  // échec la laisse marquée. `getSummary` est appelé pendant le rendu, donc
+  // réessayer automatiquement relancerait la requête à chaque rendu, sans fin.
+  function load(collaboratorId, { force = false } = {}) {
+    if (!collaboratorId) return;
+    if (!force && requested.current.has(collaboratorId)) return;
     requested.current.add(collaboratorId);
     handoverApi
       .fetchHandover(collaboratorId)
@@ -38,7 +53,6 @@ export function SummaryProvider({ children }) {
       .catch(() => {
         // Pas de passation lisible (droits, session expirée) : on laisse le
         // résumé vide plutôt que d'afficher celui de quelqu'un d'autre.
-        requested.current.delete(collaboratorId);
       });
   }
 
@@ -71,8 +85,10 @@ export function SummaryProvider({ children }) {
           : failureMessage,
         error.status === 401 ? "warning" : "error",
       );
-      requested.current.delete(collaboratorId);
-      load(collaboratorId);
+      // Une relecture explicite, pour réafficher ce que le serveur a
+      // réellement enregistré -- déclenchée par une action, jamais par un
+      // rendu, donc sans risque de boucle.
+      load(collaboratorId, { force: true });
       return null;
     }
   }

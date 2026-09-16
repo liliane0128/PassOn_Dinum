@@ -239,3 +239,52 @@
   font-size: 0.8125rem;
   color: var(--c--globals--colors--gray-550);
 }
+
+/* Recherche d'un collaborateur dans l'annuaire */
+.manager-page__team__search__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--c--globals--colors--greyscale-600);
+}
+
+.manager-page__team__search__results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--c--globals--spacings--3xs);
+}
+
+.manager-page__team__search__result {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--c--globals--spacings--2xs);
+  border: 1px solid var(--c--globals--colors--greyscale-200);
+  border-radius: var(--c--globals--spacings--3xs);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.manager-page__team__search__result:hover:not(:disabled) {
+  border-color: var(--c--globals--colors--brand-550);
+}
+
+.manager-page__team__search__result:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.manager-page__team__search__result__name {
+  font-weight: 600;
+}
+
+.manager-page__team__search__result__email,
+.manager-page__team__search__result__reason {
+  font-size: 0.78rem;
+  color: var(--c--globals--colors--greyscale-600);
+}

@@ -296,11 +296,14 @@ def dossier(request):
                 raw[service] = []
                 continue
             authenticated = True
-            raw[service], sessions[service], error = _fetch_raw_items(request, service)
+            raw[service], session, error = _fetch_raw_items(request, service)
             if error:
+                # Only successful fetches leave a session behind; a failed one
+                # has already closed its own and returns None in its place.
                 for open_session in sessions.values():
                     open_session.close()
                 return error
+            sessions[service] = session
         # Keyed on credentials, not on data: someone logged in with an empty
         # Drive is authenticated, and belongs in the "nothing to summarize"
         # branch below rather than being told to log in again.

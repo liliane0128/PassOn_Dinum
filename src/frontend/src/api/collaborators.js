@@ -22,6 +22,21 @@ async function failure(response) {
   return error;
 }
 
+/** Cherche qui pourrait être ajouté, par nom ou adresse.
+ *
+ * Le backend interroge l'annuaire de Drive (tout compte existant) et nos
+ * propres collaborateurs, et dit pour chacun s'il est ajoutable — plutôt que
+ * de laisser saisir une adresse au hasard qui ne correspond à personne.
+ */
+export async function searchCollaborators(query) {
+  const response = await fetch(
+    `/api/collaborators/search/?q=${encodeURIComponent(query)}`,
+    { credentials: "same-origin" },
+  );
+  if (!response.ok) throw await failure(response);
+  return (await response.json()).results ?? [];
+}
+
 /** Ajoute un collaborateur à l'équipe du manager connecté. */
 export async function addCollaborator({ firstName, lastName, email, jobTitle, team }) {
   const response = await fetch("/api/collaborators/", {

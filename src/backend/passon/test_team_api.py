@@ -5,6 +5,7 @@ survives a page reload -- the previous version kept them in the browser only.
 """
 
 import json
+from unittest import mock
 
 from django.test import Client, TestCase
 
@@ -155,3 +156,100 @@ class TeamApiTests(TestCase):
         response = self.client.delete(f"/api/collaborators/{theirs.id}/")
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Collaborator.objects.filter(id=theirs.id).exists())
+
+
+class TeamSearchTests(TestCase):
+    """Finding who to add, instead of typing an address and hoping.
+
+    Drive's directory is consulted with the manager's own Drive session, so
+    these tests stub that call: what matters here is how the two sources are
+    merged and what each result is allowed to say.
+    """
+
+    def setUp(self):
+        self.manager = Collaborator.objects.create(
+            email="chef@example.test", first_name="Chef", last_name="Fe",
+            role=Collaborator.Role.MANAGER,
+        )
+        self.client = Client()
+
+    def log_in_as(self, collaborator):
+        session = self.client.session
+        session[USER_KEY] = {"id": str(collaborator.id), "email": collaborator.email}
+        session.save()
+
+    def search(self, query, directory=()):
+        with mock.patch("passon.views._drive_directory", return_value=list(directory)):
+            return self.client.get(f"/api/collaborators/search/?q={query}")
+
+    def test_someone_with_a_drive_account_is_offered(self):
+        self.log_in_as(self.manager)
+        results = self.search(
+            "jean", directory=[("jean@example.test", "Jean Dupont")]
+        ).json()["results"]
+        self.assertEqual(results, [
+            {"email": "jean@example.test", "fullName": "Jean Dupont", "status": "available"}
+        ])
+
+    def test_each_result_says_whether_it_can_be_added(self):
+        """So the interface explains instead of letting the click fail."""
+        Collaborator.objects.create(
+            email="amoi@example.test", first_name="A", last_name="Moi", manager=self.manager,
+        )
+        other_manager = Collaborator.objects.create(
+            email="autre@example.test", first_name="Au", last_name="Tre",
+            role=Collaborator.Role.MANAGER,
+        )
+        Collaborator.objects.create(
+            email="ailleurs@example.test", first_name="Ail", last_name="Leurs", manager=other_manager,
+        )
+        self.log_in_as(self.manager)
+
+        results = self.search("example", directory=[
+            ("amoi@example.test", "A Moi"),
+            ("ailleurs@example.test", "Ail Leurs"),
+            ("chef@example.test", "Chef Fe"),
+            ("libre@example.test", "Li Bre"),
+        ]).json()["results"]
+
+        by_email = {r["email"]: r["status"] for r in results}
+        self.assertEqual(by_email["amoi@example.test"], "on_your_team")
+        self.assertEqual(by_email["ailleurs@example.test"], "on_another_team")
+        self.assertEqual(by_email["chef@example.test"], "yourself")
+        self.assertEqual(by_email["libre@example.test"], "available")
+
+    def test_someone_added_by_hand_is_found_without_a_drive_account(self):
+        """They have no Drive account yet, so the directory does not know them,
+        but they are ours and must still be findable."""
+        Collaborator.objects.create(
+            email="sansdrive@example.test", first_name="Sans", last_name="Drive",
+        )
+        self.log_in_as(self.manager)
+        results = self.search("sansdrive", directory=[]).json()["results"]
+        self.assertEqual([r["email"] for r in results], ["sansdrive@example.test"])
+
+    def test_the_same_person_is_not_listed_twice(self):
+        Collaborator.objects.create(
+            email="jean@example.test", first_name="Jean", last_name="Dupont",
+        )
+        self.log_in_as(self.manager)
+        results = self.search("jean", directory=[("jean@example.test", "Jean Dupont")]).json()["results"]
+        self.assertEqual(len(results), 1)
+
+    def test_a_one_letter_query_searches_nothing(self):
+        """Two characters minimum: a single letter would return the directory."""
+        self.log_in_as(self.manager)
+        with mock.patch("passon.views._drive_directory") as directory:
+            response = self.client.get("/api/collaborators/search/?q=a")
+        self.assertEqual(response.json()["results"], [])
+        directory.assert_not_called()
+
+    def test_an_employee_cannot_browse_the_directory(self):
+        employee = Collaborator.objects.create(
+            email="employe@example.test", first_name="E", last_name="M",
+        )
+        self.log_in_as(employee)
+        self.assertEqual(self.search("jean").status_code, 403)
+
+    def test_a_visitor_who_is_not_logged_in_cannot(self):
+        self.assertEqual(self.search("jean").status_code, 401)

@@ -56,3 +56,21 @@ export async function validateHandover(collaboratorId) {
   if (!response.ok) throw await failure(response);
   return response.json();
 }
+
+/** Envoie la passation par mail, depuis le compte Messages de l'utilisateur. */
+export async function sendHandover(collaboratorId, recipients) {
+  const response = await fetch(
+    `/api/collaborators/${collaboratorId}/handover/send/`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": readCsrfToken() ?? "",
+      },
+      body: JSON.stringify({ to: recipients }),
+    },
+  );
+  if (!response.ok) throw await failure(response);
+  return response.json();
+}

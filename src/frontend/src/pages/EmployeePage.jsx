@@ -33,6 +33,28 @@ export function EmployeePage() {
 
   const summary = currentUser ? getSummary(currentUser.id) : { text: "", validated: false };
   const [draftText, setDraftText] = useState(summary.text);
+
+  // La passation arrive du serveur après le premier rendu, alors que l'éditeur
+  // a déjà été initialisé — sans cette synchronisation il resterait sur le
+  // texte vide du départ, et le résumé semblerait vide alors qu'il est bien
+  // enregistré. On ne réécrit pas par-dessus une saisie en cours : seul un
+  // texte qu'on n'a pas modifié depuis la dernière synchronisation est
+  // remplacé.
+  const loadedText =
+    currentUser && isLoaded(currentUser.id) ? (summary.text ?? "") : null;
+  // Lu dans l'effet sans en être une dépendance : voir ManagerPage.
+  const draftTextRef = useRef(draftText);
+  draftTextRef.current = draftText;
+
+  const lastSynced = useRef({ id: null, text: "" });
+  useEffect(() => {
+    if (loadedText === null || !currentUser) return;
+    const otherCollaborator = lastSynced.current.id !== currentUser.id;
+    const edited =
+      !otherCollaborator && draftTextRef.current !== lastSynced.current.text;
+    if (otherCollaborator || !edited) setDraftText(loadedText);
+    lastSynced.current = { id: currentUser.id, text: loadedText };
+  }, [currentUser, loadedText]);
   const [regenerating, setRegenerating] = useState(false);
 
   // Le résumé généré remplace la passation enregistrée : texte et sections
@@ -71,7 +93,12 @@ export function EmployeePage() {
         sessionExpired();
         return;
       }
-      toast(`Échec de la génération du résumé IA : ${err.message}`, "error");
+      toast(
+        err.code === "no_data_to_summarize"
+          ? "Aucun document ni mail à résumer : ajoutez des fichiers dans Drive ou attendez de recevoir des messages."
+          : `Échec de la génération du résumé IA : ${err.message}`,
+        err.code === "no_data_to_summarize" ? "info" : "error",
+      );
     } finally {
       setRegenerating(false);
     }
@@ -103,6 +130,12 @@ export function EmployeePage() {
           sessionExpired();
           return;
         }
+        if (err.code === "no_data_to_summarize") {
+          // Rien à résumer : c'est un état normal (Drive et boîte mail vides),
+          // pas une panne. La génération automatique se tait, l'utilisateur
+          // n'a rien demandé.
+          return;
+        }
         toast(`Échec de la génération du résumé IA : ${err.message}`, "error");
       });
     return () => {
@@ -117,15 +150,25 @@ export function EmployeePage() {
   const fullName = `${currentUser.firstName} ${currentUser.lastName}`;
   const hasUnsavedChanges = draftText !== summary.text;
 
-  function handleSave() {
-    updateSummary(currentUser.id, { text: draftText });
-    toast("Résumé enregistré.", "success");
+  async function handleSave() {
+    const saved = await updateSummary(currentUser.id, { text: draftText });
+    if (saved) toast("Résumé enregistré.", "success");
   }
 
-  function handleValidate() {
-    updateSummary(currentUser.id, { text: draftText });
-    validateSummary(currentUser.id);
-    toast("Résumé validé — votre manager pourra le consulter.", "success");
+  async function handleValidate() {
+    // Enregistrer *puis* valider, dans cet ordre et en attendant le premier :
+    // l'enregistrement repasse la passation en non validée (toute modification
+    // le fait), donc lancer les deux en parallèle laissait une chance sur deux
+    // que l'enregistrement arrive en dernier et annule la validation -- côté
+    // serveur, sans que rien ne le signale.
+    if (hasUnsavedChanges) {
+      const saved = await updateSummary(currentUser.id, { text: draftText });
+      if (!saved) return; // l'échec a déjà été signalé
+    }
+    const validated = await validateSummary(currentUser.id);
+    if (validated) {
+      toast("Résumé validé — votre manager pourra le consulter.", "success");
+    }
   }
 
   async function handleLogout() {

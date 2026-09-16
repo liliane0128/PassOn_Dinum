@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthContext.jsx";
 import { fetchItems } from "../api/items.js";
 
@@ -16,8 +16,21 @@ export function ItemsProvider({ children }) {
   // `getItems` est appelé pendant le rendu des pages.
   const requested = useRef(new Set());
 
-  function load(collaboratorId) {
-    if (!collaboratorId || !currentUser || requested.current.has(collaboratorId)) return;
+  // Même raison que pour les passations : les documents lus appartiennent à la
+  // session qui les a demandés, pas au navigateur.
+  useEffect(() => {
+    setByCollaborator({});
+    requested.current.clear();
+  }, [currentUser?.id]);
+
+  // `requested` marks an id as *attempted*, not as succeeded: a failure must
+  // keep it marked. getItems() runs during render, so un-marking on failure
+  // would make the next render fire the request again, and again -- each one
+  // re-reading every document from Drive and Messages. Retrying is an
+  // explicit act: reload(), or the page being opened afresh.
+  function load(collaboratorId, { force = false } = {}) {
+    if (!collaboratorId || !currentUser) return;
+    if (!force && requested.current.has(collaboratorId)) return;
     requested.current.add(collaboratorId);
     setByCollaborator((prev) => ({ ...prev, [collaboratorId]: { ...EMPTY } }));
 
@@ -33,7 +46,6 @@ export function ItemsProvider({ children }) {
           sessionExpired();
           return;
         }
-        requested.current.delete(collaboratorId);
         setByCollaborator((prev) => ({
           ...prev,
           [collaboratorId]: { ...EMPTY, loading: false, error: err.message },
@@ -56,10 +68,9 @@ export function ItemsProvider({ children }) {
     return { fetchedAt, loading, error, errors };
   }
 
-  /** Force une relecture, après un ajout de collaborateur par exemple. */
+  /** Relecture explicite (bouton, ajout de collaborateur...). */
   function reload(collaboratorId) {
-    requested.current.delete(collaboratorId);
-    load(collaboratorId);
+    load(collaboratorId, { force: true });
   }
 
   return (
