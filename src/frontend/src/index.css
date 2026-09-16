@@ -19,10 +19,28 @@ body,
 /* Ni nous ni le kit ne définissons de couleur de texte par défaut : sans ça,
    le texte reste au noir par défaut du navigateur et ne suit pas le thème
    (visible notamment sur le titre "Pass'on" du login, resté noir en sombre). */
+/* Police alignée sur Drive (apps/drive/src/pages/_app.tsx, thème
+   "anct-light" du kit) : Marianne, la police de l'État, avec la même
+   chaîne de secours que Drive -- Inter puis Roboto Flex Variable, qu'on
+   charge tous les deux nous-mêmes (voir main.jsx) au cas où Marianne ne
+   serait pas encore chargée à l'affichage. */
 body {
-  font-family: "Roboto Flex Variable", system-ui, sans-serif;
+  font-family: Marianne, Inter, "Roboto Flex Variable", system-ui, sans-serif;
   background: var(--c--contextuals--background--surface--primary);
   color: var(--c--contextuals--content--semantic--neutral--primary);
+}
+
+/* Le kit redéfinit lui-même --c--globals--font--families--base par thème
+   (Hanken Grotesk sur le thème par défaut, pas seulement Roboto Flex
+   Variable comme sur html/.cunningham-theme--dark) : Button/Input/Badge/
+   Textarea du kit lisent cette variable directement, donc hériter
+   font-family sur body (règle ci-dessus) ne les touche pas. On force donc
+   la variable elle-même sur la police ci-dessus, pour que les composants
+   du kit et notre propre texte ("Pass'on", nos <h1>/<span>...) utilisent
+   la même police que Drive plutôt que celle du thème par défaut du kit. */
+:root {
+  --c--globals--font--families--base: Marianne, Inter, "Roboto Flex Variable", system-ui, sans-serif;
+  --c--globals--font--families--accent: Marianne, Inter, "Roboto Flex Variable", system-ui, sans-serif;
 }
 
 /* Piège CSS classique : contrairement au texte normal, les éléments de
