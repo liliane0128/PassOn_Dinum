@@ -55,9 +55,15 @@ means the pipeline is broken, not that the data is thin.
 
 ### Everything is invented
 
-No real person, address or case. The names are fictional and the `@…gouv.fr`
-addresses are plausible-looking inventions, present because a handover with no
-external correspondents would not exercise the contacts section.
+No real person, address or case. The names are fictional, and the external
+correspondents are there because a handover with no outside contact would not
+exercise the contacts section.
+
+Their addresses sit under `.gouv.example`. `.example` is reserved by RFC 2606
+and can never resolve, so nothing here can be mistaken for — or accidentally
+sent to — a real administration. Earlier versions used real domains
+(`abf.culture.gouv.fr`, `eure.gouv.fr`), which made invented correspondence
+look as though it came from an actual ministry or préfecture.
 
 ---
 
@@ -113,6 +119,13 @@ données-là signale une chaîne cassée, pas des données trop maigres.
 
 ### Tout est inventé
 
-Aucune personne, adresse ou affaire réelle. Les noms sont fictifs et les adresses
-en `@…gouv.fr` sont des inventions vraisemblables, présentes parce qu'une
-passation sans correspondant extérieur n'exercerait pas la rubrique des contacts.
+Aucune personne, adresse ou affaire réelle. Les noms sont fictifs, et les
+correspondants extérieurs sont là parce qu'une passation sans aucun contact hors
+de la collectivité n'exercerait pas la rubrique des contacts.
+
+Leurs adresses sont en `.gouv.example`. Le domaine `.example` est réservé par la
+RFC 2606 et ne peut jamais se résoudre : rien ici ne peut donc être pris pour une
+administration réelle, ni lui être envoyé par mégarde. Les versions précédentes
+utilisaient de vrais domaines (`abf.culture.gouv.fr`, `eure.gouv.fr`), ce qui
+donnait à une correspondance inventée l'apparence d'un vrai ministère ou d'une
+vraie préfecture.
