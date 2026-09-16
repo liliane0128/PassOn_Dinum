@@ -27,6 +27,13 @@ import type { DocumentAssocie } from "./types";
  * not asked to rank anything.
  */
 
+/**
+ * How many documents the card shows. The ranking puts the urgent ones first,
+ * so a cap keeps the section readable on an account with a large Drive: the
+ * ones cut off are, by construction, the least pressing.
+ */
+export const MAX_PRIORITY_DOCUMENTS = 5;
+
 const MONTHS = [
   "janvier",
   "février",

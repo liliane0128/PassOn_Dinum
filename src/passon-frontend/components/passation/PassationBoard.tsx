@@ -13,7 +13,7 @@ import {
   type Item,
 } from "@/lib/handover";
 import { contactsFromItems } from "@/lib/contacts-from-items";
-import { rankDocuments } from "@/lib/documents-priority";
+import { MAX_PRIORITY_DOCUMENTS, rankDocuments } from "@/lib/documents-priority";
 import { passation as demoPassation } from "@/lib/mock-data";
 import type { AttentionPoint, Contact, Passation, SourceTag } from "@/lib/types";
 import { PassationCard } from "./PassationCard";
@@ -233,11 +233,14 @@ export function PassationBoard() {
       : contactsFromItems(items, user?.email)
   ).map((contact, index) => ({ id: `contact-${index}`, ...contact }));
 
-  const documents = rankDocuments(
+  const rankedDocuments = rankDocuments(
     handover,
     items,
     user?.full_name || user?.email || "moi"
   );
+  // Only the most urgent are listed; the count keeps the real total, so the
+  // section's header and its "voir tous" line still say how many there are.
+  const documents = rankedDocuments.slice(0, MAX_PRIORITY_DOCUMENTS);
 
   const passation: Passation = {
     ...demoPassation,
@@ -245,7 +248,7 @@ export function PassationBoard() {
     contacts,
     contactsTotal: contacts.length,
     documents,
-    documentsTotal: documents.length,
+    documentsTotal: rankedDocuments.length,
     title: `Passation — ${user?.full_name || user?.email || "moi"}`,
     lastUpdated: handover ? frenchDateTime(handover.updatedAt) : "—",
     completude: completeness(handover),
