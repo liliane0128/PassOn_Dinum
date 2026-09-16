@@ -16,9 +16,14 @@ export async function generateDossier() {
     } catch {
       // Non-JSON error body (e.g. a Django debug HTML page): ignore, keep detail null.
     }
-    throw new Error(
+    const error = new Error(
       detail?.error ? `${detail.error} (${response.status})` : `Request failed (${response.status})`,
     );
+    // Le statut permet à l'appelant de distinguer "session perdue" (401) d'un
+    // vrai échec de génération : ce n'est pas la même chose à annoncer.
+    error.status = response.status;
+    error.code = detail?.error ?? null;
+    throw error;
   }
   return response.json();
 }

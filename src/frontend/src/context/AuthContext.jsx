@@ -63,6 +63,23 @@ export function AuthProvider({ children }) {
     return { user };
   }
 
+  // La session vit côté serveur : elle peut disparaître sans que l'appli le
+  // sache (expiration, redémarrage, reconnexion dans un autre onglet). Quand
+  // un appel répond 401, on efface l'état local et les pages protégées
+  // renvoient vers l'écran de connexion -- plutôt que de laisser l'interface
+  // afficher une erreur métier pour un problème d'authentification.
+  // Relit l'équipe après l'ajout ou le retrait d'un collaborateur : elle vit
+  // en base, donc le serveur en est la seule source fiable.
+  async function refreshTeam() {
+    const session = await authApi.fetchCurrentUser();
+    if (session?.user) setTeam((session.team ?? []).map(toAppUser));
+  }
+
+  function sessionExpired() {
+    setCurrentUser(null);
+    setTeam([]);
+  }
+
   async function logout() {
     // On déconnecte localement quoi qu'il arrive : si l'appel échoue, rester
     // affiché comme connecté serait pire que la session qui traîne côté
@@ -73,7 +90,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ currentUser, team, restoring, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, team, restoring, login, logout, sessionExpired, refreshTeam }}>
       {children}
     </AuthContext.Provider>
   );

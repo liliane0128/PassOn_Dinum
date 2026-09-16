@@ -6,7 +6,7 @@ import { getCollaboratorItems } from "../utils/collaboratorItems.js";
 const ItemsContext = createContext(null);
 
 export function ItemsProvider({ children }) {
-  const { currentUser } = useAuth();
+  const { currentUser, sessionExpired } = useAuth();
   // null tant que rien n'a été chargé : on retombe alors sur les données
   // mockées, pour que l'interface ne soit jamais vide pendant le chargement.
   const [ownItems, setOwnItems] = useState(null);
@@ -31,7 +31,12 @@ export function ItemsProvider({ children }) {
         setServiceErrors(errors);
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message);
+        if (cancelled) return;
+        if (err.status === 401) {
+          sessionExpired();
+          return;
+        }
+        setError(err.message);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

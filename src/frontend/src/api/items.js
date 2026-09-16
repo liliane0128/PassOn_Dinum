@@ -40,7 +40,9 @@ export async function fetchItems() {
     } catch {
       // Corps non-JSON (page d'erreur Django) : on garde detail à null.
     }
-    throw new Error(detail?.error ?? `request_failed_${response.status}`);
+    const error = new Error(detail?.error ?? `request_failed_${response.status}`);
+    error.status = response.status;
+    throw error;
   }
   const body = await response.json();
   return {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -19,8 +19,8 @@ import "./EmployeePage.css";
 const SUMMARY_HEADING_ID = "employee-summary-heading";
 
 export function EmployeePage() {
-  const { currentUser, logout } = useAuth();
-  const { getSummary, updateSummary, validateSummary } = useSummaries();
+  const { currentUser, logout, sessionExpired } = useAuth();
+  const { getSummary, isLoaded, updateSummary, validateSummary } = useSummaries();
   const { toast } = useToastProvider();
   const navigate = useNavigate();
 
@@ -33,33 +33,82 @@ export function EmployeePage() {
 
   const summary = currentUser ? getSummary(currentUser.id) : { text: "", validated: false };
   const [draftText, setDraftText] = useState(summary.text);
+  const [regenerating, setRegenerating] = useState(false);
 
-  // Auto-generate the AI summary from the backend's mock data as soon as
-  // this collaborator's own page loads (see connectors/generation.py) --
-  // this only fills the draft, it never auto-validates.
+  // Le résumé généré remplace la passation enregistrée : texte et sections
+  // d'un coup, ce qui la repasse en non validée (updateSummary s'en charge).
+  function applyDossier(result) {
+    updateSummary(currentUser.id, {
+      text: result.text,
+      actions: result.actions.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      decisions: result.decisions.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      deadlines: result.deadlines.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      blockers: result.blockers.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      documents: result.documents,
+    });
+    setDraftText(result.text);
+  }
+
+  // Régénération demandée explicitement. C'est le seul moyen de rafraîchir un
+  // résumé existant : la génération automatique ne se déclenche que sur une
+  // passation vide, pour ne pas écraser un texte corrigé à chaque affichage.
+  async function handleRegenerate() {
+    if (
+      summary.text &&
+      !window.confirm(
+        "Régénérer remplacera le résumé actuel et ses sections par une nouvelle version générée par l'IA. Continuer ?",
+      )
+    ) {
+      return;
+    }
+    setRegenerating(true);
+    try {
+      applyDossier(await generateDossier());
+      toast("Nouveau résumé généré à partir de vos documents.", "success");
+    } catch (err) {
+      if (err.status === 401) {
+        toast("Votre session a expiré, reconnectez-vous.", "warning");
+        sessionExpired();
+        return;
+      }
+      toast(`Échec de la génération du résumé IA : ${err.message}`, "error");
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
+  // Génère le résumé IA (connectors/generation.py) la première fois, et
+  // seulement s'il n'y en a pas déjà un enregistré : régénérer à chaque
+  // affichage écraserait le texte que l'employé a corrigé et validé, et le
+  // repasserait en non validé. Ne remplit que le brouillon, ne valide jamais.
+  const generationAttempted = useRef(false);
   useEffect(() => {
     if (!currentUser) return;
+    if (!isLoaded(currentUser.id)) return; // on ne sait pas encore ce qui existe
+    if (generationAttempted.current) return;
+    generationAttempted.current = true;
+    if (summary.text) return; // déjà une passation enregistrée
+
     let cancelled = false;
     generateDossier()
       .then((result) => {
         if (cancelled) return;
-        updateSummary(currentUser.id, {
-          text: result.text,
-          actions: result.actions.map((item) => ({ ...item, id: crypto.randomUUID() })),
-          decisions: result.decisions.map((item) => ({ ...item, id: crypto.randomUUID() })),
-          deadlines: result.deadlines.map((item) => ({ ...item, id: crypto.randomUUID() })),
-          blockers: result.blockers.map((item) => ({ ...item, id: crypto.randomUUID() })),
-          documents: result.documents,
-        });
-        setDraftText(result.text);
+        applyDossier(result);
       })
       .catch((err) => {
-        if (!cancelled) toast(`Échec de la génération du résumé IA : ${err.message}`, "error");
+        if (cancelled) return;
+        if (err.status === 401) {
+          // Session perdue côté serveur : ce n'est pas l'IA qui a échoué.
+          toast("Votre session a expiré, reconnectez-vous.", "warning");
+          sessionExpired();
+          return;
+        }
+        toast(`Échec de la génération du résumé IA : ${err.message}`, "error");
       });
     return () => {
       cancelled = true;
     };
-  }, [currentUser]);
+  }, [currentUser, summary]);
 
   if (!currentUser || currentUser.accountRole !== "employee") {
     return <Navigate to="/" replace />;
@@ -153,6 +202,14 @@ export function EmployeePage() {
               </Button>
               <Button onClick={handleValidate} disabled={summary.validated && !hasUnsavedChanges}>
                 Valider ce résumé
+              </Button>
+              <Button
+                variant="tertiary"
+                icon={<span className="material-icons">autorenew</span>}
+                onClick={handleRegenerate}
+                disabled={regenerating}
+              >
+                {regenerating ? "Génération..." : "Régénérer"}
               </Button>
             </div>
 

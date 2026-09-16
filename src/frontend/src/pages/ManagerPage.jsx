@@ -9,7 +9,7 @@ import {
   useToastProvider,
 } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useCollaborators } from "../context/CollaboratorsContext.jsx";
+import * as teamApi from "../api/collaborators.js";
 import { useSummaries } from "../context/SummaryContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
@@ -21,24 +21,11 @@ import "./ManagerPage.css";
 const SUMMARY_HEADING_ID = "manager-summary-heading";
 
 export function ManagerPage() {
-  const { currentUser, team: storedTeam, logout } = useAuth();
-  const { collaborators, addCollaborator, removeCollaborator } = useCollaborators();
+  const { currentUser, team, logout, sessionExpired, refreshTeam } = useAuth();
   const { getSummary, updateSummary } = useSummaries();
   const { toast } = useToastProvider();
   const navigate = useNavigate();
 
-  // L'équipe vient de la base (`passon.Collaborator.manager`), renvoyée par
-  // /api/auth/me/. Les collaborateurs ajoutés depuis cette page ne sont pas
-  // encore enregistrés côté serveur : ils vivent dans CollaboratorsContext le
-  // temps de la session, et sont ajoutés ici pour rester visibles.
-  const locallyAdded = currentUser
-    ? collaborators.filter(
-        (c) =>
-          c.managerId === currentUser.id &&
-          !storedTeam.some((member) => member.id === c.id),
-      )
-    : [];
-  const team = [...storedTeam, ...locallyAdded];
 
   const [selectedId, setSelectedId] = useState(() => team[0]?.id ?? null);
   const selected = team.find((c) => c.id === selectedId) ?? null;
@@ -82,7 +69,7 @@ export function ManagerPage() {
     resetAddCollaboratorForm();
   }
 
-  function handleAddCollaborator(event) {
+  async function handleAddCollaborator(event) {
     event.preventDefault();
     const firstName = newFirstName.trim();
     const lastName = newLastName.trim();
@@ -91,23 +78,62 @@ export function ManagerPage() {
       setNewCollaboratorError(true);
       return;
     }
-    const collaborator = addCollaborator({
-      firstName,
-      lastName,
-      jobTitle: newJobTitle.trim(),
-      team: currentUser.team,
-      email,
-      managerId: currentUser.id,
-    });
+
+    // Enregistré côté serveur : la personne reste dans l'équipe après un
+    // rafraîchissement, et son compte Drive sera rattaché à cette fiche à sa
+    // première connexion (rapprochement par email).
+    let collaborator;
+    try {
+      collaborator = await teamApi.addCollaborator({
+        firstName,
+        lastName,
+        email,
+        jobTitle: newJobTitle.trim(),
+        team: currentUser.team,
+      });
+    } catch (err) {
+      if (err.status === 401) {
+        toast("Votre session a expiré, reconnectez-vous.", "warning");
+        sessionExpired();
+        return;
+      }
+      const messages = {
+        collaborator_has_manager: `${email} fait déjà partie de l'équipe d'un autre manager.`,
+        cannot_manage_yourself: "Vous ne pouvez pas vous ajouter à votre propre équipe.",
+        would_create_a_cycle: `${email} est déjà, directement ou non, votre manager.`,
+        invalid_request: "Prénom, nom et adresse email sont nécessaires.",
+      };
+      toast(
+        messages[err.code] ?? "Impossible d'ajouter ce collaborateur pour le moment.",
+        "error",
+      );
+      setNewCollaboratorError(true);
+      return;
+    }
+
+    await refreshTeam();
     toast(`${firstName} ${lastName} a été ajouté à votre équipe.`, "success");
     setIsAddingCollaborator(false);
     resetAddCollaboratorForm();
     handleSelect(collaborator);
   }
 
-  function handleRemoveCollaboratorDecide(decision) {
+  async function handleRemoveCollaboratorDecide(decision) {
     if (decision === "delete" && pendingRemove) {
-      removeCollaborator(pendingRemove.id);
+      try {
+        await teamApi.removeCollaborator(pendingRemove.id);
+      } catch (err) {
+        if (err.status === 401) {
+          toast("Votre session a expiré, reconnectez-vous.", "warning");
+          sessionExpired();
+          setPendingRemove(null);
+          return;
+        }
+        toast("Impossible de retirer ce collaborateur pour le moment.", "error");
+        setPendingRemove(null);
+        return;
+      }
+      await refreshTeam();
       if (selectedId === pendingRemove.id) {
         setSelectedId(null);
         setDraftText("");
