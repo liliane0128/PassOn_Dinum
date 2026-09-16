@@ -199,3 +199,11 @@
   color: var(--c--globals--colors--gray-450);
   margin: var(--c--globals--spacings--xs) 0;
 }
+
+/* Fraîcheur des données : un manager voit la photo prise à la dernière
+   connexion du collaborateur, pas une lecture en direct. */
+.employee-page__docs__freshness {
+  margin: 0 0 var(--c--globals--spacings--xs) 0;
+  font-size: 0.75rem;
+  color: var(--c--globals--colors--greyscale-600);
+}

@@ -1,36 +1,15 @@
-// Les vrais mails et documents de l'utilisateur connecté, via
-// GET /api/extraction/items/ (backend : connectors/extraction.py).
+// Les mails et documents d'un collaborateur, via
+// GET /api/collaborators/<id>/items/ (backend : passon/item_views.py).
 //
-// Le backend n'interroge que les services pour lesquels la session contient
-// des identifiants : un utilisateur connecté à Drive mais absent du Keycloak
-// de Messages reçoit ses fichiers sans ses mails, avec le service manquant
-// listé dans `errors` plutôt qu'une erreur globale.
+// Pour soi-même, le backend interroge Drive et Messages en direct, et met à
+// jour au passage la photo stockée. Pour un membre de son équipe, il renvoie
+// cette photo : Drive ne répond que pour la session qu'on lui présente, et on
+// n'a que celle de la personne connectée. D'où `fetchedAt`, qui dit de quand
+// datent les données affichées, et `errors`, qui liste les services
+// interrogés en échec plutôt que de faire échouer tout l'appel.
 
-import { DOC_TYPE_ICONS } from "../utils/collaboratorItems.js";
-
-// Les éléments normalisés du backend ont la forme
-// { id: "drive:<uuid>", title, author, date, content, source: {...} }.
-// L'interface, elle, parle de "mail" et de "doc" (icône, badge, tri). On
-// traduit ici, en gardant `refId` : l'identifiant tel que le backend le
-// connaît, celui qu'utilisent les "documents importants" du résumé généré.
-function toDisplayItem(item) {
-  const source = item.source ?? {};
-  const isMail = source.type === "messages";
-  return {
-    type: isMail ? "mail" : "doc",
-    id: source.resource_id ?? item.id,
-    refId: item.id,
-    icon: isMail ? "mail" : (DOC_TYPE_ICONS[source.type] ?? "description"),
-    title: item.title || "(sans titre)",
-    subtitle: item.author || source.type || "",
-    preview: (item.content ?? "").slice(0, 400),
-    date: item.date,
-    url: source.resource_url ?? null,
-  };
-}
-
-export async function fetchItems() {
-  const response = await fetch("/api/extraction/items/", {
+export async function fetchItems(collaboratorId) {
+  const response = await fetch(`/api/collaborators/${collaboratorId}/items/`, {
     credentials: "same-origin",
   });
   if (!response.ok) {
@@ -46,10 +25,11 @@ export async function fetchItems() {
   }
   const body = await response.json();
   return {
-    items: (body.items ?? [])
-      .map(toDisplayItem)
-      .sort((a, b) => new Date(b.date) - new Date(a.date)),
+    items: (body.items ?? []).sort((a, b) => new Date(b.date) - new Date(a.date)),
     // { drive: "upstream_timeout", ... } : services interrogés qui ont échoué.
     errors: body.errors ?? {},
+    // Quand la photo a été prise. null = jamais synchronisé.
+    fetchedAt: body.fetchedAt ?? null,
+    isOwn: Boolean(body.isOwn),
   };
 }

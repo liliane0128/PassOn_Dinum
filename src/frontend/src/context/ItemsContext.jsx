@@ -1,69 +1,69 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import { useAuth } from "./AuthContext.jsx";
 import { fetchItems } from "../api/items.js";
-import { getCollaboratorItems } from "../utils/collaboratorItems.js";
 
 const ItemsContext = createContext(null);
 
+const EMPTY = { items: [], fetchedAt: null, errors: {}, loading: true };
+
+// Les mails et documents viennent du backend, pour soi comme pour les membres
+// de son équipe (voir api/items.js). Rien de mocké ici : ce qui n'a jamais été
+// synchronisé s'affiche comme tel, plutôt que par des données fictives.
 export function ItemsProvider({ children }) {
   const { currentUser, sessionExpired } = useAuth();
-  // null tant que rien n'a été chargé : on retombe alors sur les données
-  // mockées, pour que l'interface ne soit jamais vide pendant le chargement.
-  const [ownItems, setOwnItems] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  // Services interrogés mais en échec, ex. { messages: "upstream_timeout" }.
-  const [serviceErrors, setServiceErrors] = useState({});
+  const [byCollaborator, setByCollaborator] = useState({});
+  // Ids déjà demandés, pour ne pas relancer la requête à chaque rendu :
+  // `getItems` est appelé pendant le rendu des pages.
+  const requested = useRef(new Set());
 
-  useEffect(() => {
-    if (!currentUser) {
-      setOwnItems(null);
-      setServiceErrors({});
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetchItems()
-      .then(({ items, errors }) => {
-        if (cancelled) return;
-        setOwnItems(items);
-        setServiceErrors(errors);
+  function load(collaboratorId) {
+    if (!collaboratorId || !currentUser || requested.current.has(collaboratorId)) return;
+    requested.current.add(collaboratorId);
+    setByCollaborator((prev) => ({ ...prev, [collaboratorId]: { ...EMPTY } }));
+
+    fetchItems(collaboratorId)
+      .then(({ items, errors, fetchedAt }) => {
+        setByCollaborator((prev) => ({
+          ...prev,
+          [collaboratorId]: { items, errors, fetchedAt, loading: false },
+        }));
       })
       .catch((err) => {
-        if (cancelled) return;
         if (err.status === 401) {
           sessionExpired();
           return;
         }
-        setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        requested.current.delete(collaboratorId);
+        setByCollaborator((prev) => ({
+          ...prev,
+          [collaboratorId]: { ...EMPTY, loading: false, error: err.message },
+        }));
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [currentUser]);
-
-  // On ne peut lire les fichiers que du compte dont on détient la session :
-  // les autres collaborateurs gardent donc leurs données mockées, en attendant
-  // que le backend sache répondre pour quelqu'un d'autre que l'appelant.
-  function getItems(collaboratorId) {
-    if (currentUser && collaboratorId === currentUser.id && ownItems) {
-      return ownItems;
-    }
-    return getCollaboratorItems(collaboratorId);
   }
 
-  function isReal(collaboratorId) {
-    return Boolean(currentUser && collaboratorId === currentUser.id && ownItems);
+  function entry(collaboratorId) {
+    load(collaboratorId);
+    return byCollaborator[collaboratorId] ?? EMPTY;
+  }
+
+  function getItems(collaboratorId) {
+    return entry(collaboratorId).items;
+  }
+
+  /** Quand la photo a été prise (null si jamais synchronisé), et son état. */
+  function getStatus(collaboratorId) {
+    const { fetchedAt, loading, error, errors } = entry(collaboratorId);
+    return { fetchedAt, loading, error, errors };
+  }
+
+  /** Force une relecture, après un ajout de collaborateur par exemple. */
+  function reload(collaboratorId) {
+    requested.current.delete(collaboratorId);
+    load(collaboratorId);
   }
 
   return (
-    <ItemsContext.Provider
-      value={{ getItems, isReal, loading, error, serviceErrors }}
-    >
+    <ItemsContext.Provider value={{ getItems, getStatus, reload }}>
       {children}
     </ItemsContext.Provider>
   );

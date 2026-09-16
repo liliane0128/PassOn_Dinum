@@ -93,3 +93,47 @@ class Handover(models.Model):
     def __str__(self):
         state = "validé" if self.validated else "non validé"
         return f"Passation de {self.collaborator.full_name} ({state})"
+
+
+class CollaboratorItem(models.Model):
+    """A document or message belonging to a collaborator, as last seen.
+
+    Drive and Messages only ever answer for the person whose session we hold,
+    so a manager cannot be shown their collaborator's files live -- there is no
+    credential to ask with. What is stored here is a snapshot, refreshed every
+    time that person is themselves logged in and their items are listed.
+
+    That makes it a cache, with the honesty that implies: `fetched_at` says how
+    old it is, and the interface shows it, because "Sophie's documents" that are
+    three weeks stale must not look like today's.
+    """
+
+    class Kind(models.TextChoices):
+        DOCUMENT = "doc", "Document"
+        MAIL = "mail", "Mail"
+
+    collaborator = models.ForeignKey(
+        Collaborator, on_delete=models.CASCADE, related_name="items"
+    )
+    # The id the rest of the application uses, e.g. "drive:<uuid>" -- the same
+    # one the generated handover cites in its documents section.
+    reference = models.CharField(max_length=255)
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.DOCUMENT)
+    source = models.CharField(max_length=50)  # docs | drive | messages
+    title = models.CharField(max_length=512, blank=True)
+    author = models.CharField(max_length=255, blank=True)
+    url = models.URLField(max_length=1024, blank=True)
+    preview = models.TextField(blank=True)
+    date = models.DateTimeField(null=True, blank=True)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["collaborator", "reference"], name="unique_item_per_collaborator"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.reference} ({self.collaborator.email})"
