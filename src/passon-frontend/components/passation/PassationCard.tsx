@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, Folder, Mail, MoreVertical, Send } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Contact, Passation } from "@/lib/types";
+import { AttentionPoint, Contact, Passation } from "@/lib/types";
 import { usePassationStatus } from "@/components/PassationStatusProvider";
 import { useRole } from "@/context/RoleContext";
 import { ResumeSection } from "./ResumeSection";
@@ -23,8 +23,20 @@ const MESSAGES_COMPOSE_URL: string | null = null;
 
 export function PassationCard({
   passation: initialPassation,
+  onResumeCommit,
+  onBlockersCommit,
+  onContactsCommit,
+  generating = false,
 }: {
   passation: Passation;
+  /** Set when the résumé is backed by the API; absent for the demo fixture. */
+  onResumeCommit?: (resume: string) => void;
+  /** Set when the points de blocage are backed by the API. */
+  onBlockersCommit?: (points: AttentionPoint[]) => void;
+  /** Set when the contacts are backed by the API. */
+  onContactsCommit?: (contacts: Contact[]) => void;
+  /** True while a generation is running, for the sections that are wired. */
+  generating?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Aperçu");
   const [passation, setPassation] = useState<Passation>(initialPassation);
@@ -209,12 +221,19 @@ export function PassationCard({
       {activeTab === "Aperçu" && (
         <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
           <div className="flex flex-col gap-5">
-            <ResumeSection passation={passation} onResumeChange={updateResume} />
+            <ResumeSection
+              passation={passation}
+              onResumeChange={updateResume}
+              onResumeCommit={onResumeCommit}
+              generating={generating}
+            />
             <PointsAttentionSection
               passation={passation}
               onAdd={addAttentionPoint}
               onChange={updateAttentionPoint}
               onRemove={removeAttentionPoint}
+              onCommit={onBlockersCommit}
+              generating={generating}
             />
           </div>
           <div className="flex flex-col gap-5">
@@ -224,6 +243,8 @@ export function PassationCard({
               onAdd={addContact}
               onChange={updateContact}
               onRemove={removeContact}
+              onCommit={onContactsCommit}
+              generating={generating}
             />
           </div>
         </div>

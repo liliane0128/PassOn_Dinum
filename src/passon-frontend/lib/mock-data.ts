@@ -12,7 +12,7 @@ export const currentUser = {
 export const teamMembers: TeamMember[] = [
   { id: "team-1", name: "Karim Haddad", role: "Développeur", status: "actif" },
   { id: "team-2", name: "Julie Chevalier", role: "Chargée de projet", status: "actif" },
-  { id: "team-3", name: "Lili Wang", role: "Cheffe de projet — Dossier Continuity", status: "en_depart" },
+  { id: "team-3", name: "Lili Wang", role: "Cheffe de projet — Dossier Continuity", status: "actif" },
 ];
 
 export const passation: Passation = {

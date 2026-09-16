@@ -10,11 +10,17 @@ export interface DocumentAssocie {
   name: string;
   date: string;
   proprietaire: string;
+  /** Where to open it, when the item carried a link. */
+  url?: string;
+  /** Why it is ranked where it is ("Échéance 31 oct. · lié à un blocage"). */
+  priorityLabel?: string;
 }
 
 export interface AttentionPoint {
   id: string;
   label: string;
+  /** The items this point was drawn from; empty for a hand-written one. */
+  evidence?: { id: string; title?: string; url?: string }[];
 }
 
 export interface Contact {

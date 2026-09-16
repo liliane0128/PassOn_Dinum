@@ -23,13 +23,21 @@ from accounts.session import USER_KEY
 
 from .models import Collaborator, Handover
 
-# Kept in step with the frontend's SummaryContext.
+# Kept in step with the frontends' handover model.
+#
+# "contactIds" and "contacts" are two different things, and both are kept.
+# "contactIds" holds ids of collaborators, which is how the first frontend
+# picks contacts; "contacts" holds the {name, role, email} entries the new one
+# shows, drawn from the senders of the mails that were read. The generator
+# produces neither -- it is not asked for contacts -- so this section is filled
+# by the frontend, and stored here so an edit survives a reload.
 EMPTY_SECTIONS = {
     "actions": [],
     "decisions": [],
     "deadlines": [],
     "blockers": [],
     "contactIds": [],
+    "contacts": [],
     "documents": [],
 }
 

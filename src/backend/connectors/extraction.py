@@ -136,8 +136,14 @@ def _normalize_message(item, base_url):
     sender = item.get("sender") or item.get("from") or {}
     if isinstance(sender, dict):
         author = sender.get("name") or sender.get("email") or ""
+        # Kept beside `author`, not folded into it: `author` is what reaches
+        # the model, and its prompt is left exactly as it was. The address is
+        # what the interface needs to list who to write to -- with only a
+        # display name, a correspondent cannot be contacted.
+        author_email = sender.get("email") or ""
     else:
         author = str(sender)
+        author_email = ""
 
     resource_id = str(item.get("id", ""))
     # Unlike Docs/Drive, Messages has no separate content endpoint -- the
@@ -151,6 +157,7 @@ def _normalize_message(item, base_url):
         "id": global_id,
         "title": item.get("subject") or "",
         "author": author,
+        "author_email": author_email,
         "date": (
             item.get("sent_at")
             or item.get("received_at")
@@ -184,6 +191,12 @@ def normalize_items(raw_docs, raw_drive, raw_messages,
                    different services are never guaranteed distinct
         title    – document title or email subject
         author   – creator full name or sender name
+        author_email
+                 – the sender's address, for messages only, when the upstream
+                   payload carries one. Separate from `author`, which keeps
+                   the display name: generation._trimmed() sends the model
+                   id/title/author/date/content and nothing else, so this
+                   field never reaches it
         date     – ISO 8601 string (updated_at / sent_at / …)
         content  – body text (see module docstring for how each source is
                    actually fetched)

@@ -1,18 +1,24 @@
 import { useState } from "react";
-import { Plus, TriangleAlert, X } from "lucide-react";
+import { LoaderCircle, Plus, TriangleAlert, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
-import { Passation } from "@/lib/types";
+import { AttentionPoint, Passation } from "@/lib/types";
 
 export function PointsAttentionSection({
   passation,
   onAdd,
   onChange,
   onRemove,
+  onCommit,
+  generating = false,
 }: {
   passation: Passation;
   onAdd: (label: string) => void;
   onChange: (id: string, label: string) => void;
   onRemove: (id: string) => void;
+  /** Called when the editor is closed, with the list to keep. */
+  onCommit?: (points: AttentionPoint[]) => void;
+  /** True while the model is composing this section. */
+  generating?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -24,14 +30,32 @@ export function PointsAttentionSection({
     setDraft("");
   }
 
+  function toggleEdit() {
+    // Saving when the editor closes, not on every keystroke: `onChange` fires
+    // per character, and one PATCH per character is not a save strategy.
+    if (isEditing) onCommit?.(passation.attentionPoints);
+    setIsEditing((v) => !v);
+  }
+
   return (
     <SectionCard
       icon={TriangleAlert}
       title="Points de blocage"
       tone="warning"
       editing={isEditing}
-      onToggleEdit={() => setIsEditing((v) => !v)}
+      onToggleEdit={toggleEdit}
     >
+      {generating && (
+        <p className="mb-3 flex items-center gap-2 text-sm text-gray-500">
+          <LoaderCircle className="h-4 w-4 animate-spin text-brand-600" />
+          Recherche des blocages dans vos documents et vos mails…
+        </p>
+      )}
+      {!generating && passation.attentionPoints.length === 0 && (
+        <p className="text-sm text-gray-400">
+          Aucun point de blocage relevé dans vos documents et vos mails.
+        </p>
+      )}
       <ul className="flex flex-col gap-2">
         {passation.attentionPoints.map((point) =>
           isEditing ? (

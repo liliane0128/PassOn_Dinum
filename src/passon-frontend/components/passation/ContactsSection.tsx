@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Users, X } from "lucide-react";
+import { LoaderCircle, Plus, Users, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { Contact, Passation } from "@/lib/types";
 
@@ -8,14 +8,27 @@ export function ContactsSection({
   onAdd,
   onChange,
   onRemove,
+  onCommit,
+  generating = false,
 }: {
   passation: Passation;
   onAdd: (contact: Omit<Contact, "id">) => void;
   onChange: (id: string, field: keyof Omit<Contact, "id">, value: string) => void;
   onRemove: (id: string) => void;
+  /** Called when the editor is closed, with the list to keep. */
+  onCommit?: (contacts: Contact[]) => void;
+  /** True while a generation is running. */
+  generating?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState({ name: "", role: "", email: "" });
+
+  function toggleEdit() {
+    // Saved when the editor closes rather than per keystroke: `onChange` fires
+    // on every character typed into three fields.
+    if (isEditing) onCommit?.(passation.contacts);
+    setIsEditing((v) => !v);
+  }
 
   function handleAdd() {
     if (!draft.name.trim() || !draft.email.trim()) return;
@@ -28,8 +41,19 @@ export function ContactsSection({
       icon={Users}
       title="Contacts clés"
       editing={isEditing}
-      onToggleEdit={() => setIsEditing((v) => !v)}
+      onToggleEdit={toggleEdit}
     >
+      {generating && (
+        <p className="mb-3 flex items-center gap-2 text-sm text-gray-500">
+          <LoaderCircle className="h-4 w-4 animate-spin text-brand-600" />
+          Relevé de vos correspondants…
+        </p>
+      )}
+      {!generating && passation.contacts.length === 0 && (
+        <p className="text-sm text-gray-400">
+          Aucun correspondant relevé dans vos mails.
+        </p>
+      )}
       <div className="flex flex-col divide-y divide-gray-100">
         {passation.contacts.map((contact) =>
           isEditing ? (
