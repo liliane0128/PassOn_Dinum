@@ -1,10 +1,4 @@
 <p align="center">
-  <a href="https://github.com/liliane0128/PassOn_Dinum">
-    <img alt="Pass'on" src="src/frontend/src/assets/suite-logo.svg" width="120" />
-  </a>
-</p>
-
-<p align="center">
   <a href="https://github.com/liliane0128/PassOn_Dinum/stargazers/">
     <img src="https://img.shields.io/github/stars/liliane0128/PassOn_Dinum" alt="Stars" />
   </a>
@@ -31,6 +25,12 @@
 ## English
 
 **Pass'on reads a colleague's Docs, Drive and Messages to generate a structured handover sheet — powered by an LLM.**
+
+> [!IMPORTANT]
+> Pass'on is an independent project built **on top of** La Suite numérique. It is
+> not affiliated with, endorsed by, or an official product of DINUM or La Suite
+> numérique. The La Suite logo appears in the application to mark that
+> integration; it belongs to La Suite numérique, not to this project.
 
 ### Why use Pass'on ❓
 
@@ -186,11 +186,23 @@ worse than none, because it is believed.
 
 Released under the [MIT License](LICENSE).
 
+The MIT licence covers this project's own code. It does not extend to the La
+Suite numérique name or logo, nor to any French State emblem, which remain the
+property of their holders and are used here only to identify the services
+Pass'on connects to.
+
 ---
 
 ## Français
 
 **Pass'on lit les Docs, le Drive et les Messages d'un collègue pour générer une fiche de passation structurée, à l'aide d'un LLM.**
+
+> [!IMPORTANT]
+> Pass'on est un projet indépendant, construit **par-dessus** La Suite numérique.
+> Il n'est ni affilié à la DINUM ou à La Suite numérique, ni approuvé par elles,
+> ni un produit officiel. Le logo de La Suite apparaît dans l'application pour
+> signaler cette intégration ; il appartient à La Suite numérique, pas à ce
+> projet.
 
 ### À quoi ça sert ❓
 
@@ -347,6 +359,11 @@ qu'on la croit.
 ### Licence 📝
 
 Publié sous [licence MIT](LICENSE).
+
+La licence MIT couvre le code de ce projet. Elle ne s'étend ni au nom ni au logo
+de La Suite numérique, ni à aucun emblème de l'État français : ils restent la
+propriété de leurs titulaires et ne sont utilisés ici que pour désigner les
+services auxquels Pass'on se connecte.
 
 ---
 

@@ -50,3 +50,11 @@
   font-size: 1rem;
   color: var(--c--globals--colors--gray-550);
 }
+
+.app-footer__brand__disclaimer {
+  margin: 0;
+  max-width: 44ch;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--c--globals--colors--gray-550);
+}

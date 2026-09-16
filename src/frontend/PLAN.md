@@ -31,6 +31,7 @@ Suite Numérique's design system (`@gouvfr-lasuite/ui-components`).
 - [x] **Real mail sending** (2026-09-16): `POST /api/collaborators/<id>/handover/send/` sends the handover through Messages, from the manager's own address. Recipients are searched in the directory and removed one by one; an empty handover is refused rather than sent blank.
 - [x] **UI/UX work** (2026-09-15): protection against losing unsaved text, confirmation toasts, a light/dark theme toggle remembered in `localStorage`, the login email remembered, `aria-labelledby` on the handover textareas, and dark-mode fixes.
 - [x] **Page footer** (2026-09-15) modelled on lasuite.numerique.gouv.fr, with the official State `Footer` component removed: this project is not a State service and may not display that identity.
+- [x] **Independence stated in writing** (2026-09-16): the La Suite logo stood in the README header as the project's own logo, which reads as an official product. It was removed from that slot, both halves of the README now say the project is independent and unaffiliated, and the page footer carries the same sentence — being on all three pages, saying it there covers the whole application.
 - [x] **Disk cleanup** (2026-09-15): `node_modules` went from 2.9 GB to 375 MB via `overrides` (see the end of `DOCUMENTATION.md`).
 - [x] Session persisted (2026-09-15): server session cookie, restored at start-up through `GET /api/auth/me/`.
 
@@ -98,6 +99,7 @@ Interface interne d'entreprise permettant, quand un collaborateur est absent ou 
   - **Retiré le composant `Footer` officiel du kit** (logo gouv, liens legifrance/service-public/data.gouv, mentions légales) initialement ajouté le même jour : ce projet n'est pas un service de l'État, pas le droit d'afficher cette identité institutionnelle dessus (ton retour du 2026-09-15).
   - **Contenu recentré et agrandi** (titre/texte/bouton du bloc contact centrés en colonne plutôt qu'étalés, tailles et espacements augmentés).
   - **Premier écran garanti identique à avant, sur les 3 pages** : `.login-page__main`/`.manager-page__viewport`/`.employee-page__viewport` ont chacun un `min-height: 100dvh` dédié, séparé du bandeau — sans ça, le contenu principal (`flex: 1`) partageait l'espace disponible avec le bandeau et se retrouvait légèrement compressé dès le premier écran au lieu de rester identique à avant.
+- [x] **Indépendance affichée noir sur blanc** (2026-09-16) : le logo de La Suite occupait l'en-tête du README comme logo du projet, ce qui se lit comme un produit officiel. Il en a été retiré, les deux moitiés du README précisent désormais que le projet est indépendant et sans affiliation, et le bandeau de bas de page porte la même phrase — présent sur les trois pages, il couvre toute l'application.
 
 ### Reste à faire
 
