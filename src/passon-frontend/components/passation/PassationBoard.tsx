@@ -15,7 +15,7 @@ import {
 import { contactsFromItems } from "@/lib/contacts-from-items";
 import { MAX_PRIORITY_DOCUMENTS, rankDocuments } from "@/lib/documents-priority";
 import { passation as demoPassation } from "@/lib/mock-data";
-import type { AttentionPoint, Contact, Passation, SourceTag } from "@/lib/types";
+import type { AttentionPoint, Contact, Passation, SourceItem } from "@/lib/types";
 import { PassationCard } from "./PassationCard";
 
 /** "12 sept. 2026 à 16:24", the format the card's header uses. */
@@ -205,13 +205,17 @@ export function PassationBoard() {
   const resume = handover?.text.trim() ?? "";
   const hasResume = resume.length > 0;
 
-  // The real counts of what was read, in place of the fixture's. "mail" and
-  // "doc" are the two values `item_views.py` emits in `type`.
-  const mailCount = items.filter((item) => item.type === "mail").length;
-  const documentCount = items.length - mailCount;
-  const sourceTags: SourceTag[] = [];
-  if (mailCount) sourceTags.push({ kind: "email", count: mailCount });
-  if (documentCount) sourceTags.push({ kind: "drive", count: documentCount });
+  // The Sources tab lists what was read. Only the documents can be shown for
+  // now: SourceKind is "docs" | "drive", with no category for a mail, and
+  // inventing one would change a model this branch just brought in.
+  const sources: SourceItem[] = items
+    .filter((item) => item.type !== "mail")
+    .map((item) => ({
+      id: item.refId || item.id,
+      kind: "drive" as const,
+      name: item.title,
+      url: item.url || "",
+    }));
 
   // A stable id per position: the backend stores an ordered list, with no ids
   // of its own, and the card needs one to edit or remove a line.
@@ -253,8 +257,7 @@ export function PassationBoard() {
     lastUpdated: handover ? frenchDateTime(handover.updatedAt) : "—",
     completude: completeness(handover),
     resume: handover?.text ?? "",
-    sourceTags,
-    sourcesCount: items.length,
+    sources,
   };
 
   return (
@@ -328,7 +331,6 @@ export function PassationBoard() {
         onResumeCommit={handleResumeCommit}
         onBlockersCommit={handleBlockersCommit}
         onContactsCommit={handleContactsCommit}
-        generating={generating}
       />
     </>
   );

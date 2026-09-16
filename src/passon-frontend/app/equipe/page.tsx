@@ -9,7 +9,7 @@ import { RequireSession } from "@/components/RequireSession";
 import { useAuth } from "@/context/AuthContext";
 import { fetchHandover, type Handover } from "@/lib/handover";
 import { teamMembers } from "@/lib/mock-data";
-import { DASHBOARD_PATH } from "@/lib/routes";
+import { PASSATION_PATH } from "@/lib/routes";
 import { TeamMember } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
@@ -101,7 +101,7 @@ export default function EquipePage() {
                         <ValidationIndicator validated={handover?.validated ?? false} />
                       )}
                       <Link
-                        href={DASHBOARD_PATH}
+                        href={PASSATION_PATH}
                         className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
                       >
                         Voir la passation

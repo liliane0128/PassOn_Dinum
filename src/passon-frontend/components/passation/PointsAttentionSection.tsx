@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LoaderCircle, Plus, TriangleAlert, X } from "lucide-react";
+import { ArrowUpRight, Plus, TriangleAlert, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { AttentionPoint, Passation } from "@/lib/types";
 
@@ -8,17 +8,20 @@ export function PointsAttentionSection({
   onAdd,
   onChange,
   onRemove,
+  variant = "card",
+  onRequestEdit,
+  id,
   onCommit,
-  generating = false,
 }: {
   passation: Passation;
   onAdd: (label: string) => void;
   onChange: (id: string, label: string) => void;
   onRemove: (id: string) => void;
-  /** Called when the editor is closed, with the list to keep. */
+  variant?: "card" | "document";
+  onRequestEdit?: () => void;
+  id?: string;
+  /** Called when the editor is closed, with the list to store. */
   onCommit?: (points: AttentionPoint[]) => void;
-  /** True while the model is composing this section. */
-  generating?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -30,32 +33,29 @@ export function PointsAttentionSection({
     setDraft("");
   }
 
-  function toggleEdit() {
-    // Saving when the editor closes, not on every keystroke: `onChange` fires
-    // per character, and one PATCH per character is not a save strategy.
+  function handleToggleEdit() {
+    if (variant === "card") {
+      onRequestEdit?.();
+      return;
+    }
+    // Closing the editor is when the edits are meant to stick; saving on
+    // every keystroke would be one PATCH per character typed.
     if (isEditing) onCommit?.(passation.attentionPoints);
     setIsEditing((v) => !v);
   }
 
   return (
     <SectionCard
+      id={id}
       icon={TriangleAlert}
       title="Points de blocage"
       tone="warning"
-      editing={isEditing}
-      onToggleEdit={toggleEdit}
+      variant={variant}
+      editing={variant === "document" && isEditing}
+      onToggleEdit={handleToggleEdit}
+      editIcon={variant === "card" ? ArrowUpRight : undefined}
+      editLabel={variant === "card" ? "Modifier dans Fichier de passation" : "Modifier"}
     >
-      {generating && (
-        <p className="mb-3 flex items-center gap-2 text-sm text-gray-500">
-          <LoaderCircle className="h-4 w-4 animate-spin text-brand-600" />
-          Recherche des blocages dans vos documents et vos mails…
-        </p>
-      )}
-      {!generating && passation.attentionPoints.length === 0 && (
-        <p className="text-sm text-gray-400">
-          Aucun point de blocage relevé dans vos documents et vos mails.
-        </p>
-      )}
       <ul className="flex flex-col gap-2">
         {passation.attentionPoints.map((point) =>
           isEditing ? (

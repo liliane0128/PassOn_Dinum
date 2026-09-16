@@ -7,3 +7,5 @@
  */
 export const DASHBOARD_PATH = "/dashboard";
 export const LOGIN_PATH = "/login";
+/** Where the handover itself is read and edited. */
+export const PASSATION_PATH = "/gerer-ma-passation";

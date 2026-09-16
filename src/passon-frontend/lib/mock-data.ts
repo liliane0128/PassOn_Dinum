@@ -21,13 +21,30 @@ export const passation: Passation = {
   status: "Générée par l'agent",
   lastUpdated: "12 sept. 2026 à 16:24",
   completude: 95,
-  sourcesCount: 12,
   resume:
     "Le projet Dossier Continuity vise à améliorer la continuité du traitement des dossiers administratifs lors des départs ou mouvements de personnels. Le périmètre actuel concerne la gestion des signaux de dossier (blocage, risque, incohérence, prêt) et la passation en un clic après départ.",
-  sourceTags: [
-    { kind: "email", count: 3 },
-    { kind: "docs", count: 2 },
-    { kind: "drive", count: 1 },
+  // The raw files behind the generated passation, grouped by service in the
+  // "Sources" tab. url points at where that service actually serves the item
+  // (see connectors/generation.py in the backend for the real equivalent).
+  sources: [
+    {
+      id: "src-doc-1",
+      kind: "docs",
+      name: "Spécifications fonctionnelles",
+      url: "http://localhost:8071/api/v1.0/documents/doc-001/",
+    },
+    {
+      id: "src-doc-2",
+      kind: "docs",
+      name: "Roadmap projet",
+      url: "http://localhost:8071/api/v1.0/documents/doc-002/",
+    },
+    {
+      id: "src-drive-1",
+      kind: "drive",
+      name: "Maquette UI.fig",
+      url: "http://localhost:8072/api/v1.0/items/drive-001/",
+    },
   ],
   attentionPoints: [
     {

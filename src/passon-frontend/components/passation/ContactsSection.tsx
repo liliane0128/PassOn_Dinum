@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LoaderCircle, Plus, Users, X } from "lucide-react";
+import { ArrowUpRight, Plus, Users, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { Contact, Passation } from "@/lib/types";
 
@@ -8,27 +8,23 @@ export function ContactsSection({
   onAdd,
   onChange,
   onRemove,
+  variant = "card",
+  onRequestEdit,
+  id: sectionId,
   onCommit,
-  generating = false,
 }: {
   passation: Passation;
   onAdd: (contact: Omit<Contact, "id">) => void;
   onChange: (id: string, field: keyof Omit<Contact, "id">, value: string) => void;
   onRemove: (id: string) => void;
-  /** Called when the editor is closed, with the list to keep. */
+  variant?: "card" | "document";
+  onRequestEdit?: () => void;
+  id?: string;
+  /** Called when the editor is closed, with the list to store. */
   onCommit?: (contacts: Contact[]) => void;
-  /** True while a generation is running. */
-  generating?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState({ name: "", role: "", email: "" });
-
-  function toggleEdit() {
-    // Saved when the editor closes rather than per keystroke: `onChange` fires
-    // on every character typed into three fields.
-    if (isEditing) onCommit?.(passation.contacts);
-    setIsEditing((v) => !v);
-  }
 
   function handleAdd() {
     if (!draft.name.trim() || !draft.email.trim()) return;
@@ -36,24 +32,29 @@ export function ContactsSection({
     setDraft({ name: "", role: "", email: "" });
   }
 
+  function handleToggleEdit() {
+    if (variant === "card") {
+      onRequestEdit?.();
+      return;
+    }
+    // Closing the editor is when the edits are meant to stick; saving on
+    // every keystroke would be one PATCH per character typed.
+    if (isEditing) onCommit?.(passation.contacts);
+    setIsEditing((v) => !v);
+  }
+
   return (
     <SectionCard
+      id={sectionId}
       icon={Users}
       title="Contacts clés"
-      editing={isEditing}
-      onToggleEdit={toggleEdit}
+      tone="success"
+      variant={variant}
+      editing={variant === "document" && isEditing}
+      onToggleEdit={handleToggleEdit}
+      editIcon={variant === "card" ? ArrowUpRight : undefined}
+      editLabel={variant === "card" ? "Modifier dans Fichier de passation" : "Modifier"}
     >
-      {generating && (
-        <p className="mb-3 flex items-center gap-2 text-sm text-gray-500">
-          <LoaderCircle className="h-4 w-4 animate-spin text-brand-600" />
-          Relevé de vos correspondants…
-        </p>
-      )}
-      {!generating && passation.contacts.length === 0 && (
-        <p className="text-sm text-gray-400">
-          Aucun correspondant relevé dans vos mails.
-        </p>
-      )}
       <div className="flex flex-col divide-y divide-gray-100">
         {passation.contacts.map((contact) =>
           isEditing ? (
@@ -131,8 +132,13 @@ export function ContactsSection({
         </div>
       )}
       {!isEditing && (
-        <button className="mt-3 text-sm font-medium text-brand-600 hover:text-brand-700">
-          Voir tous les contacts ({passation.contactsTotal})
+        <button
+          type="button"
+          onClick={onRequestEdit}
+          aria-label="Voir tous les contacts dans Fichier de passation"
+          className="mt-3 text-sm font-medium text-brand-600 hover:text-brand-700"
+        >
+          ...
         </button>
       )}
     </SectionCard>

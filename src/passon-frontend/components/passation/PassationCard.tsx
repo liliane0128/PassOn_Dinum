@@ -1,48 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Folder, Mail, MoreVertical, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, ExternalLink, Folder, MoreVertical, Send, SquarePen } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { AttentionPoint, Contact, Passation } from "@/lib/types";
+import { AttentionPoint, Contact, DocumentAssocie, Passation } from "@/lib/types";
 import { usePassationStatus } from "@/components/PassationStatusProvider";
 import { useRole } from "@/context/RoleContext";
 import { ResumeSection } from "./ResumeSection";
 import { PointsAttentionSection } from "./PointsAttentionSection";
 import { ContactsSection } from "./ContactsSection";
 import { PriorityDocsSection } from "./PriorityDocsSection";
+import { SourcesTab } from "./SourcesTab";
 
-const tabs = ["Aperçu", "Sources"] as const;
+const tabs = ["Aperçu", "Fichier de passation", "Sources"] as const;
 type Tab = (typeof tabs)[number];
 
-// TODO: DINUM Messages does not yet expose a "compose with prefilled
-// recipient/subject/body" deep link. Once it does, set this to that URL
-// builder/endpoint and swap the mailto: fallback in handleSendByMail() below
-// for a redirect to it -- the button and the rest of the UI don't need to
-// change, only the body of that function.
-const MESSAGES_COMPOSE_URL: string | null = null;
+// TODO: replace with the real Docs URL for this passation once publishing
+// actually creates a document there (see connectors/generation.py in the
+// backend) -- for now every "Voir dans Docs" / "Modifier dans Docs" link
+// points at this placeholder.
+const DOCS_PLACEHOLDER_URL = "https://docs.numerique.gouv.fr/docs/placeholder-passation";
+
+const secondaryLinkClass =
+  "flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50";
 
 export function PassationCard({
   passation: initialPassation,
   onResumeCommit,
   onBlockersCommit,
   onContactsCommit,
-  generating = false,
 }: {
   passation: Passation;
-  /** Set when the résumé is backed by the API; absent for the demo fixture. */
+  /** Set when the sections are backed by the API; absent for the fixture. */
   onResumeCommit?: (resume: string) => void;
-  /** Set when the points de blocage are backed by the API. */
   onBlockersCommit?: (points: AttentionPoint[]) => void;
-  /** Set when the contacts are backed by the API. */
   onContactsCommit?: (contacts: Contact[]) => void;
-  /** True while a generation is running, for the sections that are wired. */
-  generating?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Aperçu");
   const [passation, setPassation] = useState<Passation>(initialPassation);
   const { getStatus, setValidated } = usePassationStatus();
   const status = getStatus(passation.id);
   const { role } = useRole();
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+
+  // Aperçu no longer edits inline (see ResumeSection/PointsAttentionSection/
+  // ContactsSection's onRequestEdit): its pencil jumps here instead, to the
+  // matching section, so there is only one place these fields are actually
+  // editable.
+  function jumpToDocument(sectionId: string) {
+    setActiveTab("Fichier de passation");
+    setScrollTarget(sectionId);
+  }
+
+  useEffect(() => {
+    if (activeTab === "Fichier de passation" && scrollTarget) {
+      const el = document.getElementById(scrollTarget);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setScrollTarget(null);
+    }
+  }, [activeTab, scrollTarget]);
 
   function handlePublish() {
     const now = new Date();
@@ -55,13 +72,9 @@ export function PassationCard({
     setValidated(passation.id, `${date} à ${time}`);
   }
 
-  function handleSendByMail() {
-    const subject = encodeURIComponent(`Passation - ${passation.title}`);
-    const body = encodeURIComponent(
-      `Voici le dossier de passation généré par PassOn.\n\n${passation.title}`,
-    );
-    const href = MESSAGES_COMPOSE_URL ?? `mailto:?subject=${subject}&body=${body}`;
-    window.location.href = href;
+  function confirmPublish() {
+    handlePublish();
+    setShowPublishConfirm(false);
   }
 
   function updateResume(resume: string) {
@@ -117,9 +130,23 @@ export function PassationCard({
     }));
   }
 
+  function addDocument(document: Omit<DocumentAssocie, "id">) {
+    setPassation((prev) => ({
+      ...prev,
+      documents: [...prev.documents, { ...document, id: crypto.randomUUID() }],
+    }));
+  }
+
+  function removeDocument(id: string) {
+    setPassation((prev) => ({
+      ...prev,
+      documents: prev.documents.filter((document) => document.id !== id),
+    }));
+  }
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-card">
-      <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex h-full min-h-0 flex-col rounded-2xl border border-gray-200 bg-white shadow-card">
+      <div className="flex shrink-0 flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50">
             <Folder className="h-5 w-5 text-brand-600" />
@@ -147,28 +174,12 @@ export function PassationCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="text-right">
-            <p className="text-xs text-gray-400">Complétude</p>
-            <div className="mt-1 flex items-center gap-2">
-              <div className="h-1.5 w-28 overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className="h-full rounded-full bg-emerald-500"
-                  style={{ width: `${passation.completude}%` }}
-                />
-              </div>
-              <span className="text-sm font-medium text-gray-700">
-                {passation.completude}%
-              </span>
-            </div>
-          </div>
-          <button aria-label="Plus d'options" className="text-gray-400 hover:text-gray-600">
-            <MoreVertical className="h-[18px] w-[18px]" />
-          </button>
-        </div>
+        <button aria-label="Plus d'options" className="self-start text-gray-400 hover:text-gray-600 sm:self-center">
+          <MoreVertical className="h-[18px] w-[18px]" />
+        </button>
       </div>
 
-      <div className="flex items-center justify-between px-5">
+      <div className="flex shrink-0 items-center justify-between px-5">
         <nav className="flex gap-6">
           {tabs.map((tab) => (
             <button
@@ -181,78 +192,194 @@ export function PassationCard({
                   : "border-transparent text-gray-500 hover:text-gray-800"
               )}
             >
-              {tab === "Sources" ? `Sources (${passation.sourcesCount})` : tab}
+              {tab === "Sources" ? `Sources (${passation.sources.length})` : tab}
             </button>
           ))}
         </nav>
 
         <div className="mb-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleSendByMail}
-            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Mail className="h-4 w-4" />
-            Envoyer par mail
-          </button>
-          <button
-            type="button"
-            onClick={handlePublish}
-            disabled={status.validated}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-semibold shadow-card transition-colors",
-              status.validated
-                ? "cursor-not-allowed bg-emerald-50 text-emerald-700"
-                : "bg-brand-600 text-white hover:bg-brand-700"
-            )}
-          >
-            {status.validated ? (
-              <CheckCircle2 className="h-4 w-4" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            {status.validated
-              ? `Publiée dans Docs · ${status.validatedAt}`
-              : "Valider et publier dans Docs"}
-          </button>
+          {activeTab === "Fichier de passation" && (
+            <>
+              {role === "agent" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowPublishConfirm(true)}
+                    disabled={status.validated}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-4 py-1.5 text-sm font-semibold shadow-card transition-colors",
+                      status.validated
+                        ? "cursor-not-allowed bg-emerald-50 text-emerald-700"
+                        : "bg-brand-600 text-white hover:bg-brand-700"
+                    )}
+                  >
+                    {status.validated ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    {status.validated ? `Publiée dans Docs · ${status.validatedAt}` : "Valider"}
+                  </button>
+                  {status.validated && (
+                    <>
+                      <a
+                        href={DOCS_PLACEHOLDER_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={secondaryLinkClass}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Voir dans Docs
+                      </a>
+                      <a
+                        href={DOCS_PLACEHOLDER_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={secondaryLinkClass}
+                      >
+                        <SquarePen className="h-3.5 w-3.5" />
+                        Modifier dans Docs
+                      </a>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  {status.validated ? (
+                    <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">
+                      Validée le {status.validatedAt}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700">
+                      En attente de validation par l’agent
+                    </span>
+                  )}
+                  {status.validated && (
+                    <a
+                      href={DOCS_PLACEHOLDER_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={secondaryLinkClass}
+                    >
+                      <SquarePen className="h-3.5 w-3.5" />
+                      Modifier dans Docs
+                    </a>
+                  )}
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
 
-      {activeTab === "Aperçu" && (
-        <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
-          <div className="flex flex-col gap-5">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {activeTab === "Aperçu" && (
+          <div className="grid grid-cols-1 gap-4 p-5 lg:h-full lg:grid-cols-2 lg:grid-rows-2">
             <ResumeSection
               passation={passation}
               onResumeChange={updateResume}
-              onResumeCommit={onResumeCommit}
-              generating={generating}
+              onRequestEdit={() => jumpToDocument("section-resume")}
+            />
+            <PriorityDocsSection
+              passation={passation}
+              onAddDocument={addDocument}
+              onRemoveDocument={removeDocument}
+              onRequestEdit={() => jumpToDocument("section-priority-docs")}
             />
             <PointsAttentionSection
               passation={passation}
               onAdd={addAttentionPoint}
               onChange={updateAttentionPoint}
               onRemove={removeAttentionPoint}
-              onCommit={onBlockersCommit}
-              generating={generating}
+              onRequestEdit={() => jumpToDocument("section-blocage")}
             />
-          </div>
-          <div className="flex flex-col gap-5">
-            <PriorityDocsSection passation={passation} />
             <ContactsSection
               passation={passation}
               onAdd={addContact}
               onChange={updateContact}
               onRemove={removeContact}
-              onCommit={onContactsCommit}
-              generating={generating}
+              onRequestEdit={() => jumpToDocument("section-contacts")}
             />
           </div>
-        </div>
-      )}
+        )}
 
-      {activeTab === "Sources" && (
-        <div className="p-5 text-sm text-gray-500">
-          {passation.sourcesCount} sources analysées pour cette passation.
+        {activeTab === "Fichier de passation" && (
+          <div className="bg-gray-50 p-5 sm:p-8">
+            <div className="mx-auto flex max-w-3xl flex-col gap-6 rounded-lg border border-gray-200 bg-white p-8 shadow-card sm:p-12">
+              <div className="border-b border-gray-100 pb-6">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Fiche de passation — {passation.title}
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Dernière mise à jour : {passation.lastUpdated}
+                </p>
+              </div>
+              <ResumeSection
+                passation={passation}
+                onResumeChange={updateResume}
+                onResumeCommit={onResumeCommit}
+                variant="document"
+                id="section-resume"
+              />
+              <PointsAttentionSection
+                passation={passation}
+                onAdd={addAttentionPoint}
+                onChange={updateAttentionPoint}
+                onRemove={removeAttentionPoint}
+                onCommit={onBlockersCommit}
+                variant="document"
+                id="section-blocage"
+              />
+              <PriorityDocsSection
+                passation={passation}
+                onAddDocument={addDocument}
+                onRemoveDocument={removeDocument}
+                variant="document"
+                id="section-priority-docs"
+              />
+              <ContactsSection
+                passation={passation}
+                onAdd={addContact}
+                onChange={updateContact}
+                onRemove={removeContact}
+                onCommit={onContactsCommit}
+                variant="document"
+                id="section-contacts"
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "Sources" && <SourcesTab sources={passation.sources} />}
+      </div>
+
+      {showPublishConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-card">
+            <h3 className="text-base font-semibold text-gray-900">
+              Publier ce dossier dans Docs ?
+            </h3>
+            <p className="mt-2 text-sm text-gray-500">
+              En validant, ce dossier sera publié dans Docs et accessible à votre remplaçant.
+              Vous pourrez encore le modifier dans Docs après publication.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPublishConfirm(false)}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmPublish}
+                className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
