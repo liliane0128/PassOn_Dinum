@@ -197,7 +197,10 @@ export function PassationCard({
           ))}
         </nav>
 
-        <div className="mb-3 flex items-center gap-2">
+        {/* No bottom margin: the row is centred against the tabs by the
+            parent's items-center, and mb-3 pulled it 12px above that line.
+            py-2 keeps it off the tab underline. */}
+        <div className="flex items-center gap-2 py-2">
           {activeTab === "Fichier de passation" && (
             <>
               {role === "agent" ? (
