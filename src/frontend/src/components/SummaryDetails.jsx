@@ -6,11 +6,76 @@ import { useItems } from "../context/ItemsContext.jsx";
 import "./SummaryDetails.css";
 
 function formatDate(iso) {
+  // The AI-generated summary can hand back a deadline with no date yet (a
+  // real deadline whose trigger date isn't known -- see generation.py's
+  // module docstring): `new Date(null)` silently resolves to the Unix
+  // epoch, which rendered as "01/01/1970" instead of admitting there's no
+  // date.
+  if (!iso) return "date à confirmer";
   return new Date(iso).toLocaleDateString("fr-FR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
+}
+
+// An AI-generated action/decision/deadline/blocker can carry `evidence`
+// (see generation.py): the items that justify it, resolved backend-side so
+// a hallucinated title/author/date/content/url can never reach here. A
+// manually-added or older bullet simply has none -- render nothing rather
+// than an empty note.
+//
+// `url` isn't necessarily something a browser can open (mock/synthetic ids,
+// or a real item's REST resource_url rather than a page -- see
+// generation.py's module docstring), so the primary way to check an
+// evidence entry is to read its `content` right here, not to follow a link
+// that may go nowhere. Click-to-expand mirrors CollaboratorItemsList.jsx's
+// pattern for the same reason: a short preview by default, full text on
+// demand.
+function EvidenceList({ evidence }) {
+  const [expandedId, setExpandedId] = useState(null);
+  if (!evidence || evidence.length === 0) return null;
+  return (
+    <ul className="summary-section__evidence">
+      {evidence.map((ref) => {
+        const isExpanded = expandedId === ref.id;
+        return (
+          <li key={ref.id}>
+            <button
+              type="button"
+              className="summary-section__evidence__toggle"
+              onClick={() => setExpandedId(isExpanded ? null : ref.id)}
+              aria-expanded={isExpanded}
+            >
+              <span>{ref.title || ref.id}</span>
+              <span className="material-icons">
+                {isExpanded ? "expand_less" : "expand_more"}
+              </span>
+            </button>
+            {isExpanded && (
+              <div className="summary-section__evidence__detail">
+                {(ref.author || ref.date) && (
+                  <p className="summary-section__evidence__meta">
+                    {[ref.author, ref.date ? formatDate(ref.date) : null]
+                      .filter(Boolean)
+                      .join(" — ")}
+                  </p>
+                )}
+                <p className="summary-section__evidence__content">
+                  {ref.content || "Aucun aperçu disponible."}
+                </p>
+                {ref.url && (
+                  <a href={ref.url} target="_blank" rel="noreferrer">
+                    Ouvrir la source
+                  </a>
+                )}
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 function ItemActions({ label, onEdit, onRemove }) {
@@ -108,7 +173,10 @@ function TextListSection({ icon, title, items, onAdd, onEdit, onRemove, placehol
               </li>
             ) : (
               <li key={item.id}>
-                <span>{item.label}</span>
+                <div className="summary-section__list__main">
+                  <span>{item.label}</span>
+                  <EvidenceList evidence={item.evidence} />
+                </div>
                 <ItemActions
                   label={item.label}
                   onEdit={() => startEdit(item)}
@@ -152,7 +220,9 @@ function DeadlineSection({ items, onAdd, onEdit, onRemove }) {
   function startEdit(item) {
     setEditingId(item.id);
     setEditLabel(item.label);
-    setEditDate(item.date);
+    // item.date can be null (see formatDate above); the date <input> needs a
+    // string, not null, to stay a controlled input.
+    setEditDate(item.date ?? "");
   }
 
   function cancelEdit() {
@@ -213,9 +283,12 @@ function DeadlineSection({ items, onAdd, onEdit, onRemove }) {
               </li>
             ) : (
               <li key={item.id}>
-                <span>
-                  {item.label} — {formatDate(item.date)}
-                </span>
+                <div className="summary-section__list__main">
+                  <span>
+                    {item.label} — {formatDate(item.date)}
+                  </span>
+                  <EvidenceList evidence={item.evidence} />
+                </div>
                 <ItemActions
                   label={item.label}
                   onEdit={() => startEdit(item)}

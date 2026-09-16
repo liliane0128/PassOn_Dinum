@@ -1,0 +1,77 @@
+{
+  "text": "Le renouvellement de 14 postes informatiques est en cours. Un devis révisé de 11 800 € a été envoyé et est valable jusqu'au 30 septembre 2026. La validation budgétaire finale doit passer par la commission finances, dont la prise en compte n'est pas encore confirmée. Il faut donc accélérer le suivi avant l'expiration du devis.",
+  "actions": [
+    {
+      "label": "Vérifier que la commission finances a bien reçu le dossier de validation."
+    },
+    {
+      "label": "Suivre la validation budgétaire finale avant le 30 septembre 2026."
+    },
+    {
+      "label": "Préparer la commande une fois la validation obtenue."
+    }
+  ],
+  "decisions": [
+    {
+      "label": "Augmentation du devis à 11 800 € TTC suite à la hausse du coût des composants."
+    },
+    {
+      "label": "Le renouvellement a l'aval de la direction, mais nécessite encore la validation de la commission finances."
+    },
+    {
+      "label": "Le devis est valable jusqu'au 30 septembre 2026."
+    }
+  ],
+  "deadlines": [
+    {
+      "label": "Expiration du devis",
+      "date": "2026-09-30"
+    },
+    {
+      "label": "Obtention de la validation budgétaire finale",
+      "date": "2026-09-30"
+    }
+  ],
+  "blockers": [
+    {
+      "label": "La commission finances n'a pas encore validé le dossier."
+    }
+  ],
+  "documents": [
+    {
+      "id": "docs:doc-007",
+      "title": "Note - renouvellement parc informatique mairie",
+      "url": "http://localhost:8071/api/v1.0/documents/doc-007/"
+    },
+    {
+      "id": "drive:drive-009",
+      "title": "Devis informatique - 14 postes - V1.pdf",
+      "url": "http://host.docker.internal:8072/api/v1.0/items/drive-009/"
+    },
+    {
+      "id": "drive:drive-010",
+      "title": "Devis informatique - 14 postes - V2 corrige.pdf",
+      "url": "http://host.docker.internal:8072/api/v1.0/items/drive-010/"
+    },
+    {
+      "id": "messages:mail-013",
+      "title": "Devis corrige - renouvellement postes informatiques",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-013/"
+    },
+    {
+      "id": "messages:mail-014",
+      "title": "Demande de validation budgetaire - renouvellement informatique",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-014/"
+    },
+    {
+      "id": "messages:mail-015",
+      "title": "RE: Demande de validation budgetaire - renouvellement informatique",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-015/"
+    },
+    {
+      "id": "messages:mail-016",
+      "title": "Relance - validation budgetaire renouvellement informatique",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-016/"
+    }
+  ]
+}
