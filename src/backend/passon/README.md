@@ -77,6 +77,13 @@ from its mock data through `toAppUser()` in
 the collaborator on login (matching `external_id`, falling back to `email`) and
 return `role` and `manager` from `/api/auth/me/`.
 
+## Demo data
+
+The upstream services hold what the handover is generated from, so a wiped
+Drive or Messages leaves the app with nothing to summarize.
+`manage.py seed_demo` rebuilds that material — see
+[`demo_data/README.md`](demo_data/README.md).
+
 ## Tests
 
 ```sh

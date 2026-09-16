@@ -102,6 +102,8 @@ tables (sessions, admin), it holds the project's two:
 | `Handover` | their handover sheet: text, the six structured sections, validated or not |
 
 See [the schema and why it looks like that](src/backend/passon/README.md).
+To rebuild the demo documents and mails in Drive and Messages:
+`python manage.py seed_demo --email ... --password ...`.
 Nothing writes to these yet — login still does not create a collaborator.
 
 ## Service APIs

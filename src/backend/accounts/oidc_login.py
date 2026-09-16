@@ -143,6 +143,67 @@ def _follow(session, service, method, url, flow_origins, **kwargs):
     raise LoginFailed("unexpected_response", 502)
 
 
+def public_base_url(service):
+    """The service's address as it is known publicly (what Keycloak expects)."""
+    port = urlparse(_config(service)["url"]).port
+    base = f"http://{settings.DINUM_PUBLIC_HOST}"
+    return f"{base}:{port}" if port else base
+
+
+def service_request(session, service, method, url, **kwargs):
+    """One request to `service`, addressed so that it can be reached.
+
+    Public wrapper over the transport described at the top of this module:
+    sent to DRIVE_URL/MESSAGES_URL's host, presenting the public host. Anything
+    talking to these services from inside a container needs it.
+    """
+    return _request(session, service, method, url, **kwargs)
+
+
+def open_session(service, email, password):
+    """Walk the login flow and return (session, user), session still open.
+
+    `login()` below keeps only the resulting cookie, which is all our own
+    sessions need. Callers that go on to *write* to the service need the whole
+    thing: Django hands out its CSRF cookie during the flow, and writes are
+    refused without it.
+    """
+    session = requests.Session()
+    base_url = public_base_url(service)
+
+    # The service redirects to its Keycloak, which is how we learn that
+    # Keycloak's address: it is configured there, not here. Drive and
+    # Messages each run their own.
+    handoff = _request(session, service, "GET", f"{base_url}/api/v1.0/authenticate/")
+    keycloak_url = handoff.headers.get("Location")
+    if handoff.status_code not in (301, 302, 303, 307, 308) or not keycloak_url:
+        raise LoginFailed("unexpected_response", 502)
+    flow_origins = {_origin(base_url), _origin(keycloak_url)}
+
+    form_page = _follow(session, service, "GET", keycloak_url, flow_origins)
+    match = _LOGIN_FORM.search(form_page.text)
+    if not match:
+        # Either Keycloak's markup changed or it refused the request
+        # outright; both mean the flow is not what this code expects.
+        raise LoginFailed("unexpected_response", 502)
+
+    _follow(
+        session,
+        service,
+        "POST",
+        match.group(1).replace("&amp;", "&"),
+        flow_origins,
+        data={"username": email, "password": password},
+    )
+
+    whoami = _request(session, service, "GET", f"{base_url}/api/v1.0/users/me/")
+    if whoami.status_code == 401:  # quirk 3
+        raise LoginFailed("invalid_credentials", 401)
+    if whoami.status_code != 200:
+        raise LoginFailed("unexpected_response", 502)
+    return session, whoami.json()
+
+
 def login(service, email, password):
     """Return (session_cookie, user) for valid credentials on `service`.
 
@@ -151,54 +212,17 @@ def login(service, email, password):
     LoginFailed for bad credentials (401) and for an unreachable (502) or slow
     (504) service.
     """
-    config = _config(service)
-    cookie_name = config["cookie"]
-    public_port = urlparse(config["url"]).port
-    public_base = f"http://{settings.DINUM_PUBLIC_HOST}"
-    if public_port:
-        public_base = f"{public_base}:{public_port}"
-    session = requests.Session()
-
+    cookie_name = _config(service)["cookie"]
     try:
-        # The service redirects to its Keycloak, which is how we learn that
-        # Keycloak's address: it is configured there, not here. Drive and
-        # Messages each run their own.
-        handoff = _request(session, service, "GET", f"{public_base}/api/v1.0/authenticate/")
-        keycloak_url = handoff.headers.get("Location")
-        if handoff.status_code not in (301, 302, 303, 307, 308) or not keycloak_url:
-            raise LoginFailed("unexpected_response", 502)
-        flow_origins = {_origin(public_base), _origin(keycloak_url)}
-
-        form_page = _follow(session, service, "GET", keycloak_url, flow_origins)
-        match = _LOGIN_FORM.search(form_page.text)
-        if not match:
-            # Either Keycloak's markup changed or it refused the request
-            # outright; both mean the flow is not what this code expects.
-            raise LoginFailed("unexpected_response", 502)
-
-        _follow(
-            session,
-            service,
-            "POST",
-            match.group(1).replace("&amp;", "&"),
-            flow_origins,
-            data={"username": email, "password": password},
-        )
-
-        whoami = _request(session, service, "GET", f"{public_base}/api/v1.0/users/me/")
+        session, user = open_session(service, email, password)
     except requests.Timeout as error:
         raise LoginFailed(f"{service}_timeout", 504) from error
     except requests.RequestException as error:
         raise LoginFailed(f"{service}_unreachable", 502) from error
-    finally:
+    else:
         session.close()
-
-    if whoami.status_code == 401:  # quirk 3
-        raise LoginFailed("invalid_credentials", 401)
-    if whoami.status_code != 200:
-        raise LoginFailed("unexpected_response", 502)
 
     credential = session.cookies.get(cookie_name)
     if not credential:
         raise LoginFailed("unexpected_response", 502)
-    return credential, whoami.json()
+    return credential, user
