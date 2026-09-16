@@ -56,6 +56,21 @@ Builds and starts nginx + Django + Postgres. The full app is on **http://localho
 | `/api/…` | Django backend |
 | `/admin/`, `/static/` | Django admin |
 
+A second site is served on **http://localhost:8091**: the homepage of the new
+frontend (`src/passon-frontend`, Next.js), whose button opens the dashboard.
+The migration is going step by step, so :8090 above is untouched by it.
+
+| URL | Served by |
+|-----|-----------|
+| `http://localhost:8091/` | the homepage, a static page |
+| `http://localhost:8091/dashboard` | the new dashboard, proxied to the Next app |
+
+The dashboard needs that app running on the host:
+
+```bash
+cd src/passon-frontend && npm install && npm run dev -- -p 3001
+```
+
 On first run, copy the env templates:
 
 ```bash
@@ -227,6 +242,22 @@ Construit et démarre nginx + Django + Postgres. L'application complète est sur
 | `/`, `/manager`, `/moi` | le frontend React |
 | `/api/…` | le backend Django |
 | `/admin/`, `/static/` | l'admin Django |
+
+Un second site est servi sur **http://localhost:8091** : la page d'accueil du
+nouveau frontend (`src/passon-frontend`, en Next.js), dont le bouton ouvre le
+tableau de bord. La migration se fait par étapes, et le :8090 ci-dessus n'en est
+pas affecté.
+
+| URL | Servi par |
+|-----|-----------|
+| `http://localhost:8091/` | la page d'accueil, une page statique |
+| `http://localhost:8091/dashboard` | le nouveau tableau de bord, relayé vers l'application Next |
+
+Le tableau de bord suppose cette application lancée sur la machine :
+
+```bash
+cd src/passon-frontend && npm install && npm run dev -- -p 3001
+```
 
 Au premier lancement, copier les fichiers d'exemple :
 

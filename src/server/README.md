@@ -27,11 +27,47 @@ browser ---> nginx (:8090) ---> /           static files (React build)
                              \> /static/    web:8000  (admin CSS/JS)
 ```
 
+### The second site (:8091) — homepage and new dashboard
+
+The project is migrating to a new frontend (`src/passon-frontend`, Next.js),
+and that migration is happening step by step. So nginx serves a **second,
+independent site** on :8091 rather than taking anything away from :8090: the
+old application keeps working exactly as it did while the new one is built
+beside it.
+
+```
+browser ---> nginx (:8091) ---> /           the homepage (static, src/server/html)
+                           \--> /dashboard  host:3001  (Next.js, prefix stripped)
+                            \-> /_next/     host:3001  (its assets and hot reload)
+                             \> /equipe     host:3001
+```
+
+The homepage is a hand-written page with no build step, laid out like the
+ui-kit's `Hero`, whose single button points at `/dashboard`.
+
+That button is the reason for the proxy. `proxy_pass` carries a trailing slash,
+which strips the `/dashboard` prefix, so the Next app receives `/` — its own
+home route — and needs no `basePath` of its own and no change to run standalone
+on :3001. Its assets and its other route live at the root rather than under
+`/dashboard`, which is why `/_next/` and `/equipe` are proxied as they are.
+
+The Next app is **not containerised yet**: it runs on the host, and nginx
+reaches it through `host.docker.internal`, which `docker-compose.yml` maps to
+the host gateway. So :8091 serves the homepage on its own, and the button leads
+somewhere only while that dev server is running:
+
+```sh
+cd src/passon-frontend && npm install && npm run dev -- -p 3001
+```
+
+Without it, the homepage still loads and `/dashboard` answers `502`.
+
 ### Files
 
 | File | Role |
 | --- | --- |
 | `conf.d/default.conf` | the nginx site: what is served, what is proxied |
+| `html/` | the homepage served on :8091 — one HTML file, its CSS and its images |
 | `Dockerfile` | two stages — build the React app with Node, then serve it with nginx |
 
 The stack itself is wired up in the repository root: `docker-compose.yml`
@@ -131,11 +167,49 @@ navigateur ---> nginx (:8090) ---> /           fichiers statiques (build React)
                                 \> /static/    web:8000  (CSS/JS de l'admin)
 ```
 
+### Le second site (:8091) — page d'accueil et nouveau tableau de bord
+
+Le projet migre vers un nouveau frontend (`src/passon-frontend`, en Next.js), et
+cette migration se fait par étapes. nginx sert donc un **second site
+indépendant** sur :8091, plutôt que de retirer quoi que ce soit à :8090 :
+l'ancienne application continue de fonctionner à l'identique pendant que la
+nouvelle se construit à côté.
+
+```
+navigateur ---> nginx (:8091) ---> /           la page d'accueil (statique, src/server/html)
+                              \--> /dashboard  host:3001  (Next.js, préfixe retiré)
+                               \-> /_next/     host:3001  (ses fichiers et le rechargement à chaud)
+                                \> /equipe     host:3001
+```
+
+La page d'accueil est écrite à la main, sans étape de compilation, sur la
+structure du `Hero` du ui-kit, et son unique bouton pointe vers `/dashboard`.
+
+C'est ce bouton qui justifie le relais. Le `proxy_pass` porte une barre oblique
+finale, qui retire le préfixe `/dashboard` : l'application Next reçoit donc `/`,
+sa propre page d'accueil, sans avoir besoin d'un `basePath` ni d'aucune
+modification pour continuer à tourner seule sur :3001. Ses fichiers et son autre
+route vivent à la racine et non sous `/dashboard`, d'où le relais de `/_next/`
+et `/equipe` tels quels.
+
+L'application Next **n'est pas encore conteneurisée** : elle tourne sur la
+machine, et nginx la joint par `host.docker.internal`, que `docker-compose.yml`
+fait pointer vers la passerelle de l'hôte. Le :8091 sert donc la page d'accueil
+tout seul, mais le bouton ne mène quelque part que si ce serveur de
+développement tourne :
+
+```sh
+cd src/passon-frontend && npm install && npm run dev -- -p 3001
+```
+
+Sans lui, la page d'accueil s'affiche toujours et `/dashboard` répond `502`.
+
 ### Fichiers
 
 | Fichier | Rôle |
 | --- | --- |
 | `conf.d/default.conf` | le site nginx : ce qui est servi, ce qui est relayé |
+| `html/` | la page d'accueil servie sur :8091 — un fichier HTML, son CSS et ses images |
 | `Dockerfile` | deux étapes — compiler l'appli React avec Node, puis la servir avec nginx |
 
 La pile elle-même est décrite à la racine du dépôt : `docker-compose.yml`

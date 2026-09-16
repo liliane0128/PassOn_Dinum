@@ -72,6 +72,12 @@ services:
     container_name: passon_nginx
     ports:
       - "8090:8090"
+      # The homepage of the new frontend, plus its /dashboard entry point.
+      - "8091:8091"
+    # /dashboard is proxied to the Next app (src/passon-frontend), which runs
+    # on the host rather than in Compose for now.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - web
 

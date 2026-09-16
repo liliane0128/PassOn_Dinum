@@ -1,0 +1,47 @@
+/* Design tokens taken from La Suite numérique's ui-kit
+ * (suitenumerique/ui-kit, packages/ui-components/src/cunningham-tokens.css,
+ * MIT). Only the handful this page uses are copied, rather than shipping the
+ * 388 KB file: this is one static page, not an application.
+ *
+ * The values are La Suite's so the page looks like it belongs beside Docs and
+ * Drive. The page still says, in the footer, that Pass'on is not one of them.
+ */
+:root {
+  --c--globals--colors--brand-500: #6969df;
+  --c--globals--colors--brand-600: #534fc2;
+  --c--globals--colors--brand-650: #4844ad;
+  --c--globals--colors--brand-700: #3e3b98;
+
+  --c--globals--colors--gray-050: #f0f0f3;
+  --c--globals--colors--gray-100: #e2e2ea;
+  --c--globals--colors--gray-200: #c5c6d5;
+  --c--globals--colors--gray-500: #75758a;
+  --c--globals--colors--gray-550: #69697d;
+  --c--globals--colors--gray-700: #454558;
+  --c--globals--colors--gray-850: #25252f;
+  --c--globals--colors--gray-900: #1b1b23;
+
+  /* Marianne is the State's typeface and is not shipped here; the kit's own
+   * fallback chain is kept, so the page renders in Hanken Grotesk or Inter
+   * where Marianne is not installed. */
+  --c--globals--font--families--base: "Hanken Grotesk", Inter, "Roboto Flex", sans-serif;
+
+  --c--globals--spacings--xs: 0.5rem;
+  --c--globals--spacings--sm: 0.75rem;
+  --c--globals--spacings--base: 1rem;
+  --c--globals--spacings--lg: 1.5rem;
+  --c--globals--spacings--xl: 2rem;
+  --c--globals--spacings--xxl: 3rem;
+
+  /* This page is white in every case. A dark variant was dropped on request,
+   * so there is deliberately no prefers-color-scheme block here. */
+  --page-background: #ffffff;
+  --page-content: var(--c--globals--colors--gray-850);
+  --page-content-secondary: var(--c--globals--colors--gray-550);
+  --page-border: var(--c--globals--colors--gray-100);
+  --page-surface: var(--c--globals--colors--gray-050);
+  --card-surface: #f4f4fb;
+  /* The wash at the top of the hero, and the grey ground the cards sit on. */
+  --hero-wash: #f0f2f7;
+  --section-surface: #f4f5f8;
+}

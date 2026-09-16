@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pass'on — l'assistant de passation</title>
+    <meta
+      name="description"
+      content="Pass'on rassemble les documents et les mails d'un agent qui s'absente, et en compose une fiche de passation prête à relire."
+    />
+    <link rel="icon" href="assets/favicon-32.png" sizes="32x32" />
+    <link rel="stylesheet" href="assets/tokens.css" />
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <!-- Structure reprise du Hero du ui-kit de La Suite (HomeGutter > hero >
+         display > captions), avec les mêmes noms de classes, pour que la page
+         soit reconnaissable par quelqu'un qui connaît Docs ou Drive. Le
+         composant lui-même n'est pas importé : cette page est un fichier
+         statique servi par nginx, sans étape de build.
+
+         Le bloc est centré : il n'y a plus de visuel à droite, donc plus de
+         colonne à équilibrer. -->
+    <main class="hero-section">
+      <div class="c__home-gutter">
+        <section class="c__hero">
+          <div class="c__hero__display">
+            <div class="c__hero__display__captions">
+              <picture>
+                <source srcset="assets/logo-full.webp" type="image/webp" />
+                <img
+                  class="c__hero__display__captions__logo"
+                  src="assets/logo-full.png"
+                  alt="Pass'on"
+                  width="240"
+                />
+              </picture>
+
+              <h1>Le Relais en un clic</h1>
+
+              <p class="c__hero__display__captions__subtitle">
+                Pass'on relit les documents et les mails d'un agent qui
+                s'absente, et en compose une fiche de passation structurée —
+                actions en cours, décisions, échéances, blocages — avec un lien
+                vers chaque source.
+              </p>
+
+              <!-- La seule action de la page : rejoindre le tableau de bord.
+                   Servi par nginx, qui relaie /dashboard vers l'application
+                   Next (port 3001 en développement). -->
+              <a class="c__button c__button--primary" href="/dashboard">
+                Accéder au tableau de bord
+                <span aria-hidden="true">→</span>
+              </a>
+
+              <p class="c__hero__display__captions__note">
+                Démonstration — les données affichées sont fictives.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Cartes de présentation, sur le modèle de lasuite.numerique.gouv.fr :
+         un rectangle arrondi, texte à gauche sur fond lavande, panneau coloré
+         à droite dans lequel flotte une maquette de l'interface. -->
+    <div class="grey-section">
+      <section class="cards">
+        <article class="feature" id="ia">
+          <div class="feature__text">
+            <h2>L'Intelligence Artificielle, au cœur de la passation</h2>
+            <p>
+              Pass'on relit les documents et les mails d'un agent qui s'absente,
+              et en compose une fiche structurée : actions en cours, décisions
+              prises, échéances, blocages, contacts et documents clés — chaque
+              point renvoyant à la source dont il vient.
+            </p>
+          </div>
+
+          <div class="feature__panel" aria-hidden="true">
+            <div class="mock">
+              <div class="mock__prompt">
+                <span class="mock__prompt__mark"></span>
+                <span class="mock__prompt__text"
+                  >Que reste-t-il à reprendre&nbsp;?</span
+                >
+              </div>
+              <ul class="mock__menu">
+                <li>
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="mock__icon"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M5 13l4 4L19 7"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Résumer les échanges
+                </li>
+                <li class="mock__menu__item--active">
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="mock__icon"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                  Extraire les échéances
+                  <span class="mock__enter">↵</span>
+                </li>
+                <li>
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="mock__icon"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M12 9v5M12 17.5v.5M10.3 3.9L2.8 17a1.5 1.5 0 001.3 2.2h15.8a1.5 1.5 0 001.3-2.2L13.7 3.9a1.5 1.5 0 00-2.6 0z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Repérer les blocages
+                </li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature feature--alt" id="open-source">
+          <div class="feature__text">
+            <h2>Ouvert, vérifiable, et réversible</h2>
+            <p>
+              Pass'on est publié sous licence MIT et construit sur les services
+              libres de La Suite numérique : les fichiers restent dans Drive, les
+              mails dans Messages, aucun compte supplémentaire n'est créé et
+              aucun mot de passe n'est stocké. Le code et sa documentation, en
+              français comme en anglais, se lisent sur le dépôt public.
+            </p>
+            <a
+              class="c__button c__button--secondary"
+              href="https://github.com/liliane0128/PassOn_Dinum"
+              rel="noreferrer noopener"
+              >Voir le code sur GitHub</a
+            >
+          </div>
+
+          <div class="feature__panel" aria-hidden="true">
+            <div class="mock mock--license">
+              <p class="mock__label">Licence</p>
+              <p class="mock__value">MIT</p>
+              <ul class="mock__list">
+                <li>Utilisation libre</li>
+                <li>Modification libre</li>
+                <li>Redistribution libre</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+      </section>
+    </div>
+
+    <footer class="page-footer">
+      <p>
+        Pass'on est un projet indépendant construit sur
+        <a href="https://lasuite.numerique.gouv.fr/" rel="noreferrer noopener"
+          >La Suite numérique</a
+        >. Il n'est ni affilié à la DINUM ou à La Suite numérique, ni approuvé
+        par elles, ni un produit officiel.
+      </p>
+    </footer>
+  </body>
+</html>
