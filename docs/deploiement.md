@@ -1,4 +1,256 @@
-# Déployer Pass‘on à côté de Drive et Messages
+# Deploying Pass'on alongside Drive and Messages
+# Déployer Pass'on à côté de Drive et Messages
+
+*[English](#english) · [Français](#français)*
+
+---
+
+## English
+
+Pass'on stores neither accounts nor documents: it connects to **Drive** and
+**Messages** with the credentials of whoever is using it. Running it therefore
+requires those two services alongside, and above all an account that exists in
+both. That is where every pitfall is, and this document lists them in the order
+you meet them.
+
+Everything below describes a **local development** install, the one the team
+uses. Nothing here is a production configuration.
+
+---
+
+### 1. What runs, and on which port
+
+| Port | Service | Project |
+| --- | --- | --- |
+| **8090** | **Pass'on** — the application (nginx + built frontend + API) | this repository |
+| 8000 | The Pass'on API alone, on 127.0.0.1 (curl, tests) | this repository |
+| 3000 | Drive — interface | `drive` |
+| 8071 | Drive — API | `drive` |
+| 8083 | Drive — Keycloak, login pages | `drive` |
+| 8080 | Drive — Keycloak directly | `drive` |
+| 8900 | Messages — interface | `messages` |
+| 8901 | Messages — API | `messages` |
+| 8902 | Messages — Keycloak | `messages` |
+
+> **Pass'on is on 8090 and not on 8080** because Drive's Keycloak already
+> occupies 8080. The two cannot start together otherwise.
+
+Drive also exposes MinIO (9000/9001), mailcatcher (1081), Collabora (9980),
+OnlyOffice (9981) and its databases (6433/6434). Messages exposes its database on
+8912.
+
+---
+
+### 2. Starting the three projects
+
+The three repositories sit side by side (`~/hackathon/drive`,
+`~/hackathon/messages`, `~/hackathon/Relais_Dinum`). The order matters: Pass'on
+queries the other two as soon as someone logs in.
+
+```bash
+# 1. Drive — first time only
+cd ~/hackathon/drive
+make bootstrap            # images, database, Keycloak realm, lasuite network
+
+# then on every start
+make run-backend          # API + Keycloak + storage, without the interface
+make run                  # the same plus the interface on :3000
+
+# 2. Messages — first time only
+cd ~/hackathon/messages
+make bootstrap
+make superuser            # also creates the autojoin domain example.local
+
+# then
+make start                # backend, worker, frontend, Keycloak
+
+# 3. Pass'on
+cd ~/hackathon/Relais_Dinum
+make up                   # postgres + Django + nginx  ->  http://localhost:8090
+```
+
+`make run` on the Drive side builds a Next.js interface: the first load of
+`:3000` takes about fifteen seconds, which is not a hang.
+
+On the Pass'on side, `make up` starts everything; `make run` starts only postgres
+and Django, for working on the API alone. **If `:8090` does not answer, it is
+usually because nginx is not running** — that is, `make run` was used instead of
+`make up`.
+
+---
+
+### 3. Configuring Pass'on
+
+A single file: `src/backend/.env`, created from `.env.example` on the first
+`make up`. What matters:
+
+```sh
+DRIVE_URL=http://host.docker.internal:8071
+MESSAGES_URL=http://host.docker.internal:8901
+MESSAGES_SESSION_COOKIE=st_messages_sessionid
+DINUM_USE_MOCK=false          # true = demo data, no service required
+DINUM_MOCK_DATASET=           # in mock mode: empty = the small built-in set,
+                              # "synthetic_handover_catnat" = a full project
+GROQ_API_KEY=...              # free key: https://console.groq.com/keys
+GROQ_MODEL=openai/gpt-oss-20b
+```
+
+Three things to know:
+
+- **`host.docker.internal`, not `localhost`.** Django runs in a container, where
+  `localhost` means the container itself. For a Django started directly on the
+  machine, use `localhost`.
+- **`GROQ_MODEL`: `20b` is enough on small volumes, `120b` copes better.** Groq's
+  free ceiling is 8 000 tokens per minute, request *and* answer included: too
+  large a request is refused (413), and one that barely fits leaves too little
+  room for the JSON, which comes back truncated and invalid. The default `20b`
+  manages on a dozen items; it failed every time when the prompt was twice as
+  large. On repeated failures, switch to `120b` or lower `MAX_CONTENT_CHARS`
+  (`connectors/generation.py`).
+- **`DOCS_URL` points at 8071, like Drive.** Docs is not deployed here; if you
+  ever add it, move one of the two ports, otherwise Docs calls will land on
+  Drive.
+
+`DINUM_USE_MOCK=true` lets the whole application run without Drive or Messages,
+on fictional data: useful for working on the interface.
+
+---
+
+### 4. Accounts: the part that trips people up
+
+Pass'on has Drive check the password, then tries Messages with the same
+credentials. **Each service has its own Keycloak, with its own accounts**: an
+account created in one does not exist in the other.
+
+For a single login to give access to documents *and* mails, the same email and
+the same password must therefore exist on both sides.
+
+#### On the Drive side
+
+Self-registration is enabled: `http://localhost:3000` → log in →
+**Register**.
+
+#### On the Messages side
+
+Two obstacles, in this order:
+
+**a. Registration is disabled by default.** To enable it once and for all:
+
+```bash
+docker exec st-messages-keycloak-1 /opt/keycloak/bin/kcadm.sh config credentials \
+  --server http://localhost:8802 --realm master \
+  --client bootstrap-admin --secret BootstrapAdminClientSecretForDev
+
+docker exec st-messages-keycloak-1 /opt/keycloak/bin/kcadm.sh update realms/messages \
+  -s registrationAllowed=true -s resetPasswordAllowed=true
+```
+
+Use the `bootstrap-admin` client, not `admin`/`admin`: that account is "not fully
+set up" and its password is refused until it has been changed in the console.
+
+Then: `http://localhost:8900` → log in → **Register**.
+
+**b. Messages refuses to create the local user.** It runs with
+`OIDC_CREATE_USER=False`: a successful Keycloak authentication is not enough, the
+**domain of the address** must be declared "autojoin". Otherwise the login fails
+silently — a redirect to a page identical to the successful one, and
+`/api/v1.0/users/me/` answering 401.
+
+Once per domain:
+
+```bash
+cd ~/hackathon/messages
+docker compose exec backend-dev-light python manage.py shell -c \
+  "from core.models import MailDomain; MailDomain.objects.get_or_create(\
+  name='mydomain.fr', defaults={'oidc_autojoin': True, 'identity_sync': True})"
+```
+
+`example.local` is already declared by `make superuser`. An address in
+`@example.local` therefore needs nothing more.
+
+#### Checking
+
+Log in at `http://localhost:8090`. The login response contains:
+
+```json
+{"user": {...}, "services": {"drive": true, "messages": true}}
+```
+
+`messages: false` means the account does not exist in the Messages Keycloak, or
+that the domain is not autojoin: the person is logged in all the same, they will
+simply have no mails in their handover.
+
+---
+
+### 5. Giving it something to summarize
+
+A handover is generated from real documents and real mails. A fresh account has
+neither, and generation then answers `no_data_to_summarize` — that is not a
+failure.
+
+```bash
+cd ~/hackathon/Relais_Dinum
+docker compose exec web python manage.py seed_demo \
+  --email you@mydomain.fr --password '...'
+```
+
+This command puts five documents in the person's Drive and six mails in their
+mailbox, written so that every section of the handover has something to fill it.
+Details in
+[`src/backend/passon/demo_data/README.md`](../src/backend/passon/demo_data/README.md).
+
+### 6. Creating a manager
+
+The role only exists on our side; Drive knows nothing about it:
+
+```bash
+docker compose exec web python manage.py set_role you@mydomain.fr manager
+```
+
+The person does not need to have logged in already: the record is created without
+a Drive identifier, and their first login attaches it to their account by email.
+
+---
+
+### 7. Common failures, and what they mean
+
+| Symptom | Cause |
+| --- | --- |
+| `:8090` does not answer | nginx is not running — `make up`, not `make run` |
+| Login refused with the right credentials | account missing from Drive's Keycloak |
+| `services.messages: false` | account missing from the Messages Keycloak, or domain not autojoin |
+| `no_data_to_summarize` | no document and no mail on this account — `seed_demo` |
+| `llm_not_configured` | `GROQ_API_KEY` is empty |
+| Generation failing every other time | Groq's 8 000 tokens/minute ceiling: one generation per minute |
+| Empty directory when searching | the Drive session has expired — log in again; the full address can still be typed |
+| A collaborator's documents empty in the manager view | they have not logged in since those documents were uploaded: their documents are collected at *their* login |
+
+---
+
+### 8. Why the code addresses the services the way it does
+
+Three quirks come up everywhere and each cost a debugging session. They are
+documented next to the code concerned, and summarized here so they can be
+recognized.
+
+**The host announced matters as much as the host reached.** Drive and Messages
+build their `redirect_uri` from the `Host` header they receive. Reached at
+`host.docker.internal`, they produce a URL Keycloak never registered and refuse
+the login ("Invalid parameter: redirect_uri"). Requests are therefore sent to the
+reachable host **while announcing** `DINUM_PUBLIC_HOST` (`localhost` by default).
+See [`src/backend/accounts/README.md`](../src/backend/accounts/README.md).
+
+**nginx must pass `Host` along with its port.** Django compares the browser's
+`Origin` header with its own host to check CSRF: without the port, every login is
+refused with a 403. `curl` sends no `Origin` and therefore never reveals this
+problem. See [`src/server/README.md`](../src/server/README.md).
+
+**Messages sets no CSRF cookie.** It runs with `CSRF_USE_SESSIONS`: the token is
+returned by `/api/v1.0/users/me/`, and any write without that token is refused.
+
+---
+
+## Français
 
 Pass‘on ne stocke ni compte ni document : il se connecte à **Drive** et à
 **Messages**, avec les identifiants de la personne qui l'utilise. Le faire
@@ -11,7 +263,7 @@ qu'utilise l'équipe. Rien ici n'est une configuration de production.
 
 ---
 
-## 1. Ce qui tourne, et sur quel port
+### 1. Ce qui tourne, et sur quel port
 
 | Port | Service | Projet |
 | --- | --- | --- |
@@ -33,7 +285,7 @@ OnlyOffice (9981) et ses bases (6433/6434). Messages expose sa base sur 8912.
 
 ---
 
-## 2. Démarrer les trois projets
+### 2. Démarrer les trois projets
 
 Les trois dépôts sont voisins (`~/hackathon/drive`, `~/hackathon/messages`,
 `~/hackathon/Relais_Dinum`). L'ordre a son importance : Pass‘on interroge les
@@ -71,7 +323,7 @@ la place de `make up`.
 
 ---
 
-## 3. Configurer Pass‘on
+### 3. Configurer Pass‘on
 
 Un seul fichier : `src/backend/.env`, créé depuis `.env.example` au premier
 `make up`. Ce qui compte :
@@ -109,7 +361,7 @@ ni Messages, avec des données fictives : utile pour travailler sur l'interface.
 
 ---
 
-## 4. Les comptes : le point qui coince
+### 4. Les comptes : le point qui coince
 
 Pass‘on vérifie le mot de passe auprès de Drive, puis tente Messages avec les
 mêmes identifiants. **Chaque service a son propre Keycloak, avec ses propres
@@ -177,7 +429,7 @@ elle n'aura simplement pas ses mails dans sa passation.
 
 ---
 
-## 5. Donner de la matière à résumer
+### 5. Donner de la matière à résumer
 
 Une passation se génère à partir de vrais documents et de vrais mails. Un
 compte neuf n'a ni l'un ni l'autre, et la génération répond alors
@@ -194,7 +446,7 @@ dans sa boîte, écrits pour que chaque section du résumé ait de quoi se
 remplir. Détail dans
 [`src/backend/passon/demo_data/README.md`](../src/backend/passon/demo_data/README.md).
 
-## 6. Créer un manager
+### 6. Créer un manager
 
 Le rôle n'existe que chez nous, Drive n'en sait rien :
 
@@ -208,7 +460,7 @@ l'email.
 
 ---
 
-## 7. Pannes fréquentes, et ce qu'elles veulent dire
+### 7. Pannes fréquentes, et ce qu'elles veulent dire
 
 | Symptôme | Cause |
 | --- | --- |
@@ -223,7 +475,7 @@ l'email.
 
 ---
 
-## 8. Pourquoi le code s'adresse aux services comme il le fait
+### 8. Pourquoi le code s'adresse aux services comme il le fait
 
 Trois particularités reviennent partout et ont chacune coûté une séance de
 débogage. Elles sont documentées près du code concerné, résumées ici pour

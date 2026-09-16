@@ -1,4 +1,10 @@
-# Demo dataset
+# Demo dataset · Jeu de données de démonstration
+
+*[English](#english) · [Français](#français)*
+
+---
+
+## English
 
 The handover only means something with material to summarize, and that material
 lives in **Drive** and **Messages**, not in our database — so it does not
@@ -23,7 +29,7 @@ The account must already exist in **both** services' Keycloaks with the same
 password, and its email domain must be autojoin-enabled in Messages — see
 [`../../accounts/README.md`](../../accounts/README.md), which covers both.
 
-## What the data is
+### What the data is
 
 A French local-government caseload: an agent leaving on 1 October, mid-way
 through a subsidy campaign, an accessibility programme and a stack of citizen
@@ -47,8 +53,66 @@ They are written so each of the six sections of the generated handover has
 something to find — a summary that comes back with empty sections on this data
 means the pipeline is broken, not that the data is thin.
 
-## Everything is invented
+### Everything is invented
 
 No real person, address or case. The names are fictional and the `@…gouv.fr`
 addresses are plausible-looking inventions, present because a handover with no
 external correspondents would not exercise the contacts section.
+
+---
+
+## Français
+
+Une passation n'a de sens que s'il y a matière à résumer, et cette matière vit
+dans **Drive** et **Messages**, pas dans notre base — elle ne survit donc pas à
+l'effacement de l'une ou l'autre de ces piles. Ce dossier la conserve, et
+`manage.py seed_demo` la remet en place.
+
+```sh
+python manage.py seed_demo --email vous@example.test --password ...
+```
+
+Tout est écrit **au nom de cette personne**, via les mêmes API que son propre
+client : les documents sont déposés dans son Drive, les mails livrés dans sa
+boîte par le point d'entrée MTA de Messages. Le résultat est indiscernable de
+fichiers qu'elle aurait déposés et de mails qu'elle aurait reçus — même analyse,
+même mise en fil de discussion, même indexation.
+
+Relancer la commande ne risque rien : un document dont le titre est déjà dans le
+Drive, un mail dont l'objet est déjà dans la boîte, sont ignorés. `--skip-drive`
+et `--skip-mails` ne traitent qu'un côté.
+
+Le compte doit exister dans les Keycloak des **deux** services avec le même mot
+de passe, et le domaine de son adresse doit être « autojoin » côté Messages —
+voir [`../../accounts/README.md`](../../accounts/README.md), qui couvre les deux
+points.
+
+### Ce que contiennent les données
+
+Un dossier de collectivité territoriale : un agent qui part le 1er octobre, au
+milieu d'une campagne de subventions, d'un programme d'accessibilité et d'une
+pile de demandes citoyennes.
+
+| Fichier | Alimente |
+| --- | --- |
+| `documents/note-passation-subventions-2026.md` | décisions (plafond à 12 000 €), actions, blocage des Ateliers du Faubourg |
+| `documents/compte-rendu-comite-technique-2026-09-10.md` | décisions, le départ lui-même, échéances |
+| `documents/dossier-adap-accessibilite.md` | blocages (ascenseur, DETR refusée), échéance du 31 octobre |
+| `documents/suivi-demandes-citoyens-septembre.csv` | un tableau d'échéances datées, demande par demande |
+| `documents/procedure-instruction-permis.md` | du contexte et des pièges, volontairement peu de faits extractibles |
+| `mails/01-abf.eml` | blocage (avis suspendu) + une décision sur les matériaux |
+| `mails/02-juridique.eml` | blocage (vice de procédure) + échéance |
+| `mails/03-prefecture.eml` | échéance ferme (31 octobre, sans prorogation) + action |
+| `mails/04-entreprise.eml` | blocage (rupture fournisseur) + action |
+| `mails/05-adjointe.eml` | décisions d'une élue + deux échéances |
+| `mails/06-sofia.eml` | blocage (trésorier) + une action en attente |
+
+Ils sont écrits pour que chacune des six rubriques de la passation générée ait de
+quoi se remplir : un résumé qui revient avec des rubriques vides sur ces
+données-là signale une chaîne cassée, pas des données trop maigres.
+
+### Tout est inventé
+
+Aucune personne, adresse ou affaire réelle. Les noms sont fictifs et les adresses
+en `@…gouv.fr` sont des inventions vraisemblables, présentes parce qu'une
+passation sans correspondant extérieur n'exercerait pas la rubrique des contacts.

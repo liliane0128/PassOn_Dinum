@@ -1,6 +1,12 @@
-# Server (nginx)
+# Server (nginx) · Le serveur (nginx)
 
-## What this is for
+*[English](#english) · [Français](#français)*
+
+---
+
+## English
+
+### What this is for
 
 The project is two separate programs: a React app built by Vite
 (`src/frontend`) and a Django API (`src/backend`). Run on their own they sit on
@@ -21,7 +27,7 @@ browser ---> nginx (:8090) ---> /           static files (React build)
                              \> /static/    web:8000  (admin CSS/JS)
 ```
 
-## Files
+### Files
 
 | File | Role |
 | --- | --- |
@@ -31,7 +37,7 @@ browser ---> nginx (:8090) ---> /           static files (React build)
 The stack itself is wired up in the repository root: `docker-compose.yml`
 (services `web` and `nginx`) and `Makefile` (`make up` / `down` / `logs`).
 
-## Running it
+### Running it
 
 From the repository root, `make up`. See the [root README](../../README.md).
 
@@ -40,7 +46,7 @@ first stage), so frontend changes only appear after another `make up`, which
 rebuilds it. For day-to-day frontend work, run the Vite dev server directly
 (`cd src/frontend && npm run dev`) and keep hot reload.
 
-## Decisions worth knowing
+### Decisions worth knowing
 
 - **`try_files $uri $uri/ /index.html`** — React Router owns the routes
   (`/`, `/manager`, `/moi`). Without this fallback, nginx would look for a file
@@ -86,7 +92,7 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
   ${GROQ_API_KEY:-}` being the obvious trap); the `POSTGRES_*` keys are safe
   because that file has no entry for them.
 
-## Not done here
+### Not done here
 
 - **Docs and Messages are still on their own origins.** The connectors API asks
   for `X-Docs-Session` / `X-Messages-Session` headers because those services'
@@ -99,3 +105,110 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
   not change that; a real deployment would put gunicorn (or similar) behind it
   and serve collected static files from disk rather than proxying `/static/`.
 - **No TLS.** Everything is plain HTTP on localhost.
+
+---
+
+## Français
+
+### À quoi il sert
+
+Le projet, ce sont deux programmes distincts : une application React compilée
+par Vite (`src/frontend`) et une API Django (`src/backend`). Lancés chacun de
+leur côté, ils occupent deux ports différents, ce que le navigateur traite comme
+deux origines : le frontend aurait besoin d'en-têtes CORS pour appeler l'API, les
+cookies de session ne seraient pas partagés, et chaque URL d'API devrait être
+configurée par environnement.
+
+nginx supprime le problème en plaçant les deux derrière une seule origine. Il
+sert le frontend compilé depuis le disque et transmet au conteneur `web` tout ce
+qui appartient à Django : le navigateur ne parle donc qu'à
+**http://localhost:8090**, et le frontend appelle `/api/...` en URL relative.
+
+```
+navigateur ---> nginx (:8090) ---> /           fichiers statiques (build React)
+                              \--> /api/       web:8000  (Django)
+                               \-> /admin/     web:8000
+                                \> /static/    web:8000  (CSS/JS de l'admin)
+```
+
+### Fichiers
+
+| Fichier | Rôle |
+| --- | --- |
+| `conf.d/default.conf` | le site nginx : ce qui est servi, ce qui est relayé |
+| `Dockerfile` | deux étapes — compiler l'appli React avec Node, puis la servir avec nginx |
+
+La pile elle-même est décrite à la racine du dépôt : `docker-compose.yml`
+(services `web` et `nginx`) et `Makefile` (`make up` / `down` / `logs`).
+
+### Le lancer
+
+Depuis la racine du dépôt, `make up`. Voir le [README racine](../../README.md).
+
+Le frontend est compilé **dans l'image** (`npm run build` à la première étape du
+Dockerfile) : une modification du front n'apparaît donc qu'après un nouveau
+`make up`, qui la recompile. Pour travailler sur l'interface au quotidien, lancer
+directement le serveur Vite (`cd src/frontend && npm run dev`) et garder le
+rechargement à chaud.
+
+### Décisions à connaître
+
+- **`try_files $uri $uri/ /index.html`** — c'est React Router qui gère les routes
+  (`/`, `/manager`, `/moi`). Sans ce repli, nginx chercherait un fichier nommé
+  `manager` sur le disque et renverrait 404 à chaque rafraîchissement ou URL
+  collée. Renvoyer `index.html` laisse l'appli démarrer et résoudre la route
+  elle-même.
+- **`proxy_read_timeout 300s` sur `/api/`** — `/api/dossier/` liste les éléments
+  de trois services puis attend un appel LLM. Le délai par défaut de 60 s de
+  nginx couperait la connexion et renverrait 504.
+- **`proxy_set_header Host $http_host`, jamais `$host`** — `$host` supprime le
+  port, or Django compare l'en-tête `Origin` du navigateur
+  (`http://localhost:8090`) à son propre hôte pour vérifier le CSRF sur un POST.
+  Sans le port, cette vérification échoue avec *« Origin checking failed »* et
+  toute connexion est refusée en 403 avant même que les identifiants soient lus.
+  `curl` n'envoie pas d'`Origin` et ne révèle donc jamais le problème : tester
+  une route POST depuis le terminal passera sans souci pendant que l'appli est
+  cassée. Utiliser `curl -H "Origin: http://localhost:8090"` pour reproduire le
+  comportement d'un navigateur. `ALLOWED_HOSTS` n'est pas concerné : Django
+  retire le port avant de valider l'hôte.
+- **`expires 1y` sur `/assets/`, et non `add_header Cache-Control`** — Vite y
+  écrit des noms de fichiers contenant une empreinte du contenu : ils peuvent
+  donc être mis en cache longtemps. Un `add_header` au niveau d'un `location`
+  ferait perdre les en-têtes `X-Frame-Options` et `X-Robots-Tag` hérités du bloc
+  serveur ; `expires` ne les supprime pas. `/index.html` n'est explicitement pas
+  mis en cache, sans quoi une appli recompilée continuerait de réclamer les
+  fichiers de la version précédente.
+- **Le port 8090, et non 8080** — le Keycloak de Drive publie sur 8080, et le
+  flux de connexion a besoin de Drive (voir `src/backend/accounts/README.md`) :
+  les deux se heurteraient sur toute machine où ils tournent ensemble.
+- **Django est aussi publié sur 127.0.0.1:8000** — `make run` sert l'API sans
+  nginx pour travailler côté backend, et c'est ce port qu'utilisent curl et les
+  tests. Le navigateur, lui, passe toujours par :8090, seul endroit où l'appli et
+  l'API partagent une origine ; tout ce qui a besoin d'un cookie de session doit
+  passer par là.
+- **Un seul postgres, un seul fichier compose** — Django a quitté SQLite, et les
+  sessions (donc les connexions) vivent dans la base. Il n'existe qu'une
+  définition, à la racine, et un seul volume nommé : `make up` et `make run` sont
+  deux sélections de services sur la même base, et non deux piles avec des copies
+  concurrentes des données.
+- **Seuls les identifiants de la base sont dans `environment:` pour `web`** —
+  tout le reste vit dans `src/backend/.env`, que `settings.py` charge via le
+  montage. Les variables définies dans compose ont la priorité sur ce fichier et
+  videraient en silence ce qu'il définit (`GROQ_API_KEY: ${GROQ_API_KEY:-}` étant
+  le piège évident) ; les clés `POSTGRES_*` ne risquent rien, ce fichier n'en
+  contenant aucune.
+
+### Ce qui n'est pas fait ici
+
+- **Docs et Messages restent sur leurs propres origines.** L'API des connecteurs
+  réclame les en-têtes `X-Docs-Session` / `X-Messages-Session` parce que les
+  cookies de ces services ne franchissent pas les ports. Drive n'en a plus
+  besoin — la connexion conserve sa session côté serveur
+  (`src/backend/accounts/README.md`) — mais ce n'est pas encore le cas des deux
+  autres. nginx pourrait aussi les relayer sous cette origine, ce qui modifierait
+  le contrat d'authentification de l'API : cela n'a donc pas été décidé seul.
+- **Django tourne toujours avec `runserver`**, le serveur de développement. nginx
+  n'y change rien ; un vrai déploiement mettrait gunicorn (ou équivalent)
+  derrière lui et servirait les fichiers statiques collectés depuis le disque
+  plutôt que de relayer `/static/`.
+- **Pas de TLS.** Tout est en HTTP simple sur localhost.
