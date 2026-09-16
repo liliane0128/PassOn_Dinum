@@ -234,24 +234,32 @@ def extraction_items(request):
 
 
 def _fetch_raw_items(request, service):
-    """List raw items for one service. Returns (data, None) or (None, error_response)."""
+    """List raw items for one service.
+
+    Returns (data, session, None) or (None, None, error_response). The session
+    is handed back still open, because normalize_items() needs it to fetch
+    each item's actual content afterwards; the caller closes it.
+    """
     session, client, error = _resolve_client(request, service)
     if error:
-        return None, error
+        return None, None, error
     config = settings.DINUM_SERVICES[service]
     try:
-        with session:
-            return client.list_items(session, base_url=config["url"]), None
+        return client.list_items(session, base_url=config["url"]), session, None
     except requests.Timeout:
-        return None, failure(service, "upstream_timeout", 504)
+        session.close()
+        return None, None, failure(service, "upstream_timeout", 504)
     except requests.HTTPError as exc:
+        session.close()
         upstream_status = exc.response.status_code if exc.response is not None else 502
         status = upstream_status if upstream_status in (400, 401, 403, 404, 429) else 502
-        return None, failure(service, "upstream_error", status)
+        return None, None, failure(service, "upstream_error", status)
     except requests.RequestException:
-        return None, failure(service, "upstream_unavailable", 502)
+        session.close()
+        return None, None, failure(service, "upstream_unavailable", 502)
     except (ValueError, KeyError, TypeError, IndexError, RuntimeError):
-        return None, failure(service, "invalid_upstream_response", 502)
+        session.close()
+        return None, None, failure(service, "invalid_upstream_response", 502)
 
 
 @require_GET
@@ -266,6 +274,7 @@ def dossier(request):
     DINUM_USE_MOCK is set, in which case static demo data is used instead and
     no credential is needed.
     """
+    sessions = {}
     if settings.DINUM_USE_MOCK:
         raw_docs, raw_drive, raw_messages = (
             mock_data.MOCK_DOCS,
@@ -274,6 +283,7 @@ def dossier(request):
         )
     else:
         raw = {}
+        sessions = {}
         authenticated = False
         for service in REAL_CLIENTS:
             config = settings.DINUM_SERVICES[service]
@@ -286,8 +296,10 @@ def dossier(request):
                 raw[service] = []
                 continue
             authenticated = True
-            raw[service], error = _fetch_raw_items(request, service)
+            raw[service], sessions[service], error = _fetch_raw_items(request, service)
             if error:
+                for open_session in sessions.values():
+                    open_session.close()
                 return error
         # Keyed on credentials, not on data: someone logged in with an empty
         # Drive is authenticated, and belongs in the "nothing to summarize"
@@ -296,9 +308,23 @@ def dossier(request):
             return failure("dossier", "authentication_required", 401)
         raw_docs, raw_drive, raw_messages = raw["docs"], raw["drive"], raw["messages"]
 
-    # Rewritten before generation: generation.py fills each document's link
-    # from these items, so the handover's links are the browser-usable ones.
-    items_ = _publicize(extraction.normalize_items(raw_docs, raw_drive, raw_messages))
+    # The sessions and base URLs have to be passed through: without them
+    # normalize_items() returns metadata only, and the model is asked to write
+    # a handover from a list of filenames. Rewritten before generation, since
+    # generation.py fills each document's link from these items and the
+    # handover's links must be the browser-usable ones.
+    normalize_kwargs = {}
+    for service, session in sessions.items():
+        normalize_kwargs[_NORMALIZE_BASE_URL_KWARG[service]] = settings.DINUM_SERVICES[service]["url"]
+        if service in _NORMALIZE_SESSION_KWARG:
+            normalize_kwargs[_NORMALIZE_SESSION_KWARG[service]] = session
+    try:
+        items_ = _publicize(
+            extraction.normalize_items(raw_docs, raw_drive, raw_messages, **normalize_kwargs)
+        )
+    finally:
+        for open_session in sessions.values():
+            open_session.close()
     if not items_:
         return JsonResponse({"error": "no_data_to_summarize"}, status=422)
 

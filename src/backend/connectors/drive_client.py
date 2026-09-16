@@ -30,6 +30,7 @@ Local test account: drive / drive (created by `make superuser`).
 
 import os
 import re
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
 
@@ -94,17 +95,58 @@ def get_item(session, item_id, base_url=BASE_URL):
     return response.json()
 
 
+def _reachable(url, base_url):
+    """Point a redirect at a host this process can actually connect to.
+
+    The signed media URL Drive hands out names the host a *browser* would use
+    (MEDIA_BASE_URL, "localhost:8083"). Inside a container that is the
+    container itself, so following it verbatim fails and the item comes back
+    with no content at all. The host is swapped for the one in `base_url` --
+    by definition reachable, since we just used it -- while the port and path
+    are left alone. When Django runs on the same machine as Drive the two
+    hosts are identical and nothing changes.
+    """
+    target = urlparse(url)
+    if target.hostname not in ("localhost", "127.0.0.1"):
+        return url, None
+    reachable_host = urlparse(base_url).hostname
+    if not reachable_host or reachable_host == target.hostname:
+        return url, None
+    netloc = reachable_host if target.port is None else f"{reachable_host}:{target.port}"
+    # The original host is returned too: nginx routes on it, and the media
+    # URL's signature is checked against it.
+    return urlunparse(target._replace(netloc=netloc)), target.netloc
+
+
 def download_item(session, item_id, base_url=BASE_URL):
     """Return a file item's raw content as bytes.
 
     Only valid for items where type == "file" (raises for folders -- use
-    download_folder_export() instead). GET .../download/ 302-redirects to
-    a signed media URL; requests follows the redirect automatically,
-    carrying the drive_sessionid cookie the nginx auth_request check needs.
+    download_folder_export() instead). GET .../download/ 302-redirects to a
+    signed media URL, which is followed by hand here so its host can be made
+    reachable (see _reachable), carrying the drive_sessionid cookie the nginx
+    auth_request check needs.
     """
-    response = session.get(
-        f"{base_url.rstrip('/')}/api/v1.0/items/{item_id}/download/"
-    )
+    try:
+        response = session.get(
+            f"{base_url.rstrip('/')}/api/v1.0/items/{item_id}/download/",
+            allow_redirects=False,
+        )
+    except requests.HTTPError as redirect:
+        # The API's UpstreamSession treats any redirect as an error, since no
+        # other upstream call should ever produce one. This call is the
+        # exception: the download *is* a redirect to signed media storage, and
+        # the response it refused to return is exactly the one we need.
+        response = redirect.response
+        if response is None or not 300 <= response.status_code < 400:
+            raise
+
+    if response.status_code in (301, 302, 303, 307, 308):
+        location = urljoin(response.url, response.headers["Location"])
+        target, host_header = _reachable(location, base_url)
+        response = session.get(
+            target, headers={"Host": host_header} if host_header else {}
+        )
     response.raise_for_status()
     return response.content
 
