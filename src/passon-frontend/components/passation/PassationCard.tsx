@@ -25,6 +25,7 @@ export function PassationCard({
   passation: initialPassation,
   onResumeCommit,
   onBlockersCommit,
+  onContactsCommit,
   generating = false,
 }: {
   passation: Passation;
@@ -32,6 +33,8 @@ export function PassationCard({
   onResumeCommit?: (resume: string) => void;
   /** Set when the points de blocage are backed by the API. */
   onBlockersCommit?: (points: AttentionPoint[]) => void;
+  /** Set when the contacts are backed by the API. */
+  onContactsCommit?: (contacts: Contact[]) => void;
   /** True while a generation is running, for the sections that are wired. */
   generating?: boolean;
 }) {
@@ -240,6 +243,8 @@ export function PassationCard({
               onAdd={addContact}
               onChange={updateContact}
               onRemove={removeContact}
+              onCommit={onContactsCommit}
+              generating={generating}
             />
           </div>
         </div>

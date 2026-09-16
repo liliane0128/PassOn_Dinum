@@ -122,6 +122,9 @@ class CollaboratorItem(models.Model):
     source = models.CharField(max_length=50)  # docs | drive | messages
     title = models.CharField(max_length=512, blank=True)
     author = models.CharField(max_length=255, blank=True)
+    # The sender's address, kept beside the display name: `author` is often
+    # just a name, and a contact with no address cannot be written to.
+    author_email = models.CharField(max_length=320, blank=True)
     url = models.URLField(max_length=1024, blank=True)
     preview = models.TextField(blank=True)
     date = models.DateTimeField(null=True, blank=True)

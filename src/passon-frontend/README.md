@@ -98,11 +98,11 @@ où nginx sert la page d'accueil, relaie `/login` et `/dashboard` vers ce serveu
 Next, et `/api/` vers Django — une seule origine, condition du cookie de session
 et de la vérification CSRF.
 
-## Le résumé et les points de blocage
+## Le résumé, les points de blocage et les contacts clés
 
-Le tableau de bord affiche le résumé et les points de blocage de la personne
-connectée, composés à partir de ses documents (Drive) et de ses mails
-(Messages). **Le code de génération
+Le tableau de bord affiche le résumé, les points de blocage et les contacts
+clés de la personne connectée, à partir de ses documents (Drive) et de ses
+mails (Messages). **Le code de génération
 n'a pas été modifié** : trois routes existantes suffisent.
 
 ```
@@ -121,15 +121,38 @@ découpage que dans l'ancien frontend.
 | `components/passation/PassationBoard.tsx` | charge, génère, enregistre |
 | `components/passation/ResumeSection.tsx` | l'affichage et l'édition du résumé |
 | `components/passation/PointsAttentionSection.tsx` | l'affichage et l'édition des points de blocage |
+| `components/passation/ContactsSection.tsx` | l'affichage et l'édition des contacts |
+| `lib/contacts-from-items.ts` | déduit les contacts des expéditeurs des mails |
 
 Ce qu'il faut savoir :
 
 - **Ce qui est branché, et ce qui ne l'est pas.** `PassationBoard` part du jeu
   de démonstration et n'y remplace que ce qui est réel : le titre (le nom de la
   personne connectée), la date de dernière mise à jour, la complétude, le
-  résumé, les points de blocage et le décompte des sources. Les documents
-  prioritaires et les contacts clés viennent toujours de `mock-data.ts`.
+  résumé, les points de blocage, les contacts clés et le décompte des sources.
+  Seuls les documents prioritaires viennent encore de `mock-data.ts`.
   Construire une passation entière donnerait l'illusion que le reste est réel.
+- **Les contacts viennent des mails, pas du modèle.** Son invite ne demande pas
+  de contacts : `contactsFromItems()` compte donc les expéditeurs des mails lus,
+  les plus fréquents d'abord, en laissant de côté la personne connectée
+  elle-même, et une génération les enregistre en même temps que le reste. Tant que rien n'est enregistré, ils sont déduits à l'affichage, si
+  bien que la rubrique n'est jamais vide par accident. Les demander au modèle
+  supposerait de modifier son invite, donc de toucher au code IA.
+- **La rubrique `contacts` a été ajoutée au backend** (`handover_views.py`),
+  à côté de `contactIds` qui sert à l'ancien frontend : les deux coexistent,
+  l'une porte des identifiants de collaborateurs, l'autre des entrées
+  {nom, rôle, adresse}.
+- **Attention aux noms de champs des éléments** : `item_views.py` sérialise le
+  type dans `type` (« mail » ou « doc »), le nom de l'expéditeur dans `subtitle`
+  et son adresse dans `authorEmail` — il n'y a ni `kind` ni `author` dans cette
+  charge utile, quels que soient les noms des champs du modèle.
+- **L'adresse de l'expéditeur est conservée à part.** `extraction.py` construit
+  `author` comme `sender.name || sender.email` : le nom l'emporte, et l'adresse
+  était perdue, si bien qu'aucun contact n'était joignable. Un champ
+  `author_email` a donc été ajouté à côté (et une colonne dans
+  `CollaboratorItem`, migration `0003`). `author` est inchangé et
+  `generation._trimmed()` n'envoie au modèle que `id/title/author/date/content`
+  : son entrée est identique au caractère près.
 - **Les sources ne sont pas affichées.** Chaque point généré porte pourtant les
   éléments dont il provient (`evidence`, rempli côté backend à partir des
   documents réellement lus). Ils sont conservés et transmis tels quels à

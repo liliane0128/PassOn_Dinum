@@ -12,8 +12,9 @@ import {
   type Handover,
   type Item,
 } from "@/lib/handover";
+import { contactsFromItems } from "@/lib/contacts-from-items";
 import { passation as demoPassation } from "@/lib/mock-data";
-import type { AttentionPoint, Passation, SourceTag } from "@/lib/types";
+import type { AttentionPoint, Contact, Passation, SourceTag } from "@/lib/types";
 import { PassationCard } from "./PassationCard";
 
 /** "12 sept. 2026 à 16:24", the format the card's header uses. */
@@ -57,7 +58,7 @@ function completeness(handover: Handover | null): number {
  * The wired parts of the card, read from the logged-in person's own documents
  * and mails: the résumé and the points de blocage.
  *
- * Documents prioritaires and contacts clés still come from `mock-data.ts`,
+ * Documents prioritaires still comes from `mock-data.ts`,
  * which is why the card below is the demo fixture with the real fields
  * replaced rather than a `Passation` built from scratch: pretending the rest
  * is real would hide which parts are actually wired.
@@ -100,6 +101,11 @@ export function PassationBoard() {
     if (user?.id) void load(user.id);
   }, [user?.id, load]);
 
+  // Read inside `generate`, which must not be rebuilt every time the items
+  // change -- the auto-generation effect depends on its identity.
+  const itemsRef = useRef<Item[]>([]);
+  itemsRef.current = items;
+
   const generatingRef = useRef(false);
   const autoAttempted = useRef<Set<string>>(new Set());
 
@@ -112,7 +118,15 @@ export function PassationBoard() {
     setError(null);
     try {
       const generated = await generateDossier();
-      setHandover(await saveHandover(collaboratorId, generated));
+      // The model is not asked for contacts, so they are computed here from
+      // the mails and saved in the same call: one write, and the section is
+      // filled at the same moment as the rest.
+      setHandover(
+        await saveHandover(collaboratorId, {
+          ...generated,
+          contacts: contactsFromItems(itemsRef.current, user?.email),
+        })
+      );
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -137,6 +151,23 @@ export function PassationBoard() {
       setHandover(await saveHandover(user.id, { text }));
     } catch {
       setError("Votre modification du résumé n'a pas pu être enregistrée.");
+    }
+  }
+
+  /** Same, for the contacts. */
+  async function handleContactsCommit(contacts: Contact[]) {
+    if (!user?.id) return;
+    const cleaned = contacts
+      .filter((contact) => contact.name.trim() || contact.email.trim())
+      .map((contact) => ({
+        name: contact.name.trim(),
+        role: contact.role.trim(),
+        email: contact.email.trim(),
+      }));
+    try {
+      setHandover(await saveHandover(user.id, { contacts: cleaned }));
+    } catch {
+      setError("Vos modifications des contacts n'ont pas pu être enregistrées.");
     }
   }
 
@@ -173,8 +204,9 @@ export function PassationBoard() {
   const resume = handover?.text.trim() ?? "";
   const hasResume = resume.length > 0;
 
-  // The real counts of what was read, in place of the fixture's.
-  const mails = items.filter((item) => item.kind === "mail").length;
+  // The real counts of what was read, in place of the fixture's. "mail" and
+  // "doc" are the two values `item_views.py` emits in `type`.
+  const mails = items.filter((item) => item.type === "mail").length;
   const documents = items.length - mails;
   const sourceTags: SourceTag[] = [];
   if (mails) sourceTags.push({ kind: "email", count: mails });
@@ -190,9 +222,21 @@ export function PassationBoard() {
     })
   );
 
+  // What was stored, or -- before anything has been stored -- what the mails
+  // say. Deriving on the fly means the section is never empty just because a
+  // sheet was generated before contacts were kept.
+  const storedContacts = handover?.contacts ?? [];
+  const contacts: Contact[] = (
+    storedContacts.length > 0
+      ? storedContacts
+      : contactsFromItems(items, user?.email)
+  ).map((contact, index) => ({ id: `contact-${index}`, ...contact }));
+
   const passation: Passation = {
     ...demoPassation,
     attentionPoints,
+    contacts,
+    contactsTotal: contacts.length,
     title: `Passation — ${user?.full_name || user?.email || "moi"}`,
     lastUpdated: handover ? frenchDateTime(handover.updatedAt) : "—",
     completude: completeness(handover),
@@ -271,6 +315,7 @@ export function PassationBoard() {
         passation={passation}
         onResumeCommit={handleResumeCommit}
         onBlockersCommit={handleBlockersCommit}
+        onContactsCommit={handleContactsCommit}
         generating={generating}
       />
     </>

@@ -1,9 +1,9 @@
 /**
  * Client for the stored handover and for the generator.
  *
- * Only what the wired sections need, on purpose: the résumé and the points de
- * blocage. Documents prioritaires and contacts clés still show their demo
- * fixture, and wiring them is a later step.
+ * Only what the wired sections need, on purpose: the résumé, les points de
+ * blocage and les contacts clés. Documents prioritaires still shows its demo
+ * fixture, and wiring it is a later step.
  *
  *   GET   /api/collaborators/<id>/items/     the person's documents and mails
  *   GET   /api/dossier/                      one model pass over them -> a sheet
@@ -38,24 +38,45 @@ export interface Bullet {
  * figure is measured against -- a real count of what the pass found, rather
  * than a number chosen by hand.
  */
+/** {name, role, email}, as the card shows them. */
+export interface StoredContact {
+  name: string;
+  role: string;
+  email: string;
+}
+
 export interface Handover {
   collaboratorId: string;
   text: string;
   validated: boolean;
   updatedAt: string;
   blockers?: Bullet[];
+  contacts?: StoredContact[];
   actions?: unknown[];
   decisions?: unknown[];
   deadlines?: unknown[];
   documents?: unknown[];
 }
 
+/**
+ * One document or mail, exactly as `passon/item_views.py` serializes it.
+ *
+ * Note the field names: the kind is `type` ("mail" or "doc"), the sender of a
+ * mail is `subtitle` and their address is `authorEmail` -- there is no
+ * `author` and no `kind` in this payload, whatever the models call them.
+ */
 export interface Item {
   id: string;
-  kind: "mail" | "document" | string;
+  refId?: string;
+  type: "mail" | "doc" | string;
+  icon?: string;
   title: string;
-  author?: string;
-  date?: string;
+  subtitle?: string;
+  /** A mail sender's address, when the upstream payload carried one. */
+  authorEmail?: string | null;
+  preview?: string;
+  date?: string | null;
+  url?: string | null;
 }
 
 export interface ItemsResponse {
