@@ -101,11 +101,11 @@ où nginx sert la page d'accueil, relaie `/login` et `/dashboard` vers ce serveu
 Next, et `/api/` vers Django — une seule origine, condition du cookie de session
 et de la vérification CSRF.
 
-## Le résumé, les points de blocage et les contacts clés
+## Les quatre rubriques de la carte
 
-Le tableau de bord affiche le résumé, les points de blocage et les contacts
-clés de la personne connectée, à partir de ses documents (Drive) et de ses
-mails (Messages). **Le code de génération
+Le tableau de bord affiche le résumé, les points de blocage, les contacts clés
+et les documents prioritaires de la personne connectée, à partir de ses
+documents (Drive) et de ses mails (Messages). **Le code de génération
 n'a pas été modifié** : trois routes existantes suffisent.
 
 ```
@@ -126,15 +126,38 @@ découpage que dans l'ancien frontend.
 | `components/passation/PointsAttentionSection.tsx` | l'affichage et l'édition des points de blocage |
 | `components/passation/ContactsSection.tsx` | l'affichage et l'édition des contacts |
 | `lib/contacts-from-items.ts` | déduit les contacts des expéditeurs des mails |
+| `lib/documents-priority.ts` | classe les documents par urgence |
+| `components/passation/PriorityDocsSection.tsx` | l'affichage des documents prioritaires |
 
 Ce qu'il faut savoir :
 
-- **Ce qui est branché, et ce qui ne l'est pas.** `PassationBoard` part du jeu
-  de démonstration et n'y remplace que ce qui est réel : le titre (le nom de la
-  personne connectée), la date de dernière mise à jour, la complétude, le
-  résumé, les points de blocage, les contacts clés et le décompte des sources.
-  Seuls les documents prioritaires viennent encore de `mock-data.ts`.
-  Construire une passation entière donnerait l'illusion que le reste est réel.
+- **Ce qui est branché.** `PassationBoard` part encore du jeu de démonstration,
+  mais y remplace désormais tout ce que la carte montre : titre, date de
+  dernière mise à jour, complétude, résumé, points de blocage, contacts clés,
+  documents prioritaires et décompte des sources. Ce qui subsiste du jeu de
+  démonstration n'est plus affiché ; il reste le point de départ de l'objet, et
+  la liste d'équipe de `PriorityDocsSection` (le menu « transférer la
+  propriété », toujours simulé).
+- **La rubrique des documents n'a pas été retouchée.** `PriorityDocsSection`
+  est restée telle quelle : seules les données qu'elle reçoit ont changé. Le
+  classement se fait donc en amont, dans `lib/documents-priority.ts`, et se lit
+  dans l'ordre des lignes.
+- **Le classement des documents : l'échéance d'abord, le contexte ensuite.**
+  Un document cité par une seule puce peut primer sur un document cité trois
+  fois — ce qui rend un document urgent, c'est d'avoir une date. Une date n'est
+  retenue que si la fiche la confirme : soit une échéance cite le document, soit
+  la date d'une échéance est écrite dans le texte du document. Une date trouvée
+  dans un document sans échéance correspondante est ignorée : une date de
+  réunion et une date limite se ressemblent trop. À égalité d'urgence, le
+  contexte départage (blocage, puis action, puis décision, puis récence), et
+  chaque ligne affiche la raison de son rang.
+- **Citée ou seulement mentionnée.** Le classement distingue les deux :
+  `priorityLabel` vaut « Échéance 31 oct. » quand une échéance cite le document,
+  et « Mentionne l'échéance du 31 oct. » quand la date est seulement présente
+  dans son texte. La nuance compte — une même date peut apparaître dans
+  plusieurs documents, comme « 30 septembre » ici — mais elle n'est pas affichée
+  aujourd'hui : la rubrique montre le nom, la date et le propriétaire, comme
+  avant.
 - **Les contacts viennent des mails, pas du modèle.** Son invite ne demande pas
   de contacts : `contactsFromItems()` compte donc les expéditeurs des mails lus,
   les plus fréquents d'abord, en laissant de côté la personne connectée

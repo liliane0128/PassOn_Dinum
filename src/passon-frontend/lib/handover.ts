@@ -30,6 +30,18 @@ export interface Bullet {
   evidence?: EvidenceRef[];
 }
 
+/** A deadline carries the date the model extracted, or null if it found none. */
+export interface Deadline extends Bullet {
+  date: string | null;
+}
+
+/** A document the sheet points at; title and url are filled backend-side. */
+export interface HandoverDocument {
+  id: string;
+  title: string;
+  url?: string;
+}
+
 /**
  * The stored sheet.
  *
@@ -52,10 +64,10 @@ export interface Handover {
   updatedAt: string;
   blockers?: Bullet[];
   contacts?: StoredContact[];
-  actions?: unknown[];
-  decisions?: unknown[];
-  deadlines?: unknown[];
-  documents?: unknown[];
+  actions?: Bullet[];
+  decisions?: Bullet[];
+  deadlines?: Deadline[];
+  documents?: HandoverDocument[];
 }
 
 /**

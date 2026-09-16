@@ -32,9 +32,14 @@ export function PriorityDocsSection({ passation }: { passation: Passation }) {
             key={doc.id}
             className="relative flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0"
           >
-            <span className="flex items-center gap-2 text-gray-800">
+            {/* min-w-0 + truncate: real file names ("compte-rendu-comite-
+                technique-2026-09-10.md") are far longer than the demo ones and
+                wrapped mid-word, breaking the row apart. */}
+            <span className="flex min-w-0 flex-1 items-center gap-2 text-gray-800">
               <FileText className="h-4 w-4 shrink-0 text-gray-400" />
-              {doc.name}
+              <span className="truncate" title={doc.name}>
+                {doc.name}
+              </span>
             </span>
 
             <span className="flex shrink-0 items-center gap-3">

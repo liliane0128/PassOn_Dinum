@@ -13,6 +13,7 @@ import {
   type Item,
 } from "@/lib/handover";
 import { contactsFromItems } from "@/lib/contacts-from-items";
+import { rankDocuments } from "@/lib/documents-priority";
 import { passation as demoPassation } from "@/lib/mock-data";
 import type { AttentionPoint, Contact, Passation, SourceTag } from "@/lib/types";
 import { PassationCard } from "./PassationCard";
@@ -58,7 +59,7 @@ function completeness(handover: Handover | null): number {
  * The wired parts of the card, read from the logged-in person's own documents
  * and mails: the résumé and the points de blocage.
  *
- * Documents prioritaires still comes from `mock-data.ts`,
+ * Every section of the card is wired now,
  * which is why the card below is the demo fixture with the real fields
  * replaced rather than a `Passation` built from scratch: pretending the rest
  * is real would hide which parts are actually wired.
@@ -206,11 +207,11 @@ export function PassationBoard() {
 
   // The real counts of what was read, in place of the fixture's. "mail" and
   // "doc" are the two values `item_views.py` emits in `type`.
-  const mails = items.filter((item) => item.type === "mail").length;
-  const documents = items.length - mails;
+  const mailCount = items.filter((item) => item.type === "mail").length;
+  const documentCount = items.length - mailCount;
   const sourceTags: SourceTag[] = [];
-  if (mails) sourceTags.push({ kind: "email", count: mails });
-  if (documents) sourceTags.push({ kind: "drive", count: documents });
+  if (mailCount) sourceTags.push({ kind: "email", count: mailCount });
+  if (documentCount) sourceTags.push({ kind: "drive", count: documentCount });
 
   // A stable id per position: the backend stores an ordered list, with no ids
   // of its own, and the card needs one to edit or remove a line.
@@ -232,11 +233,19 @@ export function PassationBoard() {
       : contactsFromItems(items, user?.email)
   ).map((contact, index) => ({ id: `contact-${index}`, ...contact }));
 
+  const documents = rankDocuments(
+    handover,
+    items,
+    user?.full_name || user?.email || "moi"
+  );
+
   const passation: Passation = {
     ...demoPassation,
     attentionPoints,
     contacts,
     contactsTotal: contacts.length,
+    documents,
+    documentsTotal: documents.length,
     title: `Passation — ${user?.full_name || user?.email || "moi"}`,
     lastUpdated: handover ? frenchDateTime(handover.updatedAt) : "—",
     completude: completeness(handover),
