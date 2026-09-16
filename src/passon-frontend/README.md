@@ -97,3 +97,59 @@ L'application n'est joignable avec sa session que par **http://localhost:8091**,
 où nginx sert la page d'accueil, relaie `/login` et `/dashboard` vers ce serveur
 Next, et `/api/` vers Django — une seule origine, condition du cookie de session
 et de la vérification CSRF.
+
+## Le résumé
+
+Le tableau de bord affiche le résumé de la personne connectée, composé à partir
+de ses documents (Drive) et de ses mails (Messages). **Le code de génération
+n'a pas été modifié** : trois routes existantes suffisent.
+
+```
+GET   /api/collaborators/<id>/items/     ses documents et ses mails
+GET   /api/dossier/                      une passe du modèle sur ces éléments
+PATCH /api/collaborators/<id>/handover/  enregistre la fiche
+```
+
+`/api/dossier/` ne fait que générer : il ne stocke rien. La génération est donc
+suivie d'un PATCH, sans quoi le résumé disparaîtrait au rechargement — le même
+découpage que dans l'ancien frontend.
+
+| Fichier | Rôle |
+| --- | --- |
+| `lib/handover.ts` | les appels et les messages d'erreur |
+| `components/passation/ResumeBoard.tsx` | charge, génère, enregistre |
+| `components/passation/ResumeSection.tsx` | l'affichage et l'édition du résumé |
+
+Ce qu'il faut savoir :
+
+- **Ce qui est branché, et ce qui ne l'est pas.** `ResumeBoard` part du jeu de
+  démonstration et n'y remplace que ce qui est réel : le titre (le nom de la
+  personne connectée), la date de dernière mise à jour, la complétude, le résumé
+  et le décompte des sources. Les points de blocage, les documents prioritaires
+  et les contacts clés viennent toujours de `mock-data.ts`. Construire une
+  passation entière donnerait l'illusion que le reste est réel.
+- **La complétude se mesure sur la fiche enregistrée**, pas sur ce que la page
+  affiche : la part des six rubriques revenues non vides. Une passe complète
+  donne donc 100 %, même si seul le résumé est montré.
+- **Un résumé vide se génère tout seul, une fois.** Arriver sur une fiche vide
+  ne mérite pas un clic : la génération part d'elle-même. Elle ne doit en
+  revanche jamais devenir une boucle — la chaîne lit le contenu de chaque
+  document et de chaque mail avant d'appeler le modèle, et l'offre gratuite
+  n'autorise qu'une génération par minute environ, si bien qu'un échec qui
+  relance au rendu suivant épuiserait le quota en quelques secondes. D'où
+  `autoAttempted` : une seule tentative automatique par personne et par
+  chargement de page, qu'elle réussisse ou non ; ensuite, seul le bouton
+  génère. Il dit « Générer le résumé » tant qu'il n'y en a pas, « Régénérer le
+  résumé » ensuite.
+- **Vider le résumé relance donc une génération** au chargement suivant, et
+  immédiatement si la fiche n'était pas vide à l'arrivée. Pour écrire son propre
+  texte, mieux vaut remplacer le contenu que le vider.
+- **Les étiquettes de sources sont réelles.** `Email (n)` et `Drive (n)` sous le
+  résumé comptent les éléments effectivement lus, et non plus ceux du jeu de
+  démonstration.
+- **Une modification à la main est enregistrée** à la fermeture de l'éditeur
+  (le bouton ✓ de la rubrique), pas à chaque frappe, ce qui ferait un PATCH par
+  caractère.
+- **Toute la fiche générée est enregistrée**, pas seulement le texte : une
+  génération coûte un créneau d'un quota limité, et les rubriques non affichées
+  attendent simplement l'étape qui les branchera.

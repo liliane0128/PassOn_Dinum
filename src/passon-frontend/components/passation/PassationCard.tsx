@@ -23,8 +23,13 @@ const MESSAGES_COMPOSE_URL: string | null = null;
 
 export function PassationCard({
   passation: initialPassation,
+  onResumeCommit,
+  resumeGenerating = false,
 }: {
   passation: Passation;
+  /** Set when the résumé is backed by the API; absent for the demo fixture. */
+  onResumeCommit?: (resume: string) => void;
+  resumeGenerating?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Aperçu");
   const [passation, setPassation] = useState<Passation>(initialPassation);
@@ -209,7 +214,12 @@ export function PassationCard({
       {activeTab === "Aperçu" && (
         <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
           <div className="flex flex-col gap-5">
-            <ResumeSection passation={passation} onResumeChange={updateResume} />
+            <ResumeSection
+              passation={passation}
+              onResumeChange={updateResume}
+              onResumeCommit={onResumeCommit}
+              generating={resumeGenerating}
+            />
             <PointsAttentionSection
               passation={passation}
               onAdd={addAttentionPoint}
