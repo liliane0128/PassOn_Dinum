@@ -1,0 +1,317 @@
+{
+  "text": "Vous devez finaliser le diagnostic d'accessibilité PMR, valider le chiffrage avec le cabinet Ramos, notifier la décision de permis de construire Rateau avant le 5 octobre et confirmer le début des travaux de voirie Tilleuls avant la fin septembre. En parallèle, vous devez gérer les rappels de badge et la panne de la machine à café. Les décisions prises incluent la signature de la convention CAUE et la mise à disposition du plan prévisionnel PMR.",
+  "actions": [
+    {
+      "label": "Obtenir le diagnostic complet d'AccessDiag pour finaliser le chiffrage PMR",
+      "evidence": [
+        {
+          "id": "messages:mail-002",
+          "title": "RE: Demande de diagnostic accessibilite - mairie",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-002/",
+          "author": "Bruno Chalvin",
+          "date": "2026-08-28T09:15:00Z",
+          "content": "Bonjour Madame Faure, nous prenons du retard sur le diagnostic accessibilite, le rapport complet est repousse a fin septembre. Desole pour le contretemps. Cordialement, Bruno Chalvin"
+        }
+      ]
+    },
+    {
+      "label": "Notifier la décision d'instruction au dossier de permis de construire Rateau",
+      "evidence": [
+        {
+          "id": "docs:doc-004",
+          "title": "Note de passation - dossier PC Rateau",
+          "url": "http://localhost:8071/api/v1.0/documents/doc-004/",
+          "author": "Camille Faure",
+          "date": "2026-09-15T14:30:00Z",
+          "content": "Note a l'attention de mon successeur. Permis de construire famille Rateau : instruction en cours, aucun motif de refus identifie (le signalement d'un voisin sur l'implantation a ete verifie et ecarte). Il reste a notifier la decision avant l'expiration du delai legal de 2 mois, soit avant le 5 octobre."
+        },
+        {
+          "id": "messages:mail-010",
+          "title": "Point d'etape - instruction permis de construire",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-010/",
+          "author": "Camille Faure",
+          "date": "2026-09-10T16:00:00Z",
+          "content": "Bonjour, votre dossier est en cours d'instruction. La decision doit vous etre notifiee avant le 5 octobre (delai legal de 2 mois). Je vous tiens informes. Cordialement, Camille Faure"
+        }
+      ]
+    },
+    {
+      "label": "Confirmer la date de démarrage des travaux de voirie Tilleuls avant fin septembre",
+      "evidence": [
+        {
+          "id": "messages:mail-012",
+          "title": "Confirmation date de demarrage - voirie Tilleuls",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-012/",
+          "author": "Camille Faure",
+          "date": "2026-09-05T10:30:00Z",
+          "content": "Bonjour, pouvez-vous nous confirmer une date de demarrage des travaux rue des Tilleuls ? Cordialement, Camille Faure"
+        },
+        {
+          "id": "messages:mail-013",
+          "title": "RE: Confirmation date de demarrage - voirie Tilleuls",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-013/",
+          "author": "Entreprise Balthazar TP",
+          "date": "2026-09-13T09:00:00Z",
+          "content": "Bonjour, nous prevoyons de demarrer debut novembre, sous reserve de confirmation finale de votre part d'ici fin septembre. Cordialement, Entreprise Balthazar TP"
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "label": "Convention de partenariat avec le CAUE signée",
+      "evidence": [
+        {
+          "id": "drive:drive-006",
+          "title": "Convention CAUE - version signee.pdf",
+          "url": "http://host.docker.internal:8072/api/v1.0/items/drive-006/",
+          "author": "Camille Faure",
+          "date": "2026-08-20T10:00:00Z",
+          "content": "Convention de partenariat avec le CAUE, signee par les deux parties. Dossier clos."
+        },
+        {
+          "id": "messages:mail-015",
+          "title": "Convention CAUE - version signee",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-015/",
+          "author": "Camille Faure",
+          "date": "2026-08-18T10:00:00Z",
+          "content": "Bonjour, la convention de partenariat a ete validee en conseil municipal, je vous transmets la version signee en piece jointe. Cordialement, Camille Faure"
+        },
+        {
+          "id": "messages:mail-016",
+          "title": "RE: Convention CAUE - version signee",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-016/",
+          "author": "Isabelle Norat",
+          "date": "2026-08-20T15:00:00Z",
+          "content": "Bien recu, merci, la convention est donc effective. Nous restons a votre disposition pour tout accompagnement futur. Dossier clos de notre cote. Cordialement, Isabelle Norat"
+        }
+      ]
+    },
+    {
+      "label": "Plan prévisionnel PMR du cabinet Ramos disponible",
+      "evidence": [
+        {
+          "id": "drive:drive-002",
+          "title": "Plan previsionnel travaux PMR - mairie.pdf",
+          "url": "http://host.docker.internal:8072/api/v1.0/items/drive-002/",
+          "author": "Camille Faure",
+          "date": "2026-07-10T09:00:00Z",
+          "content": "Plan previsionnel des travaux d'accessibilite PMR, etabli par le Cabinet Ramos Architecture."
+        }
+      ]
+    }
+  ],
+  "deadlines": [
+    {
+      "label": "Notifier la décision de permis de construire Rateau avant le 5 octobre",
+      "date": "2026-10-05",
+      "evidence": [
+        {
+          "id": "docs:doc-004",
+          "title": "Note de passation - dossier PC Rateau",
+          "url": "http://localhost:8071/api/v1.0/documents/doc-004/",
+          "author": "Camille Faure",
+          "date": "2026-09-15T14:30:00Z",
+          "content": "Note a l'attention de mon successeur. Permis de construire famille Rateau : instruction en cours, aucun motif de refus identifie (le signalement d'un voisin sur l'implantation a ete verifie et ecarte). Il reste a notifier la decision avant l'expiration du delai legal de 2 mois, soit avant le 5 octobre."
+        },
+        {
+          "id": "messages:mail-010",
+          "title": "Point d'etape - instruction permis de construire",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-010/",
+          "author": "Camille Faure",
+          "date": "2026-09-10T16:00:00Z",
+          "content": "Bonjour, votre dossier est en cours d'instruction. La decision doit vous etre notifiee avant le 5 octobre (delai legal de 2 mois). Je vous tiens informes. Cordialement, Camille Faure"
+        }
+      ]
+    },
+    {
+      "label": "Déposer le dossier Ad'AP avant le 15 octobre pour éviter pénalité",
+      "date": "2026-10-15",
+      "evidence": [
+        {
+          "id": "messages:mail-004",
+          "title": "RE: Delai supplementaire - depot dossier Ad'AP",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-004/",
+          "author": "Helene Mercier",
+          "date": "2026-09-12T11:00:00Z",
+          "content": "Bonjour Madame Faure, bien recu, je transmets votre demande au service concerne, mais je ne peux pas garantir que le delai sera accorde. Le dossier doit etre depose avant le 15 octobre dans tous les cas si vous voulez eviter la penalite. Cordialement, Helene Mercier, DDT"
+        },
+        {
+          "id": "messages:mail-003",
+          "title": "Delai supplementaire - depot dossier Ad'AP",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-003/",
+          "author": "Camille Faure",
+          "date": "2026-09-10T09:00:00Z",
+          "content": "Bonjour Madame Mercier, je me permets de vous relancer sur la possibilite d'un delai supplementaire pour le depot du dossier Ad'AP : le diagnostic accessibilite a pris du retard de notre cote. Cordialement, Camille Faure"
+        }
+      ]
+    },
+    {
+      "label": "Renouveler les badges d'accès avant le 30 septembre",
+      "date": "2026-09-30",
+      "evidence": [
+        {
+          "id": "messages:mail-021",
+          "title": "Renouvellement badge d'acces - rappel",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-021/",
+          "author": "Service securite",
+          "date": "2026-09-08T09:00:00Z",
+          "content": "Bonjour, les badges d'acces arrivant a expiration doivent etre renouveles avant le 30 septembre aupres du service securite. Merci de votre vigilance."
+        }
+      ]
+    },
+    {
+      "label": "Intervention de la machine à café prévue cette semaine (septembre 2026)",
+      "date": "2026-09-05",
+      "evidence": [
+        {
+          "id": "messages:mail-020",
+          "title": "Machine a cafe en panne",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-020/",
+          "author": "Service technique",
+          "date": "2026-09-05T08:45:00Z",
+          "content": "Bonjour, la machine a cafe du rez-de-chaussee est en panne, une intervention est prevue cette semaine. Merci de votre patience. Le service technique"
+        }
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "label": "Diagnostic d'accessibilité PMR toujours incomplet, retard du rapport complet",
+      "evidence": [
+        {
+          "id": "drive:drive-003",
+          "title": "Diagnostic accessibilite - rapport intermediaire.pdf",
+          "url": "http://host.docker.internal:8072/api/v1.0/items/drive-003/",
+          "author": "Bruno Chalvin",
+          "date": "2026-09-01T15:00:00Z",
+          "content": "Version intermediaire du diagnostic accessibilite realise par AccessDiag. Rapport complet a venir, encore incomplet a ce stade."
+        },
+        {
+          "id": "messages:mail-002",
+          "title": "RE: Demande de diagnostic accessibilite - mairie",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-002/",
+          "author": "Bruno Chalvin",
+          "date": "2026-08-28T09:15:00Z",
+          "content": "Bonjour Madame Faure, nous prenons du retard sur le diagnostic accessibilite, le rapport complet est repousse a fin septembre. Desole pour le contretemps. Cordialement, Bruno Chalvin"
+        },
+        {
+          "id": "messages:mail-006",
+          "title": "Point d'etape PMR avant mon depart",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-006/",
+          "author": "Camille Faure",
+          "date": "2026-09-16T17:00:00Z",
+          "content": "Bonjour Nathalie, point d'etape sur le dossier accessibilite PMR : le diagnostic n'est toujours pas arrive, j'ai relance la DDT pour un eventuel delai, mais le dossier doit etre depose avant le 15/10 sinon penalite. Je pars le 3/10, il faut absolument suivre ca de pres. Camille"
+        }
+      ]
+    },
+    {
+      "label": "Délai de 2 mois pour la décision de permis de construire Rateau, échéance rapprochée",
+      "evidence": [
+        {
+          "id": "docs:doc-004",
+          "title": "Note de passation - dossier PC Rateau",
+          "url": "http://localhost:8071/api/v1.0/documents/doc-004/",
+          "author": "Camille Faure",
+          "date": "2026-09-15T14:30:00Z",
+          "content": "Note a l'attention de mon successeur. Permis de construire famille Rateau : instruction en cours, aucun motif de refus identifie (le signalement d'un voisin sur l'implantation a ete verifie et ecarte). Il reste a notifier la decision avant l'expiration du delai legal de 2 mois, soit avant le 5 octobre."
+        },
+        {
+          "id": "messages:mail-010",
+          "title": "Point d'etape - instruction permis de construire",
+          "url": "http://localhost:8901/api/v1.0/messages/mail-010/",
+          "author": "Camille Faure",
+          "date": "2026-09-10T16:00:00Z",
+          "content": "Bonjour, votre dossier est en cours d'instruction. La decision doit vous etre notifiee avant le 5 octobre (delai legal de 2 mois). Je vous tiens informes. Cordialement, Camille Faure"
+        }
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "id": "docs:doc-002",
+      "title": "Note de passation - dossier accessibilite PMR",
+      "url": "http://localhost:8071/api/v1.0/documents/doc-002/"
+    },
+    {
+      "id": "docs:doc-004",
+      "title": "Note de passation - dossier PC Rateau",
+      "url": "http://localhost:8071/api/v1.0/documents/doc-004/"
+    },
+    {
+      "id": "drive:drive-001",
+      "title": "Devis travaux accessibilite - Cabinet Ramos Architecture.pdf",
+      "url": "http://host.docker.internal:8072/api/v1.0/items/drive-001/"
+    },
+    {
+      "id": "drive:drive-002",
+      "title": "Plan previsionnel travaux PMR - mairie.pdf",
+      "url": "http://host.docker.internal:8072/api/v1.0/items/drive-002/"
+    },
+    {
+      "id": "drive:drive-003",
+      "title": "Diagnostic accessibilite - rapport intermediaire.pdf",
+      "url": "http://host.docker.internal:8072/api/v1.0/items/drive-003/"
+    },
+    {
+      "id": "drive:drive-004",
+      "title": "Plan de masse - extension Rateau.pdf",
+      "url": "http://host.docker.internal:8072/api/v1.0/items/drive-004/"
+    },
+    {
+      "id": "drive:drive-005",
+      "title": "Devis Entreprise Balthazar TP - voirie Tilleuls.pdf",
+      "url": "http://host.docker.internal:8072/api/v1.0/items/drive-005/"
+    },
+    {
+      "id": "drive:drive-006",
+      "title": "Convention CAUE - version signee.pdf",
+      "url": "http://host.docker.internal:8072/api/v1.0/items/drive-006/"
+    },
+    {
+      "id": "messages:mail-015",
+      "title": "Convention CAUE - version signee",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-015/"
+    },
+    {
+      "id": "messages:mail-016",
+      "title": "RE: Convention CAUE - version signee",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-016/"
+    },
+    {
+      "id": "messages:mail-010",
+      "title": "Point d'etape - instruction permis de construire",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-010/"
+    },
+    {
+      "id": "messages:mail-003",
+      "title": "Delai supplementaire - depot dossier Ad'AP",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-003/"
+    },
+    {
+      "id": "messages:mail-004",
+      "title": "RE: Delai supplementaire - depot dossier Ad'AP",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-004/"
+    },
+    {
+      "id": "messages:mail-021",
+      "title": "Renouvellement badge d'acces - rappel",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-021/"
+    },
+    {
+      "id": "messages:mail-020",
+      "title": "Machine a cafe en panne",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-020/"
+    },
+    {
+      "id": "messages:mail-012",
+      "title": "Confirmation date de demarrage - voirie Tilleuls",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-012/"
+    },
+    {
+      "id": "messages:mail-013",
+      "title": "RE: Confirmation date de demarrage - voirie Tilleuls",
+      "url": "http://localhost:8901/api/v1.0/messages/mail-013/"
+    }
+  ]
+}

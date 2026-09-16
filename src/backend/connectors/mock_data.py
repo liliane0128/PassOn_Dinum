@@ -6,14 +6,12 @@ needs: title/subject, who created it, and when.
 
 Set DINUM_MOCK_DATASET (in .env) to serve synthetic_data/workspace/*.json
 instead of the small fixture below:
-- "synthetic_handover" -- all 60 items, six projects. Good for anything that
-  doesn't call the LLM (/api/extraction/items/, the raw per-service item
-  lists): those just normalize the data. /api/dossier/ on this one 502s
-  ("llm_error", 413) on a free Groq tier -- 60 items' worth of prompt
-  exceeds its 8000 TPM limit even with generation.py's per-item content cap.
-- "synthetic_handover_catnat" -- only the "catastrophe naturelle" project (17
-  items), small enough that /api/dossier/ actually completes. Use this one to
-  see a real generated dossier in the browser.
+- "synthetic_handover" -- all 34 items, four projects (Camille Faure,
+  mairie de Sainte-Radegonde). /api/dossier/ completes fine on a free Groq
+  tier with this dataset's size.
+- "synthetic_handover_pmr" -- only the "accessibilite-pmr" project (the
+  urgent/collective one, 11 items), for a quick spot check on a single
+  project instead of the full dataset.
 See synthetic_data/README.md for what's in the dataset and why. Falls back
 to this file's fixture if the dataset/mapping can't be read (e.g. deleted),
 so a bad env value degrades instead of crashing the server.
@@ -124,7 +122,7 @@ MOCK_DRIVE_ITEMS = [
 
 _DATASET = os.getenv("DINUM_MOCK_DATASET")
 
-if _DATASET in ("synthetic_handover", "synthetic_handover_catnat"):
+if _DATASET in ("synthetic_handover", "synthetic_handover_pmr"):
     _synthetic_dir = Path(__file__).resolve().parent.parent / "synthetic_data"
     try:
         with open(_synthetic_dir / "workspace" / "docs.json", encoding="utf-8") as _f:
@@ -134,10 +132,10 @@ if _DATASET in ("synthetic_handover", "synthetic_handover_catnat"):
         with open(_synthetic_dir / "workspace" / "messages.json", encoding="utf-8") as _f:
             MOCK_MESSAGES = json.load(_f)
 
-        if _DATASET == "synthetic_handover_catnat":
+        if _DATASET == "synthetic_handover_pmr":
             with open(_synthetic_dir / "evaluation" / "expected_projects.json", encoding="utf-8") as _f:
                 _project_of = json.load(_f)
-            _keep = {item_id for item_id, project in _project_of.items() if project == "catnat-inondations"}
+            _keep = {item_id for item_id, project in _project_of.items() if project == "accessibilite-pmr"}
             MOCK_DOCS = [item for item in MOCK_DOCS if item["id"] in _keep]
             MOCK_DRIVE_ITEMS = [item for item in MOCK_DRIVE_ITEMS if item["id"] in _keep]
             MOCK_MESSAGES = [item for item in MOCK_MESSAGES if item["id"] in _keep]
