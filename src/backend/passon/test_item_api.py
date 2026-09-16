@@ -6,11 +6,9 @@ collaborator was themselves connected. These tests pin down that arrangement,
 including the part that matters most: never passing stale data off as live.
 """
 
-import json
 from unittest import mock
 
 from django.test import Client, TestCase
-from django.utils import timezone
 
 from accounts.session import USER_KEY
 

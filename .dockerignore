@@ -1,5 +1,7 @@
-# Build context for src/server/Dockerfile is the repository root, so keep the
-# heavy and the secret out of it.
+
+# Build context for src/server/Dockerfile is the repository root,
+# so keep the heavy and the secret out of it.
+
 .git
 .venv
 node_modules

@@ -1,3 +1,4 @@
+
 node_modules
 node_modules/
 dist
@@ -11,6 +12,6 @@ __pycache__/
 db.sqlite3
 .env
 
-# Données du conteneur postgres (src/backend/docker-compose.yml).
 database
 .hidden
+.ruff_cache

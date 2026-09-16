@@ -1,12 +1,9 @@
-import json
+import json, requests
 from unittest import mock
 from unittest.mock import patch
 
 from accounts.session import CREDENTIAL_KEYS
-from django.test import Client, TestCase, override_settings
-import requests
-from django.test import SimpleTestCase, override_settings
-
+from django.test import Client, TestCase, SimpleTestCase, override_settings
 
 def upstream(data, status=200):
     response = requests.Response()
