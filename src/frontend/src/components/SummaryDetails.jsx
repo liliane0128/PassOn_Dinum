@@ -466,16 +466,23 @@ export function SummaryDetails({ collaboratorId }) {
   }
 
   function editInList(field, id, changes) {
+    const list = summary[field] ?? [];
+    const at = list.findIndex((x) => x.id === id);
+    if (at === -1) return;
     updateSummary(collaboratorId, {
-      [field]: (summary[field] ?? []).map((x) =>
-        x.id === id ? { ...x, ...changes } : x,
-      ),
+      [field]: list.map((x, i) => (i === at ? { ...x, ...changes } : x)),
     });
   }
 
+  // Par position, une seule à la fois : filtrer sur l'identifiant supprimait
+  // toute la section dès que deux puces le partageaient -- ou, pire, quand
+  // aucune n'en avait.
   function removeFromList(field, id) {
+    const list = summary[field] ?? [];
+    const at = list.findIndex((x) => x.id === id);
+    if (at === -1) return;
     updateSummary(collaboratorId, {
-      [field]: (summary[field] ?? []).filter((x) => x.id !== id),
+      [field]: list.filter((_, i) => i !== at),
     });
   }
 

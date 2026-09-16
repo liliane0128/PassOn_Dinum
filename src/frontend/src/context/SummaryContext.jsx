@@ -16,6 +16,26 @@ const EMPTY_SUMMARY = {
   documents: [],
 };
 
+// Les listes d'une passation sont identifiées par `id` : c'est ainsi qu'une
+// puce est retrouvée pour être modifiée ou supprimée. Rien ne garantit que ce
+// qui arrive en ait un — le résumé généré en attribue, mais une passation
+// écrite autrement, ou une version antérieure, peut ne pas en avoir. Sans id,
+// toutes les puces d'une section se ressemblent, et supprimer l'une revenait à
+// les supprimer toutes.
+const LISTS = ["actions", "decisions", "deadlines", "blockers", "documents"];
+
+function withIds(summary) {
+  const fixed = { ...summary };
+  for (const field of LISTS) {
+    fixed[field] = (summary[field] ?? []).map((item) =>
+      typeof item === "string"
+        ? { id: crypto.randomUUID(), label: item }
+        : { ...item, id: item.id ?? crypto.randomUUID() },
+    );
+  }
+  return fixed;
+}
+
 // Les passations sont stockées côté serveur (`passon.Handover`) : ce que
 // l'employé écrit et valide, son manager le voit. Ce contexte n'en garde
 // qu'un cache local, chargé à la demande pour chaque collaborateur affiché.
@@ -37,7 +57,10 @@ export function SummaryProvider({ children }) {
   }, [currentUser?.id]);
 
   function store(collaboratorId, data) {
-    setSummaries((prev) => ({ ...prev, [collaboratorId]: { ...EMPTY_SUMMARY, ...data } }));
+    setSummaries((prev) => ({
+      ...prev,
+      [collaboratorId]: withIds({ ...EMPTY_SUMMARY, ...data }),
+    }));
   }
 
   // `requested` marque une passation comme *demandée*, pas comme obtenue : un
