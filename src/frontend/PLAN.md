@@ -36,26 +36,26 @@ Interface interne d'entreprise permettant, quand un collaborateur est absent ou 
 ### Fonctionnel
 - [ ] **Vraie table de relations hiérarchiques** (N-1/N+1) côté base de données, pour remplacer le champ `managerId` mocké — tu as indiqué que ça se précisera plus tard.
 - [x] **Vraie authentification** (2026-09-15) : la connexion se fait avec les identifiants **Drive**, vérifiés par l'instance Drive locale via son flux OIDC/Keycloak (`POST /api/auth/login/`). Plus aucun mot de passe dans le code, et la session survit au rechargement de la page (cookie de session serveur). Voir `src/backend/accounts/README.md`.
-- [ ] **Rôle et hiérarchie côté backend** : Drive ne connaît ni `accountRole` ni `managerId`. En attendant, `toAppUser()` (dans `AuthContext.jsx`) relie le compte Drive au collaborateur mocké de même email pour retrouver son rôle ; un compte Drive sans équivalent mocké ouvre l'espace employé avec un contenu vide. C'est la dernière dépendance de la connexion aux données mockées.
-- [ ] **Résumé IA réel** : remplacer `mockSummaries.js` par un vrai appel à un modèle IA à partir des mails/documents.
+- [x] **Rôle et hiérarchie côté backend** (2026-09-16) : table `passon.Collaborator` (rôle, manager en auto-référence). La connexion crée ou retrouve la fiche et renvoie `accountRole`, le manager et l'équipe ; `manage.py set_role <email> manager` nomme un manager, puisque rien dans l'interface ne le permet. Voir `src/backend/passon/README.md`.
+- [x] **Résumé IA réel** (2026-09-16) : `mockSummaries.js` supprimé ; le résumé est généré par `/api/dossier/` et enregistré en base (`passon.Handover`), donc partagé entre l'employé et son manager et conservé au rechargement.
 - [ ] Décider si l'employé peut voir le statut "vu par le manager" ou une trace des modifications du manager sur son résumé (actuellement le manager peut modifier sans que l'employé soit notifié).
-- [ ] **Envoi réel par mail** : le partage de résumé depuis l'espace manager est aujourd'hui simulé (juste gardé en mémoire, perdu au rafraîchissement) — à brancher sur un vrai envoi de mail quand le backend sera là.
+- [x] **Envoi réel par mail** (2026-09-16) : `POST /api/collaborators/<id>/handover/send/` envoie la passation via Messages, depuis l'adresse du manager. Les destinataires se cherchent dans l'annuaire et se retirent un par un ; une passation vide est refusée plutôt qu'envoyée blanche.
 - [ ] Étendre le rôle manager pour gérer plusieurs niveaux de hiérarchie (un manager de managers) si besoin.
 
 ### Données réelles
 - [x] **Documents réels** (2026-09-16) : les fichiers Drive de l'utilisateur connecté, via `GET /api/extraction/items/`.
 - [x] **Mails réels** (2026-09-16) : ceux de Messages, dès lors que le compte existe aussi dans son Keycloak (voir `src/backend/accounts/README.md`).
 - [x] **Résumé IA sur données réelles** : `/api/dossier/` génère le résumé à partir de ces éléments, avec un lien cliquable par document.
-- [ ] **Données des autres collaborateurs** : la vue manager reste mockée, faute de session pour les comptes des autres. À traiter côté backend (compte de service, délégation, ou consentement).
-- [ ] Remplacer le reste de `src/data/mockData.js` (résumés, hiérarchie) par des appels API.
+- [x] **Données des autres collaborateurs** (2026-09-16) : Drive ne répond que pour la session qu'on lui présente, donc les éléments d'une personne sont relevés **à sa propre connexion** et son manager lit cette photo, datée à l'écran (`passon.CollaboratorItem`). Reste ouvert : la régénération d'un résumé par le manager, qui s'appuierait sur cette même photo.
+- [ ] Dernier reste de `src/data/mockData.js` : la liste de collaborateurs qui alimente le sélecteur « contacts clés » du résumé (`SummaryDetails.jsx`).
 
 ### Technique / qualité
-- [ ] Tests (actuellement aucun test automatisé).
+- [ ] **Tests côté frontend** : il n'y en a aucun, et c'est de là que viennent la plupart des bugs rencontrés (boucle de requêtes, suppression d'une section entière, éditeur resté vide). Le backend, lui, en a 116. `.oxlintrc.json` rattrape déjà la classe d'erreurs qui vidait la page.
 - [ ] Gestion des erreurs réseau une fois les vraies API branchées.
 - [ ] Accessibilité : reste à vérifier la navigation clavier complète sur les listes dépliables (les `<textarea>` de résumé ont désormais un `aria-labelledby`, fait le 2026-09-15).
 - [ ] Page non adaptée aux petits écrans (mobile/tablette) — mise en page en colonnes fixes sans media queries, à traiter consciemment plus tard si besoin.
 - [ ] Découpage du bundle si le projet grossit encore (actuellement ~373 Ko JS / ~1,6 Mo CSS avant compression).
-- [ ] Session persistée (le rafraîchissement de page déconnecte actuellement l'utilisateur, puisque `currentUser` ne vit qu'en mémoire React).
+- [x] Session persistée (2026-09-15) : cookie de session serveur, restauré au démarrage via `GET /api/auth/me/`.
 
 ## Décisions prises en cours de route
 

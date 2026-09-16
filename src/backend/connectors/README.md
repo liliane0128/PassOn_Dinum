@@ -212,13 +212,16 @@ something to point at a large account without pagination.
 `extraction.normalize_items()` (unified `id/title/author/date/content/source`
 shape, `source` being `{type, resource_id, resource_url, content_url}`),
 sends them to Groq (`generation.py`, `groq` SDK, model `GROQ_MODEL`, default
-`openai/gpt-oss-20b`), and returns the result as a downloadable Markdown file
-(`Content-Disposition: attachment; filename="handover_dossier.md"`).
+`openai/gpt-oss-20b`), and returns the summary as **JSON** -- the shape the
+interface stores as a handover (`text` plus the six sections).
 
 The prompt asks the model to sort items into six sections -- ongoing actions,
-key decisions, deadlines, blockers, key contacts, important documents -- each
-bullet ending in a Markdown link built from that item's `source.resource_url`
-field, so every point in the file is clickable back to its source.
+key decisions, deadlines, blockers, key contacts, important documents. Each
+bullet carries an `evidence` array, and `documents` entries a title and a link:
+both are filled in here from the trusted input items, never from what the model
+wrote, so an invented id is dropped rather than shown. That is what lets the
+interface open a bullet and show the text it came from -- a `resource_url` is
+often a REST endpoint rather than a page a browser can display.
 
 Uses whichever services the caller has a credential for and skips the others,
 the same rule `/api/extraction/items/` follows; at least one is required,

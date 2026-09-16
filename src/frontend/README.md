@@ -38,9 +38,17 @@ l'interface, utilise `npm run dev`. Voir
 | `npm run preview` | sert le contenu de `dist/` pour vérifier une compilation |
 | `npm run lint` | analyse le code avec [Oxlint](https://oxc.rs) |
 
-Oxlint tourne sans fichier de configuration : il applique ses règles par
-défaut. Pour les ajuster, ajouter un `.oxlintrc.json` à la racine de ce dossier
-(voir la [documentation des règles](https://oxc.rs/docs/guide/usage/linter/rules)).
+Les règles sont dans `.oxlintrc.json`. Aux règles par défaut s'ajoutent
+`no-use-before-define` (une constante lue avant sa déclaration lève une
+`ReferenceError` au rendu : l'écran devient blanc, sans message),
+`react/rules-of-hooks` et `no-unused-vars`. Voir la
+[documentation des règles](https://oxc.rs/docs/guide/usage/linter/rules).
+
+`oxlint` n'est pas toujours installé localement ; à défaut :
+
+```bash
+docker run --rm -v "$PWD":/work -w /work node:22-alpine npx oxlint@1.81.0 src
+```
 
 ## Où lire la suite
 

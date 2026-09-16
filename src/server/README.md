@@ -79,8 +79,8 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
   repository root and a single named volume, so `make up` and `make run` are
   two service selections over the same database rather than two stacks with
   rival copies of the data.
-- **Only the database credentials are set in `environment:` for `web`** — `settings.py`
-  — everything else stays in `src/backend/.env`, which `settings.py` loads
+- **Only the database credentials are set in `environment:` for `web`** —
+  everything else stays in `src/backend/.env`, which `settings.py` loads
   through the bind mount. Compose-level variables take priority over that file
   and would silently blank out anything it defines (`GROQ_API_KEY:
   ${GROQ_API_KEY:-}` being the obvious trap); the `POSTGRES_*` keys are safe

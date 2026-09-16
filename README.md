@@ -103,11 +103,29 @@ Pass'on reads real data from **Docs**, **Drive** and **Messages**. Each is an in
 
 ### Upstream ports
 
+These are each project's own defaults, as published by their compose files:
+
 | Service | API | Frontend | Keycloak |
 |---------|-----|----------|----------|
-| Docs | http://localhost:8071 | http://localhost:3000 | localhost:8083 |
-| Drive | http://localhost:8072 | http://localhost:3000 | localhost:8084 |
+| Drive | http://localhost:8071 | http://localhost:3000 | localhost:8083 (8080 direct) |
 | Messages | http://localhost:8901 | http://localhost:8900 | localhost:8902 |
+| Docs | http://localhost:8071 | http://localhost:3000 | — |
+
+> [!WARNING]
+> **Docs and Drive both default to 8071**, and both serve a frontend on 3000.
+> Running the two together means moving one of them and setting `DOCS_URL` or
+> `DRIVE_URL` accordingly — otherwise calls meant for one land on the other.
+> Only Drive and Messages are needed for login and for generating a handover.
+
+> [!NOTE]
+> Drive's Keycloak occupies **8080**, which is why Pass'on serves on 8090.
+
+> [!TIP]
+> **[docs/deploiement.md](docs/deploiement.md)** covers this end to end: start-up
+> order, creating an account that works in both Keycloaks (Messages disables
+> registration and refuses to create a user whose email domain is not
+> "autojoin"), and a table mapping each failure message to its cause. Most of it
+> is not guessable.
 
 ### Start each service
 
@@ -157,12 +175,22 @@ One Postgres instance, shared by both stacks (`make up` and `make run`).
 To seed demo data in Drive and Messages:
 
 ```bash
-python manage.py seed_demo --email ... --password ...
+docker compose exec web python manage.py seed_demo --email ... --password ...
 ```
+
+It uploads five documents to that person's Drive and delivers six mails to their
+mailbox, written so every section of the generated handover has something to
+find. See [demo_data](src/backend/passon/demo_data/README.md).
 
 ## Contributing 🙌
 
-PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) if it exists, or open an issue.
+PRs are welcome — open an issue to discuss anything substantial first.
+
+Per-area documentation: [connectors](src/backend/connectors/README.md) (the
+upstream clients and the LLM pipeline), [accounts](src/backend/accounts/README.md)
+(login), [schema](src/backend/passon/README.md) (collaborators and handovers),
+[server](src/server/README.md) (nginx and the single-origin setup),
+[frontend](src/frontend/DOCUMENTATION.md).
 
 ## License 📝
 

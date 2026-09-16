@@ -81,8 +81,10 @@ DRIVE_URL=http://host.docker.internal:8071
 MESSAGES_URL=http://host.docker.internal:8901
 MESSAGES_SESSION_COOKIE=st_messages_sessionid
 DINUM_USE_MOCK=false          # true = données de démo, aucun service requis
+DINUM_MOCK_DATASET=           # en mode mock : vide = petit jeu intégré,
+                              # "synthetic_handover_catnat" = projet complet
 GROQ_API_KEY=...              # clé gratuite : https://console.groq.com/keys
-GROQ_MODEL=openai/gpt-oss-120b
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
 Trois choses à savoir :
@@ -90,9 +92,14 @@ Trois choses à savoir :
 - **`host.docker.internal`, pas `localhost`.** Django tourne dans un conteneur,
   où `localhost` désigne le conteneur lui-même. Pour un Django lancé
   directement sur la machine, mettre `localhost`.
-- **`GROQ_MODEL` doit être `openai/gpt-oss-120b`.** Le modèle `20b`, encore
-  proposé par défaut dans `.env.example`, ne sait pas produire le JSON attendu
-  dès que les documents ont du contenu : il échoue systématiquement.
+- **`GROQ_MODEL` : `20b` suffit sur de petits volumes, `120b` tient mieux la
+  charge.** Le plafond gratuit de Groq est de 8 000 jetons par minute, requête
+  *et* réponse comprises : une demande trop grosse est refusée (413), et une
+  demande qui passe de justesse laisse trop peu de place au JSON, qui revient
+  tronqué et invalide. Le `20b` par défaut y arrive sur une dizaine
+  d'éléments ; il échouait systématiquement quand l'invite était deux fois plus
+  grosse. En cas d'échec répété, passez au `120b` ou réduisez
+  `MAX_CONTENT_CHARS` (`connectors/generation.py`).
 - **`DOCS_URL` pointe sur 8071, comme Drive.** Docs n'est pas déployé ici ;
   si vous l'ajoutez un jour, déplacez l'un des deux ports, sinon les appels
   Docs arriveront sur Drive.

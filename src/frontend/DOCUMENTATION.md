@@ -29,36 +29,48 @@ src/
     ManagerPage.jsx / .css  → espace manager : équipe + résumé éditable.
     EmployeePage.jsx / .css → espace employé : son résumé + ses documents.
 
+  api/
+    auth.js                  → connexion, déconnexion, session en cours.
+    items.js                  → mails et documents d'un collaborateur.
+    handover.js               → passation : lecture, écriture, validation, envoi.
+    collaborators.js          → recherche, ajout et retrait d'un membre d'équipe.
+    dossier.js                → génération du résumé par l'IA.
+
   context/
-    AuthContext.jsx          → qui est connecté, fonctions login()/logout().
-    SummaryContext.jsx        → les résumés IA (lecture + modification), partagés
-                                entre l'espace manager et l'espace employé.
+    AuthContext.jsx          → qui est connecté (rôle et équipe compris),
+                                login()/logout().
+    SummaryContext.jsx        → les passations, en cache au-dessus de l'API.
+    ItemsContext.jsx          → les mails et documents, idem.
 
   data/
-    mockData.js              → données fictives : collaborateurs (avec email,
-                                mot de passe, rôle de compte, manager), mails,
-                                documents.
-    mockSummaries.js          → résumé IA fictif par collaborateur employé (texte
-                                de départ, en attendant un vrai appel IA).
+    mockData.js              → ce qu'il reste de fictif : la liste de
+                                collaborateurs qui alimente le sélecteur
+                                « contacts clés » du résumé.
 ```
 
 ## Comment ça se lance (`main.jsx`)
 
 ```jsx
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <CunninghamProvider theme="default">
-      <BrowserRouter>
-        <AuthProvider>
-          <SummaryProvider>
-            <App />
-          </SummaryProvider>
+  <ThemeProvider>              {/* thème clair/sombre + CunninghamProvider */}
+    <BrowserRouter>
+      <CollaboratorsProvider>  {/* liste mockée, pour le sélecteur de contacts */}
+        <AuthProvider>         {/* qui est connecté, son rôle, son équipe */}
+          <ItemsProvider>      {/* mails et documents */}
+            <SummaryProvider>  {/* passations */}
+              <App />
+            </SummaryProvider>
+          </ItemsProvider>
         </AuthProvider>
-      </BrowserRouter>
-    </CunninghamProvider>
-  </StrictMode>,
+      </CollaboratorsProvider>
+    </BrowserRouter>
+  </ThemeProvider>,
 );
 ```
+
+L'ordre compte : `ItemsProvider` et `SummaryProvider` lisent `useAuth()` pour
+savoir de qui charger les données et pour vider leur cache au changement
+d'utilisateur, ils doivent donc être **sous** `AuthProvider`.
 
 Chaque couche rend quelque chose de disponible à tout ce qui est en dessous d'elle,
 via le mécanisme de **Context** de React (voir plus bas) :
@@ -67,11 +79,12 @@ via le mécanisme de **Context** de React (voir plus bas) :
    effet en production).
 2. **`CunninghamProvider`** : couleurs/typographie/traductions du kit de la Suite.
 3. **`BrowserRouter`** : active la navigation par URL.
-4. **`AuthProvider`** : rend disponible "qui est connecté" (`currentUser`) et les
-   fonctions `login`/`logout` à toutes les pages.
-5. **`SummaryProvider`** : rend disponibles les résumés IA (lecture et modification)
-   à toutes les pages — c'est ce qui permet à l'espace manager et à l'espace employé
-   de lire/modifier **le même** résumé sans se le transmettre explicitement.
+4. **`AuthProvider`** : "qui est connecté" (`currentUser`, son rôle, son équipe)
+   et les fonctions `login`/`logout`.
+5. **`ItemsProvider`** : les mails et documents d'un collaborateur.
+6. **`SummaryProvider`** : les passations — c'est ce qui permet à l'espace manager
+   et à l'espace employé de lire et modifier **la même**, puisque les deux Context
+   lisent la même API.
 
 ## Les Context : comment "qui est connecté" circule dans l'appli
 
@@ -92,15 +105,23 @@ voir « La connexion réelle » plus bas) :
 Le hook `useAuth()` (défini dans le même fichier) est juste un raccourci pour aller
 lire ce Context depuis n'importe quel composant : `const { currentUser, logout } = useAuth();`.
 
-**`SummaryContext.jsx`** : contient un `useState` pour `summaries` (un objet
-`{ [collaboratorId]: { text, validated } }`, initialisé depuis `mockSummaries.js`),
-et trois fonctions : `getSummary(id)`, `updateSummary(id, text)` (remet aussi
-`validated` à `false`), `validateSummary(id)` (passe `validated` à `true`).
+**`SummaryContext.jsx`** : un cache au-dessus de l'API des passations
+(`api/handover.js`). `getSummary(id)` renvoie ce qui est en cache et déclenche
+la lecture si besoin ; `updateSummary(id, patch)` enregistre (toute
+modification repasse la passation en non validée, côté serveur comme ici) et
+`validateSummary(id)` valide. Un échec d'enregistrement est signalé et la
+version réellement enregistrée est relue — une modification perdue en silence
+serait pire qu'un message d'erreur.
 
-⚠️ `SummaryContext` ne vit qu'en mémoire côté navigateur : un rafraîchissement remet
-les résumés à leur valeur de départ (voir `PLAN.md`). La connexion, elle, **survit
-désormais au rafraîchissement** : elle repose sur un cookie de session posé par le
-backend, que `AuthProvider` retrouve au démarrage.
+Chaque élément de liste reçoit un `id` à l'entrée du cache, y compris si le
+serveur n'en fournit pas : c'est par lui qu'une puce est retrouvée pour être
+modifiée ou supprimée.
+
+Les deux Context survivent au rafraîchissement, parce que ni l'un ni l'autre ne
+détient la vérité : la connexion repose sur un cookie de session posé par le
+backend, que `AuthProvider` retrouve au démarrage, et les passations sont
+enregistrées en base. Leur contenu est vidé au changement d'utilisateur — ce
+qu'une session a lu ne doit pas rester en mémoire pour la suivante.
 
 ## La connexion réelle
 
@@ -125,36 +146,36 @@ LoginPage ──► AuthContext.login() ──► api/auth.js ──► POST /ap
   pas encore qui est connecté tant que `GET /api/auth/me/` n'a pas répondu. `App.jsx`
   n'affiche aucune route pendant ce temps, sinon une page protégée renverrait vers
   l'écran de connexion à chaque rafraîchissement.
-- **`toAppUser()`** (dans `AuthContext.jsx`) est une passerelle temporaire : le backend
-  renvoie l'identité connue de Drive (`{ id, email, full_name }`), alors que les pages
-  attendent encore le profil mocké complet (`accountRole`, `managerId`, poste, équipe).
-  On fait le lien par l'email ; un compte Drive sans équivalent mocké ouvre l'espace
-  employé, avec un résumé et une liste de documents vides. Cette fonction disparaîtra
-  le jour où le rôle viendra du backend.
+- **`toAppUser()`** (dans `AuthContext.jsx`) ne fait plus que mettre en forme ce
+  que le backend renvoie : rôle, poste, équipe et manager viennent de la base
+  (`passon.Collaborator`), plus des données mockées. `AuthContext` expose aussi
+  `team`, l'équipe du manager connecté, et `sessionExpired()`, appelé dès qu'un
+  appel répond 401 pour renvoyer proprement vers l'écran de connexion.
 
 Détails backend (routes, codes d'erreur, poignée de main CSRF) :
 [`src/backend/accounts/README.md`](../backend/accounts/README.md).
 
 ## D'où viennent les mails et les documents affichés
 
-Deux sources, selon de qui on parle :
+Tout passe par `GET /api/collaborators/<id>/items/` (`src/api/items.js`), pour
+soi comme pour son équipe, mais la provenance n'est pas la même :
 
-- **L'utilisateur connecté** : ses vrais fichiers Drive et ses vrais mails
-  Messages, via `GET /api/extraction/items/` (`src/api/items.js`). Le backend
-  n'interroge que les services pour lesquels la session contient des
-  identifiants, donc quelqu'un connecté à Drive mais absent du Keycloak de
-  Messages reçoit ses fichiers sans ses mails.
-- **Les autres collaborateurs** (vue manager) : toujours les données mockées.
-  On ne peut lire les fichiers que du compte dont on détient la session ; tant
-  que le backend ne sait pas répondre pour quelqu'un d'autre que l'appelant, il
-  n'y a rien de réel à afficher.
+- **L'utilisateur connecté** : ses fichiers Drive et ses mails Messages, lus en
+  direct. Le backend n'interroge que les services pour lesquels la session
+  contient des identifiants, donc quelqu'un connecté à Drive mais absent du
+  Keycloak de Messages reçoit ses fichiers sans ses mails.
+- **Un membre de son équipe** (vue manager) : la photo prise lors de la dernière
+  connexion de l'intéressé. Drive ne répond que pour la session qu'on lui
+  présente, et on n'a que celle de la personne connectée. La réponse indique
+  quand la photo a été prise, et l'interface l'affiche : des documents vieux de
+  trois semaines ne doivent pas passer pour ceux d'aujourd'hui.
 
 `src/context/ItemsContext.jsx` tient cet arbitrage dans une seule fonction,
 `getItems(collaboratorId)` : les composants (`CollaboratorItemsList`,
 `EmployeePage`, la section « documents importants » de `SummaryDetails`)
-l'appellent sans savoir d'où viennent les données. Tant que la requête n'a pas
-abouti, c'est le mock qui est renvoyé, pour que l'interface ne soit jamais vide
-pendant le chargement.
+l'appellent sans savoir d'où viennent les données. Rien n'est mocké ici : tant
+que la requête n'a pas abouti la liste affiche « chargement », et ce qui n'a
+jamais été synchronisé le dit, plutôt que d'afficher des éléments fictifs.
 
 Les éléments réels portent un champ `refId` — l'identifiant tel que le backend
 le connaît (`"drive:<uuid>"`), celui qu'utilise le résumé généré par l'IA dans
@@ -231,18 +252,14 @@ qu'on n'utilise plus du tout.
 
 ## Les données mockées
 
-- **`data/mockData.js`** : `collaborators` (avec `email`, `password`, `accountRole`
-  `"manager"` ou `"employee"`, `managerId`), `emails`, `documents` (reliés à un
-  collaborateur par `collaboratorId`, comme une clé étrangère de base de données
-  relationnelle, en très simplifié).
-- **`data/mockSummaries.js`** : un texte de résumé + un statut `validated` par
-  collaborateur **employé** (les managers n'ont pas de résumé pour eux-mêmes dans ce
-  modèle). Le state réel (modifiable pendant que l'appli tourne) vit dans
-  `SummaryContext`, initialisé depuis ce fichier au démarrage.
+Il n'en reste qu'un usage : **`data/mockData.js`** alimente le sélecteur
+« contacts clés » du résumé (`SummaryDetails.jsx`), qui propose encore une liste
+de collaborateurs fictifs. Tout le reste vient du backend — identité et rôle à
+la connexion, équipe, passations, mails et documents.
 
-Le jour où un vrai backend arrive : `mockData.js` et `mockSummaries.js` disparaissent,
-`AuthContext` fait un vrai appel d'authentification au lieu de comparer une liste en
-dur, et `SummaryContext` lit/écrit sur une API au lieu d'un simple `useState`.
+`mockSummaries.js` et `utils/collaboratorItems.js` ont été supprimés le jour où
+les passations et les éléments sont passés en base : plus personne ne les
+importait.
 
 ## Ce qui vient du kit vs. ce qu'on a écrit nous-mêmes
 

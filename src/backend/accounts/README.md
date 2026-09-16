@@ -90,13 +90,16 @@ const response = await fetch("/api/auth/login/", {
 The frontend is wired to these routes: `src/frontend/src/api/auth.js` makes the
 calls and `src/frontend/src/context/AuthContext.jsx` holds the session.
 
-There is no role in the response. The interface decides between the manager and
-employee views from `accountRole`, which Drive's `/users/me/` has no equivalent
-for, so `toAppUser()` in `AuthContext.jsx` bridges the gap by matching the Drive
-account to a mock collaborator by email; an account with no match opens the
-employee view with empty content. That bridge is the last piece of the login
-still leaning on mock data — where the role should really come from is an open
-question (see `src/frontend/PLAN.md`).
+The response carries the role. Drive has no notion of one, so every login
+resolves the Drive identity to a row in our own database (`collaborators.py`,
+`passon.Collaborator`) and returns that person's `accountRole`, their manager,
+and — for a manager — their team. A first login creates the row as an employee;
+`manage.py set_role <email> manager` promotes someone, and the role is never
+overwritten by a later login.
+
+A row a manager created before that person ever logged in has no `external_id`;
+the first login claims it by email, so the job title and reporting line set in
+advance are kept.
 
 ## Running it against a real Drive
 

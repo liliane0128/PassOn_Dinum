@@ -72,14 +72,24 @@ every time the prompt changes.
 - **No passwords, no `AUTH_USER_MODEL`.** Keycloak owns authentication. The
   default `auth.User` stays as the admin login; this app holds domain data.
 
-## Not wired up yet
+## What reads and writes these tables
 
-The tables exist and are migrated, but nothing writes to them: logging in does
-not yet create a `Collaborator`, and the interface still reads roles and teams
-from its mock data through `toAppUser()` in
-`src/frontend/src/context/AuthContext.jsx`. The next step is to `get_or_create`
-the collaborator on login (matching `external_id`, falling back to `email`) and
-return `role` and `manager` from `/api/auth/me/`.
+- **Logging in** resolves the Drive identity to a `Collaborator`, creating the
+  row on a first login and claiming by email one a manager created earlier
+  (`accounts/collaborators.py`). The role is never touched there: it is ours to
+  decide, so a promotion survives every subsequent login.
+- **`/api/auth/login/` and `/api/auth/me/`** return that person's `accountRole`
+  and, for a manager, their team. The interface routes on those values — it no
+  longer decides anything from mock data.
+- **`/api/collaborators/`** lets a manager search, attach and detach team
+  members; **`/api/collaborators/<id>/handover/`** reads, edits and validates a
+  sheet; **`…/handover/send/`** mails it.
+- **`manage.py set_role <email> manager|employee`** is how a manager account
+  comes to exist, since nothing in the interface grants a role.
+
+What is still open: a collaborator with no manager is invisible to every team
+view (removal detaches rather than deletes), and nothing lists those people
+except the Django admin.
 
 ## Demo data
 
