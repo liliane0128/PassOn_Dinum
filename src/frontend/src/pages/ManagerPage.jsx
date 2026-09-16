@@ -56,7 +56,14 @@ export function ManagerPage() {
     lastSynced.current = { id: selected.id, text: loadedText };
   }, [selected, loadedText]);
   const [pendingShare, setPendingShare] = useState(false);
-  const [recipients, setRecipients] = useState("");
+  // Les destinataires se constituent en liste : on cherche la personne, on
+  // l'ajoute, on peut la retirer. Une adresse extérieure à l'annuaire reste
+  // saisissable telle quelle -- une passation se transmet parfois à quelqu'un
+  // qui n'utilise ni Drive ni Pass'on.
+  const [recipients, setRecipients] = useState([]);
+  const [recipientSearch, setRecipientSearch] = useState("");
+  const [recipientResults, setRecipientResults] = useState([]);
+  const recipientToken = useRef(0);
   const [sending, setSending] = useState(false);
 
   const [isAddingCollaborator, setIsAddingCollaborator] = useState(false);
@@ -73,6 +80,17 @@ export function ManagerPage() {
   // Une adresse email tapée en entier, si aucun résultat ne la porte déjà :
   // quelqu'un qui n'a jamais ouvert Drive n'est pas dans l'annuaire, et doit
   // pouvoir être ajouté quand même.
+  // Une adresse email saisie en entier pour le partage, si elle n'est ni déjà
+  // dans la liste ni proposée par la recherche.
+  const trimmedRecipient = recipientSearch.trim().toLowerCase();
+  const typedRecipient =
+    trimmedRecipient.includes("@") &&
+    !trimmedRecipient.endsWith("@") &&
+    !recipients.some((r) => r.email === trimmedRecipient) &&
+    !recipientResults.some((p) => p.email.toLowerCase() === trimmedRecipient)
+      ? trimmedRecipient
+      : null;
+
   const trimmedSearch = search.trim().toLowerCase();
   const typedAddress =
     trimmedSearch.includes("@") &&
@@ -135,6 +153,43 @@ export function ManagerPage() {
   function handleCancelAddCollaborator() {
     setIsAddingCollaborator(false);
     resetAddCollaboratorForm();
+  }
+
+  async function handleRecipientSearch(value) {
+    setRecipientSearch(value);
+    const token = ++recipientToken.current;
+    if (value.trim().length < 2) {
+      setRecipientResults([]);
+      return;
+    }
+    try {
+      const results = await teamApi.searchCollaborators(value.trim());
+      if (recipientToken.current === token) setRecipientResults(results);
+    } catch (err) {
+      if (recipientToken.current !== token) return;
+      if (err.status === 401) {
+        toast("Votre session a expiré, reconnectez-vous.", "warning");
+        sessionExpired();
+        return;
+      }
+      setRecipientResults([]);
+    }
+  }
+
+  function addRecipient(person) {
+    const email = person.email.trim().toLowerCase();
+    if (!email.includes("@")) return;
+    // Sans doublon : envoyer deux fois à la même adresse n'a pas de sens, et
+    // le bouton doit pouvoir être cliqué sans y penser.
+    if (!recipients.some((r) => r.email === email)) {
+      setRecipients([...recipients, { email, fullName: person.fullName || email }]);
+    }
+    setRecipientSearch("");
+    setRecipientResults([]);
+  }
+
+  function removeRecipient(email) {
+    setRecipients(recipients.filter((r) => r.email !== email));
   }
 
   async function handleAddCollaborator(person) {
@@ -221,12 +276,9 @@ export function ManagerPage() {
     // Envoyé depuis le compte Messages du manager, via le backend : le mail
     // part donc de sa vraie adresse. Plusieurs destinataires séparés par des
     // virgules ou des points-virgules.
-    const to = recipients
-      .split(/[,;]/)
-      .map((address) => address.trim())
-      .filter((address) => address.includes("@"));
+    const to = recipients.map((recipient) => recipient.email);
     if (to.length === 0) {
-      toast("Indiquez au moins une adresse email valide.", "error");
+      toast("Ajoutez au moins un destinataire.", "error");
       return;
     }
 
@@ -237,7 +289,7 @@ export function ManagerPage() {
         `Résumé de ${selected.firstName} envoyé à ${to.join(", ")}.`,
         "success",
       );
-      setRecipients("");
+      setRecipients([]);
     } catch (err) {
       if (err.status === 401) {
         toast("Votre session a expiré, reconnectez-vous.", "warning");
@@ -543,17 +595,77 @@ export function ManagerPage() {
                 <Input
                   label="Destinataires"
                   fullWidth
-                  text="Une ou plusieurs adresses, séparées par des virgules"
-                  value={recipients}
-                  onChange={(e) => setRecipients(e.target.value)}
+                  text="Chercher par nom ou adresse, puis ajouter"
+                  value={recipientSearch}
+                  onChange={(e) => handleRecipientSearch(e.target.value)}
                 />
+
+                <ul className="manager-page__share__results">
+                  {/* Une adresse complète peut toujours être ajoutée telle
+                      quelle : le destinataire n'est pas forcément quelqu'un
+                      que l'annuaire connaît. */}
+                  {typedRecipient && (
+                    <li key={typedRecipient}>
+                      <button
+                        type="button"
+                        className="manager-page__share__result"
+                        onClick={() =>
+                          addRecipient({ email: typedRecipient, fullName: typedRecipient })
+                        }
+                      >
+                        <span>Ajouter {typedRecipient}</span>
+                        <span className="manager-page__share__result__add">
+                          Ajouter
+                        </span>
+                      </button>
+                    </li>
+                  )}
+                  {recipientResults.map((person) => (
+                    <li key={person.email}>
+                      <button
+                        type="button"
+                        className="manager-page__share__result"
+                        onClick={() => addRecipient(person)}
+                      >
+                        <span>
+                          {person.fullName}
+                          <span className="manager-page__share__result__email">
+                            {person.email}
+                          </span>
+                        </span>
+                        <span className="manager-page__share__result__add">
+                          Ajouter
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                {recipients.length > 0 && (
+                  <ul className="manager-page__share__chips">
+                    {recipients.map((recipient) => (
+                      <li key={recipient.email} className="manager-page__share__chip">
+                        <span title={recipient.email}>{recipient.fullName}</span>
+                        <button
+                          type="button"
+                          aria-label={`Retirer ${recipient.email}`}
+                          onClick={() => removeRecipient(recipient.email)}
+                        >
+                          <span className="material-icons">close</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
                 <Button
                   fullWidth
                   onClick={handleShare}
-                  disabled={sending || !recipients.trim()}
+                  disabled={sending || recipients.length === 0}
                 >
-                  {sending ? "Envoi..." : "Envoyer par mail"}
+                  {sending
+                    ? "Envoi..."
+                    : `Envoyer par mail${recipients.length > 1 ? ` (${recipients.length})` : ""}`}
                 </Button>
               </>
             )}
