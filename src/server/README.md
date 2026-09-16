@@ -54,11 +54,14 @@ blocks third-party cookies.
 The homepage is a hand-written page with no build step, laid out like the
 ui-kit's `Hero`, whose single button points at `/dashboard`.
 
-That button is the reason for the proxy. `proxy_pass` carries a trailing slash,
-which strips the `/dashboard` prefix, so the Next app receives `/` — its own
-home route — and needs no `basePath` of its own and no change to run standalone
-on :3001. Its assets and its other route live at the root rather than under
-`/dashboard`, which is why `/_next/` and `/equipe` are proxied as they are.
+That button is the reason for the proxy, and the path is passed through
+unchanged: the app serves `/dashboard` at `/dashboard`. The prefix used to be
+stripped, which made the app's own `/` the dashboard while `/` here is the
+homepage — one URL with two meanings, and a `<Link href="/">` in the interface
+landed on the landing page instead of the dashboard. The app's other route and
+its assets live at the root, which is why `/login`, `/equipe` and `/_next/` are
+proxied as they are. Run on its own, the app redirects `/` to `/dashboard`, so
+:3001 still works.
 
 The Next app is **not containerised yet**: it runs on the host, and nginx
 reaches it through `host.docker.internal`, which `docker-compose.yml` maps to
@@ -203,12 +206,14 @@ navigateur qui bloque les cookies tiers.
 La page d'accueil est écrite à la main, sans étape de compilation, sur la
 structure du `Hero` du ui-kit, et son unique bouton pointe vers `/dashboard`.
 
-C'est ce bouton qui justifie le relais. Le `proxy_pass` porte une barre oblique
-finale, qui retire le préfixe `/dashboard` : l'application Next reçoit donc `/`,
-sa propre page d'accueil, sans avoir besoin d'un `basePath` ni d'aucune
-modification pour continuer à tourner seule sur :3001. Ses fichiers et son autre
-route vivent à la racine et non sous `/dashboard`, d'où le relais de `/_next/`
-et `/equipe` tels quels.
+C'est ce bouton qui justifie le relais, et le chemin est transmis tel quel :
+l'application sert `/dashboard` sur `/dashboard`. Le préfixe était auparavant
+retiré, si bien que le `/` de l'application était le tableau de bord alors que
+le `/` d'ici est la page d'accueil — une même URL pour deux choses, et un
+`<Link href="/">` de l'interface menait à la page d'accueil au lieu du tableau
+de bord. Son autre route et ses fichiers vivent à la racine, d'où le relais de
+`/login`, `/equipe` et `/_next/` tels quels. Lancée seule, l'application redirige
+`/` vers `/dashboard`, et :3001 reste donc utilisable.
 
 L'application Next **n'est pas encore conteneurisée** : elle tourne sur la
 machine, et nginx la joint par `host.docker.internal`, que `docker-compose.yml`

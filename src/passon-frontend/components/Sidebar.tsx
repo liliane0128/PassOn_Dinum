@@ -5,13 +5,16 @@ import { usePathname } from "next/navigation";
 import { Home, Settings, FolderOpen, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useRole } from "@/context/RoleContext";
+import { DASHBOARD_PATH } from "@/lib/routes";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { role } = useRole();
 
   const navItems = [
-    { id: "accueil", label: "Accueil", icon: Home, href: "/" },
+    // DASHBOARD_PATH, not "/": behind nginx "/" is the static homepage, and
+    // linking there drops the person out of the application.
+    { id: "accueil", label: "Accueil", icon: Home, href: DASHBOARD_PATH },
     { id: "equipe", label: "Mon équipe", icon: Users, href: "/equipe", managerOnly: true },
     {
       id: "mes-passations",

@@ -79,11 +79,14 @@ conservé ici. Le détail du parcours OIDC est dans
 
 Trois points à connaître avant d'y toucher :
 
-- **Les chemins publics ne sont pas les routes de l'application.** nginx fait
-  correspondre `/dashboard` au `/` de cette application. Toute navigation qui
-  traverse cette frontière passe donc par `window.location` et les constantes de
-  `lib/routes.ts`, jamais par le routeur Next, qui ne connaît que les routes
-  internes.
+- **Les chemins publics et les routes de l'application sont les mêmes chaînes.**
+  Le tableau de bord vit dans `app/dashboard/`, et nginx relaie `/dashboard`
+  sans rien retirer. Ce n'était pas le cas au départ — le préfixe était retiré
+  et le tableau de bord était le `/` de l'application — ce qui donnait deux sens
+  à une même URL : un `<Link href="/">` dans l'interface menait à la page
+  d'accueil statique au lieu du tableau de bord. Les chemins publics sont
+  rassemblés dans `lib/routes.ts` ; `window.location` reste utilisé pour les
+  redirections après connexion, qui doivent recharger la page.
 - **`restoring` avant toute décision.** La session est restaurée par un appel
   asynchrone ; rediriger avant sa réponse renverrait vers la connexion une
   personne déjà connectée, à chaque rafraîchissement.
