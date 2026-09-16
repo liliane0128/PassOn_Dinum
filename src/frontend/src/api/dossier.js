@@ -1,12 +1,14 @@
-const API_BASE_URL = "http://localhost:8000/api";
-
 // Calls the backend's /api/dossier/ endpoint (connectors/generation.py),
 // which returns a JSON handover summary already shaped like SummaryContext's
 // model (text/actions/decisions/deadlines/blockers/documents) -- see that
 // file's module docstring. In DINUM_USE_MOCK mode (backend .env) this needs
 // no credentials at all.
 export async function generateDossier() {
-  const response = await fetch(`${API_BASE_URL}/dossier/`);
+  // URL relative, et credentials pour emporter le cookie de session : c'est
+  // ce qui permet au backend de retrouver les identifiants Drive/Messages
+  // obtenus à la connexion. Une URL absolue vers un autre port serait
+  // cross-origin, donc sans cookie de session (et exigerait du CORS).
+  const response = await fetch("/api/dossier/", { credentials: "same-origin" });
   if (!response.ok) {
     let detail = null;
     try {

@@ -1,6 +1,6 @@
-"""Check an email/password against the local Drive instance.
+"""Check an email/password against a Suite Numérique service (Drive, Messages).
 
-Drive does not verify passwords itself: it delegates to Keycloak (OIDC
+These services do not verify passwords themselves: it delegates to Keycloak (OIDC
 authorization code flow). There is no endpoint that takes an email and a
 password and answers yes or no -- the Keycloak client Drive uses has direct
 access grants disabled -- so the only way to check a credential is to walk the
@@ -11,9 +11,13 @@ same redirect chain a browser would:
     POST <the form's action>              -> 302 back to Drive's callback
     GET  <drive>/api/v1.0/callback/...    -> sets the drive_sessionid cookie
 
-What comes out is the session cookie Drive's own frontend uses, which is also
-exactly the credential connectors/drive_client.py needs. Logging a user in and
-being able to read their files are therefore the same operation here.
+What comes out is the session cookie that service's own frontend uses, which
+is also exactly the credential connectors/ needs. Logging a user in and being
+able to read their files are therefore the same operation here.
+
+Drive and Messages each run their own Keycloak, with their own user lists, and
+are reached the same way -- hence one function taking the service name. Docs
+would work identically if it were ever run alongside.
 
 Three quirks of this local setup are handled below.
 
@@ -67,8 +71,8 @@ class LoginFailed(Exception):
         self.status = status
 
 
-def _drive_config():
-    return settings.DINUM_SERVICES["drive"]
+def _config(service):
+    return settings.DINUM_SERVICES[service]
 
 
 def _origin(url):
@@ -76,7 +80,7 @@ def _origin(url):
     return (parts.scheme, parts.hostname, parts.port)
 
 
-def _address(url):
+def _address(url, service):
     """Split a URL into where to send it and which Host to claim (quirk 1).
 
     Returns (url_to_request, host_header). The port is never touched: Drive,
@@ -84,8 +88,8 @@ def _address(url):
     ports.
     """
     parts = urlparse(url)
-    reachable_host = urlparse(_drive_config()["url"]).hostname
-    public_host = settings.DRIVE_PUBLIC_HOST
+    reachable_host = urlparse(_config(service)["url"]).hostname
+    public_host = settings.DINUM_PUBLIC_HOST
 
     def with_host(host):
         return host if parts.port is None else f"{host}:{parts.port}"
@@ -93,9 +97,9 @@ def _address(url):
     return urlunparse(parts._replace(netloc=with_host(reachable_host))), with_host(public_host)
 
 
-def _request(session, method, url, **kwargs):
+def _request(session, service, method, url, **kwargs):
     """One hop: reachable address, public Host header, no automatic redirects."""
-    target, host_header = _address(url)
+    target, host_header = _address(url, service)
     headers = {**kwargs.pop("headers", {}), "Host": host_header}
     response = session.request(
         method,
@@ -110,7 +114,7 @@ def _request(session, method, url, **kwargs):
     return response
 
 
-def _follow(session, method, url, flow_origins, **kwargs):
+def _follow(session, service, method, url, flow_origins, **kwargs):
     """Run a request and follow its redirects while they stay inside the flow.
 
     `flow_origins` holds Drive's and Keycloak's origins. The chain stops at the
@@ -121,7 +125,7 @@ def _follow(session, method, url, flow_origins, **kwargs):
     response is returned rather than followed.
     """
     for _ in range(MAX_REDIRECTS):
-        response = _request(session, method, url, **kwargs)
+        response = _request(session, service, method, url, **kwargs)
         if response.status_code not in (301, 302, 303, 307, 308):
             return response
 
@@ -139,31 +143,33 @@ def _follow(session, method, url, flow_origins, **kwargs):
     raise LoginFailed("unexpected_response", 502)
 
 
-def login(email, password):
-    """Return (drive_session_cookie, user) for valid credentials.
+def login(service, email, password):
+    """Return (session_cookie, user) for valid credentials on `service`.
 
-    `user` is Drive's own /users/me/ payload, so the identity our app displays
-    is the one Drive knows rather than one we invent. Raises LoginFailed for
-    bad credentials (401) and for an unreachable (502) or slow (504) Drive.
+    `user` is that service's own /users/me/ payload, so the identity our app
+    displays is the one the service knows rather than one we invent. Raises
+    LoginFailed for bad credentials (401) and for an unreachable (502) or slow
+    (504) service.
     """
-    config = _drive_config()
+    config = _config(service)
     cookie_name = config["cookie"]
     public_port = urlparse(config["url"]).port
-    public_base = f"http://{settings.DRIVE_PUBLIC_HOST}"
+    public_base = f"http://{settings.DINUM_PUBLIC_HOST}"
     if public_port:
         public_base = f"{public_base}:{public_port}"
     session = requests.Session()
 
     try:
-        # Drive redirects to Keycloak, which is how we learn Keycloak's
-        # address: it is configured in Drive, not here.
-        handoff = _request(session, "GET", f"{public_base}/api/v1.0/authenticate/")
+        # The service redirects to its Keycloak, which is how we learn that
+        # Keycloak's address: it is configured there, not here. Drive and
+        # Messages each run their own.
+        handoff = _request(session, service, "GET", f"{public_base}/api/v1.0/authenticate/")
         keycloak_url = handoff.headers.get("Location")
         if handoff.status_code not in (301, 302, 303, 307, 308) or not keycloak_url:
             raise LoginFailed("unexpected_response", 502)
         flow_origins = {_origin(public_base), _origin(keycloak_url)}
 
-        form_page = _follow(session, "GET", keycloak_url, flow_origins)
+        form_page = _follow(session, service, "GET", keycloak_url, flow_origins)
         match = _LOGIN_FORM.search(form_page.text)
         if not match:
             # Either Keycloak's markup changed or it refused the request
@@ -172,17 +178,18 @@ def login(email, password):
 
         _follow(
             session,
+            service,
             "POST",
             match.group(1).replace("&amp;", "&"),
             flow_origins,
             data={"username": email, "password": password},
         )
 
-        whoami = _request(session, "GET", f"{public_base}/api/v1.0/users/me/")
+        whoami = _request(session, service, "GET", f"{public_base}/api/v1.0/users/me/")
     except requests.Timeout as error:
-        raise LoginFailed("drive_timeout", 504) from error
+        raise LoginFailed(f"{service}_timeout", 504) from error
     except requests.RequestException as error:
-        raise LoginFailed("drive_unreachable", 502) from error
+        raise LoginFailed(f"{service}_unreachable", 502) from error
     finally:
         session.close()
 

@@ -1,4 +1,4 @@
-"""Stand-in for drive_auth.login() when DINUM_USE_MOCK is on.
+"""Stand-in for oidc_login.login() when DINUM_USE_MOCK is on.
 
 The rest of the API already has a mock mode so the app can be run and demoed
 without Docs/Drive/Messages (see connectors/mock_clients.py); login needs the
@@ -13,7 +13,7 @@ that let any password through would be a trap the day the flag is left on
 somewhere it shouldn't be.
 """
 
-from . import drive_auth
+from . import oidc_login
 
 # email -> (password, Drive-shaped user payload)
 ACCOUNTS = {
@@ -27,12 +27,17 @@ ACCOUNTS = {
 # Value stored where a real Drive session cookie would be. The mock connectors
 # ignore the session entirely, so it only has to be non-empty and recognisable
 # in a session dump.
-MOCK_CREDENTIAL = "mock-drive-session"
+MOCK_CREDENTIAL = "mock-session"
 
 
-def login(email, password):
-    """Same contract as drive_auth.login(): (credential, user) or LoginFailed."""
+def login(service, email, password):
+    """Same contract as oidc_login.login(): (credential, user) or LoginFailed.
+
+    The same demo accounts stand in for every service, so a mock login yields
+    both a Drive and a Messages credential and the whole pipeline can be
+    demonstrated without either service running.
+    """
     account = ACCOUNTS.get(email.strip().lower())
     if account is None or account[0] != password:
-        raise drive_auth.LoginFailed("invalid_credentials", 401)
-    return MOCK_CREDENTIAL, account[1]
+        raise oidc_login.LoginFailed("invalid_credentials", 401)
+    return f"{MOCK_CREDENTIAL}-{service}", account[1]

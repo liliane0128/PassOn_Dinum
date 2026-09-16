@@ -7,7 +7,7 @@ import {
 } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useSummaries } from "../context/SummaryContext.jsx";
-import { getCollaboratorItems } from "../utils/collaboratorItems.js";
+import { useItems } from "../context/ItemsContext.jsx";
 import { generateDossier } from "../api/dossier.js";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
@@ -24,9 +24,11 @@ export function EmployeePage() {
   const { toast } = useToastProvider();
   const navigate = useNavigate();
 
+  const { getItems } = useItems();
   const items = useMemo(
-    () => getCollaboratorItems(currentUser?.id),
-    [currentUser],
+    () => getItems(currentUser?.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentUser, getItems],
   );
 
   const summary = currentUser ? getSummary(currentUser.id) : { text: "", validated: false };

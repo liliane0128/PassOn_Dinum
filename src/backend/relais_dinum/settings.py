@@ -149,12 +149,13 @@ DINUM_SERVICES = {
     "messages": {"url": os.getenv("MESSAGES_URL", "http://localhost:8901").rstrip("/"), "cookie": os.getenv("MESSAGES_SESSION_COOKIE", "sessionid"), "header": "X-Messages-Session"},
 }
 
-# Host that Drive and Keycloak know each other by. Login walks Drive's OIDC
-# redirect chain (accounts/drive_auth.py), and the URLs in it -- including the
-# redirect_uri Keycloak validates -- are built from the host the caller
-# presents. DRIVE_URL says where to *reach* Drive (host.docker.internal from a
-# container); this says which host to *claim* while doing so.
-DRIVE_PUBLIC_HOST = os.getenv("DRIVE_PUBLIC_HOST", "localhost")
+# Host that the services and their Keycloaks know each other by. Login walks
+# each service's OIDC redirect chain (accounts/oidc_login.py), and the URLs in
+# it -- including the redirect_uri Keycloak validates -- are built from the
+# host the caller presents. DOCS_URL/DRIVE_URL/MESSAGES_URL say where to
+# *reach* each service (host.docker.internal from a container); this says which
+# host to *claim* while doing so.
+DINUM_PUBLIC_HOST = os.getenv("DINUM_PUBLIC_HOST", "localhost")
 
 # LLM used by /api/dossier/ (connectors/generation.py), via the groq SDK.
 # Get a free key at https://console.groq.com/keys.

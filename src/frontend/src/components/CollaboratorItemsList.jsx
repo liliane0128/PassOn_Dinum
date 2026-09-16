@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge } from "@gouvfr-lasuite/ui-components";
-import { getCollaboratorItems } from "../utils/collaboratorItems.js";
+import { useItems } from "../context/ItemsContext.jsx";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString("fr-FR", {
@@ -17,7 +17,8 @@ function formatDate(iso) {
 // not-yet-validated collaborator's items, before the AI summary is shown).
 export function CollaboratorItemsList({ collaboratorId }) {
   const [expandedKey, setExpandedKey] = useState(null);
-  const items = getCollaboratorItems(collaboratorId);
+  const { getItems } = useItems();
+  const items = getItems(collaboratorId);
 
   if (items.length === 0) {
     return (

@@ -1,4 +1,4 @@
-# Accounts — logging in through Drive
+# Accounts — logging in through the Suite Numérique services
 
 ## What this does
 
@@ -8,7 +8,14 @@ whether that combination is right, and if it is, they are logged into our app.
 Nothing about a user is stored here: no account, no password, not even a copy
 of one.
 
-The check is not a yes/no question we can ask Drive, because Drive does not
+The same credentials are then tried against **Messages**, which runs its own
+Keycloak with its own user list. That attempt is best-effort: it never blocks
+the login. A user who exists only in Drive is logged in all the same and simply
+gets no mail in their handover, and the `services` field in the response says
+which ones answered, so the interface can explain a partial result instead of
+silently showing less.
+
+The check is not a yes/no question we can ask these services, because Drive does not
 verify passwords itself — it delegates to **Keycloak** (OIDC), and the Keycloak
 client Drive uses has direct access grants disabled. So `drive_auth.py` walks
 the same redirect chain a browser walks:
@@ -40,9 +47,13 @@ invent.
 
 | Route | Method | Answers |
 | --- | --- | --- |
-| `/api/auth/login/` | POST | `200 {"user": {...}}`, or `401 {"error": "invalid_credentials"}` |
+| `/api/auth/login/` | POST | `200 {"user": {...}, "services": {"drive": true, "messages": false}}`, or `401 {"error": "invalid_credentials"}` |
 | `/api/auth/logout/` | POST | `200 {}` — always |
-| `/api/auth/me/` | GET | `200 {"user": {...}}` or `401 {"error": "not_authenticated"}` |
+| `/api/auth/me/` | GET | `200 {"user": {...}, "services": {...}}` or `401 {"error": "not_authenticated"}` |
+
+`services` reports which upstreams this session holds a credential for. Drive
+decides the login; a `false` for Messages means the account does not exist in
+its Keycloak, or Messages is not running.
 
 Login also answers `400 invalid_request` for a malformed body, `502
 drive_unreachable` / `unexpected_response` when Drive cannot be reached or does
@@ -100,6 +111,12 @@ DINUM_USE_MOCK=false
 Log in with a user of Drive's Keycloak realm — `drive@drive.world` / `drive`,
 `paige.turner@library.book` / `pass` (see `drive/docker/auth/realm.json`).
 
+**For mail as well**, the same address and password must also exist in
+Messages' own Keycloak (`messages/src/keycloak/realm.json`, seeded with
+`user1@example.local` … `user3@example.local` — no overlap with Drive's). Create
+the account there with the same email and password, and one login covers both;
+otherwise `services.messages` stays `false` and the handover has no mail in it.
+
 Sessions are stored in the database, so `python manage.py migrate` must have
 run. The root `docker-compose.yml` does this on every start; the backend-only
 stack in `src/backend/docker-compose.yml` does not.
@@ -113,13 +130,13 @@ worked would be a trap the day the flag is left on somewhere it should not be.
 
 ## Two things that will bite whoever touches this next
 
-**Drive builds its `redirect_uri` from the Host header we send.** Reaching
+**Each service builds its `redirect_uri` from the Host header we send.** Reaching
 Drive at `host.docker.internal:8071` from a container therefore makes it hand
 Keycloak a `redirect_uri` of `http://host.docker.internal:8071/...`, which is
 not among the client's registered URIs, and Keycloak answers *"Invalid
 parameter: redirect_uri"*. Every request consequently goes to `DRIVE_URL`'s
-host while presenting `DRIVE_PUBLIC_HOST` (default `localhost`) in its `Host`
-header. On a machine where Django runs outside Docker both are `localhost` and
+host while presenting `DINUM_PUBLIC_HOST` (default `localhost`) in its `Host`
+header. The same applies to Messages, which is why one function serves both. On a machine where Django runs outside Docker both are `localhost` and
 none of this does anything.
 
 **Neither a 200 nor a session cookie means the login worked.** A wrong password

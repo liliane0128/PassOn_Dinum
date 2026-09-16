@@ -135,6 +135,32 @@ LoginPage ──► AuthContext.login() ──► api/auth.js ──► POST /ap
 Détails backend (routes, codes d'erreur, poignée de main CSRF) :
 [`src/backend/accounts/README.md`](../backend/accounts/README.md).
 
+## D'où viennent les mails et les documents affichés
+
+Deux sources, selon de qui on parle :
+
+- **L'utilisateur connecté** : ses vrais fichiers Drive et ses vrais mails
+  Messages, via `GET /api/extraction/items/` (`src/api/items.js`). Le backend
+  n'interroge que les services pour lesquels la session contient des
+  identifiants, donc quelqu'un connecté à Drive mais absent du Keycloak de
+  Messages reçoit ses fichiers sans ses mails.
+- **Les autres collaborateurs** (vue manager) : toujours les données mockées.
+  On ne peut lire les fichiers que du compte dont on détient la session ; tant
+  que le backend ne sait pas répondre pour quelqu'un d'autre que l'appelant, il
+  n'y a rien de réel à afficher.
+
+`src/context/ItemsContext.jsx` tient cet arbitrage dans une seule fonction,
+`getItems(collaboratorId)` : les composants (`CollaboratorItemsList`,
+`EmployeePage`, la section « documents importants » de `SummaryDetails`)
+l'appellent sans savoir d'où viennent les données. Tant que la requête n'a pas
+abouti, c'est le mock qui est renvoyé, pour que l'interface ne soit jamais vide
+pendant le chargement.
+
+Les éléments réels portent un champ `refId` — l'identifiant tel que le backend
+le connaît (`"drive:<uuid>"`), celui qu'utilise le résumé généré par l'IA dans
+ses « documents importants ». C'est ce qui permet de comparer un document
+choisi à la main et un document proposé par l'IA sans se tromper.
+
 ## Page de connexion (`LoginPage.jsx`)
 
 Un formulaire contrôlé classique : `email`/`password` en state React, `Input` et

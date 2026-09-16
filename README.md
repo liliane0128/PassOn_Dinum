@@ -71,8 +71,15 @@ also yields the Drive session needed to read that person's documents.
 | `/api/auth/logout/` | POST |
 | `/api/auth/me/` | GET |
 
-The login screen of the app uses these routes, so signing in there signs you into
-Drive's data as well.
+The login screen of the app uses these routes, so signing in there also gives
+the app access to that person's Drive files and, when the same account exists in
+Messages' own Keycloak, their mail. The response's `services` field says which
+ones answered.
+
+Once logged in, the app shows that user's **real** items (`/api/extraction/items/`)
+and can generate the AI handover from them (`/api/dossier/`, needs `GROQ_API_KEY`).
+Other collaborators in the manager view keep showing mock data — we can only read
+files for the account whose session we hold.
 
 With `DINUM_USE_MOCK=true`, demo accounts are accepted without Drive running. To check credentials against a real Drive, set `DINUM_USE_MOCK=false`
 and `DRIVE_URL` in `src/backend/.env`, and start Drive separately.

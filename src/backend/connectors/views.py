@@ -1,4 +1,6 @@
 """Expose the existing connectors through a per-request, read-only API."""
+from urllib.parse import urlparse, urlunparse
+
 import requests
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -9,7 +11,7 @@ from . import docs_client, drive_client, messages_client
 from . import generation
 from . import extraction
 from . import mock_clients, mock_data
-from accounts.session import CREDENTIAL_KEY as LOGIN_CREDENTIAL_KEY
+from accounts.session import CREDENTIAL_KEYS as LOGIN_CREDENTIAL_KEYS
 
 REAL_CLIENTS = {"docs": docs_client, "drive": drive_client, "messages": messages_client}
 MOCK_CLIENTS = {
@@ -42,16 +44,49 @@ def _is_valid_credential(credential):
     return not any(ord(ch) < 33 or ord(ch) > 126 or ch in ';,"\\' for ch in credential)
 
 
+def _to_public_url(url):
+    """Rewrite an upstream URL so the user's browser can actually follow it.
+
+    Items carry links built from DOCS_URL/DRIVE_URL/MESSAGES_URL, which is how
+    *this process* reaches those services -- host.docker.internal from inside a
+    container. That name means nothing in a browser, so the host is swapped
+    back to the public one before the link leaves the API. Ports and paths are
+    untouched, and hosts we do not recognise are left alone.
+    """
+    if not url:
+        return url
+    parts = urlparse(url)
+    reachable_hosts = {
+        urlparse(config["url"]).hostname for config in settings.DINUM_SERVICES.values()
+    }
+    if parts.hostname == settings.DINUM_PUBLIC_HOST or parts.hostname not in reachable_hosts:
+        return url
+    netloc = settings.DINUM_PUBLIC_HOST
+    if parts.port:
+        netloc = f"{netloc}:{parts.port}"
+    return urlunparse(parts._replace(netloc=netloc))
+
+
+def _publicize(items):
+    """Apply _to_public_url() to every link in a list of normalized items."""
+    for item in items:
+        source = item.get("source")
+        if not isinstance(source, dict):
+            continue
+        source["resource_url"] = _to_public_url(source.get("resource_url"))
+        source["content_url"] = _to_public_url(source.get("content_url"))
+    return items
+
+
 def _session_credential(request, service):
     """The credential our own login flow stored, if it covers this service.
 
-    Only Drive is covered: logging in walks Drive's OIDC flow and ends up with
-    a Drive session (see accounts/drive_auth.py). Docs and Messages each have
-    their own, so they keep requiring an explicit header or cookie.
+    Logging in walks Drive's OIDC flow, and Messages' too when the account
+    exists there (see accounts/oidc_login.py). Docs has no entry, so it keeps
+    requiring an explicit header or cookie.
     """
-    if service != "drive":
-        return None
-    return request.session.get(LOGIN_CREDENTIAL_KEY)
+    key = LOGIN_CREDENTIAL_KEYS.get(service)
+    return request.session.get(key) if key else None
 
 
 def _resolve_client(request, service):
@@ -135,9 +170,9 @@ def extraction_items(request):
         return failure("extraction", "query_parameters_not_supported", 400)
 
     if settings.DINUM_USE_MOCK:
-        items_out = extraction.normalize_items(
+        items_out = _publicize(extraction.normalize_items(
             mock_data.MOCK_DOCS, mock_data.MOCK_DRIVE_ITEMS, mock_data.MOCK_MESSAGES,
-        )
+        ))
         response = JsonResponse({"items": items_out, "errors": {}})
         response["Cache-Control"] = "private, no-store"
         return response
@@ -179,7 +214,7 @@ def extraction_items(request):
                     raw_by_service["docs"], raw_by_service["drive"], raw_by_service["messages"],
                     **normalize_kwargs,
                 )
-            items_out.extend(normalized)
+            items_out.extend(_publicize(normalized))
         except requests.Timeout:
             errors[service] = "upstream_timeout"
         except requests.HTTPError as exc:
@@ -223,10 +258,13 @@ def _fetch_raw_items(request, service):
 def dossier(request):
     """Generate the handover dossier as a downloadable Markdown file.
 
-    Requires a valid per-service credential for docs/drive/messages (same
-    headers/cookies as /api/<service>/items/) unless DINUM_USE_MOCK is set,
-    in which case static demo data is used instead and no credential is
-    required.
+    Uses whichever services the caller has a credential for -- header, cookie,
+    or the session stored at login -- and skips the others, the same rule
+    /api/extraction/items/ follows. Demanding all three would make the
+    endpoint unusable wherever one of them simply is not deployed, which is
+    the normal case for Docs today. At least one is required, unless
+    DINUM_USE_MOCK is set, in which case static demo data is used instead and
+    no credential is needed.
     """
     if settings.DINUM_USE_MOCK:
         raw_docs, raw_drive, raw_messages = (
@@ -235,17 +273,32 @@ def dossier(request):
             mock_data.MOCK_MESSAGES,
         )
     else:
-        raw_docs, error = _fetch_raw_items(request, "docs")
-        if error:
-            return error
-        raw_drive, error = _fetch_raw_items(request, "drive")
-        if error:
-            return error
-        raw_messages, error = _fetch_raw_items(request, "messages")
-        if error:
-            return error
+        raw = {}
+        authenticated = False
+        for service in REAL_CLIENTS:
+            config = settings.DINUM_SERVICES[service]
+            has_credential = (
+                request.headers.get(config["header"])
+                or request.COOKIES.get(config["cookie"])
+                or _session_credential(request, service)
+            )
+            if not has_credential:
+                raw[service] = []
+                continue
+            authenticated = True
+            raw[service], error = _fetch_raw_items(request, service)
+            if error:
+                return error
+        # Keyed on credentials, not on data: someone logged in with an empty
+        # Drive is authenticated, and belongs in the "nothing to summarize"
+        # branch below rather than being told to log in again.
+        if not authenticated:
+            return failure("dossier", "authentication_required", 401)
+        raw_docs, raw_drive, raw_messages = raw["docs"], raw["drive"], raw["messages"]
 
-    items_ = extraction.normalize_items(raw_docs, raw_drive, raw_messages)
+    # Rewritten before generation: generation.py fills each document's link
+    # from these items, so the handover's links are the browser-usable ones.
+    items_ = _publicize(extraction.normalize_items(raw_docs, raw_drive, raw_messages))
     if not items_:
         return JsonResponse({"error": "no_data_to_summarize"}, status=422)
 

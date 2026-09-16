@@ -43,9 +43,11 @@ Interface interne d'entreprise permettant, quand un collaborateur est absent ou 
 - [ ] Étendre le rôle manager pour gérer plusieurs niveaux de hiérarchie (un manager de managers) si besoin.
 
 ### Données réelles
-- [ ] Brancher une vraie source de mails (API Gmail/Outlook, ou IMAP interne).
-- [ ] Brancher une vraie source de documents (GED d'entreprise, Nextcloud, SharePoint...).
-- [ ] Remplacer `src/data/mockData.js` par des appels API.
+- [x] **Documents réels** (2026-09-16) : les fichiers Drive de l'utilisateur connecté, via `GET /api/extraction/items/`.
+- [x] **Mails réels** (2026-09-16) : ceux de Messages, dès lors que le compte existe aussi dans son Keycloak (voir `src/backend/accounts/README.md`).
+- [x] **Résumé IA sur données réelles** : `/api/dossier/` génère le résumé à partir de ces éléments, avec un lien cliquable par document.
+- [ ] **Données des autres collaborateurs** : la vue manager reste mockée, faute de session pour les comptes des autres. À traiter côté backend (compte de service, délégation, ou consentement).
+- [ ] Remplacer le reste de `src/data/mockData.js` (résumés, hiérarchie) par des appels API.
 
 ### Technique / qualité
 - [ ] Tests (actuellement aucun test automatisé).

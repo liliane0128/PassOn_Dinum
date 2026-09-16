@@ -118,12 +118,19 @@ Responses use `{"service": "docs", "data": ...}`. The data is the existing
 connector result, without changing its schema.
 
 Each call uses the caller's upstream session, supplied by the header above or
-its cookie. For Drive there is a third source: the session stored when the user
-logged in through `/api/auth/login/`, which walks Drive's OIDC flow and keeps
-the resulting cookie server-side (see `../accounts/README.md`). A logged-in
-caller therefore needs no `X-Drive-Session` of its own. An explicit header or
-cookie still takes precedence, so manual calls behave exactly as described here,
-and Docs and Messages are unaffected. Docs uses `docs_sessionid`, Drive uses `drive_sessionid`, Messages
+its cookie. For Drive and Messages there is a third source: the sessions stored
+when the user logged in through `/api/auth/login/`, which walks each service's
+OIDC flow and keeps the resulting cookies server-side (see
+`../accounts/README.md`). A logged-in caller therefore needs no
+`X-Drive-Session` or `X-Messages-Session` of its own. An explicit header or
+cookie still takes precedence, so manual calls behave exactly as described here.
+Docs has no login flow, so it still requires one explicitly.
+
+Links leaving these routes are rewritten to the public host before they are
+returned: items carry URLs built from `DRIVE_URL` and friends, which is how
+*this process* reaches the services (`host.docker.internal` inside a
+container), and that name means nothing in a browser. `DINUM_PUBLIC_HOST`
+(default `localhost`) is substituted, ports and paths untouched. Docs uses `docs_sessionid`, Drive uses `drive_sessionid`, Messages
 uses `st_messages_sessionid` (its `SESSION_COOKIE_NAME`; override via
 `MESSAGES_SESSION_COOKIE` if a deployment changes it). Headers take precedence
 over cookies. No shared account or automatic demo login is used by the Django
@@ -213,8 +220,11 @@ key decisions, deadlines, blockers, key contacts, important documents -- each
 bullet ending in a Markdown link built from that item's `source.resource_url`
 field, so every point in the file is clickable back to its source.
 
-Requires the same per-service credentials as `/api/<service>/items/` (all
-three), unless `DINUM_USE_MOCK=true`. Also requires `GROQ_API_KEY` for the
+Uses whichever services the caller has a credential for and skips the others,
+the same rule `/api/extraction/items/` follows; at least one is required,
+unless `DINUM_USE_MOCK=true`. Demanding all three would make the endpoint
+unusable wherever one is simply not deployed, which is the normal case for Docs
+today. Also requires `GROQ_API_KEY` for the
 LLM call -- without it, the endpoint returns
 `500 {"error": "llm_not_configured"}` instead of crashing.
 
