@@ -13,7 +13,7 @@ import {
   type Item,
 } from "@/lib/handover";
 import { passation as demoPassation } from "@/lib/mock-data";
-import type { Passation, SourceTag } from "@/lib/types";
+import type { AttentionPoint, Passation, SourceTag } from "@/lib/types";
 import { PassationCard } from "./PassationCard";
 
 /** "12 sept. 2026 à 16:24", the format the card's header uses. */
@@ -54,13 +54,13 @@ function completeness(handover: Handover | null): number {
 }
 
 /**
- * The Résumé, read from the logged-in person's own documents and mails.
+ * The wired parts of the card, read from the logged-in person's own documents
+ * and mails: the résumé and the points de blocage.
  *
- * Only that section is real. Points de blocage, documents prioritaires and
- * contacts clés still come from `mock-data.ts`, which is why the card below is
- * the demo fixture with its `resume` and its source counts replaced rather
- * than a `Passation` built from scratch: pretending the rest is real would
- * hide which parts are actually wired.
+ * Documents prioritaires and contacts clés still come from `mock-data.ts`,
+ * which is why the card below is the demo fixture with the real fields
+ * replaced rather than a `Passation` built from scratch: pretending the rest
+ * is real would hide which parts are actually wired.
  *
  * An empty résumé generates itself, once. That is the behaviour of the
  * previous frontend: arriving with nothing to read is not a state worth making
@@ -71,7 +71,7 @@ function completeness(handover: Handover | null): number {
  * automatic attempt per person per page load, successful or not, after which
  * only the button generates.
  */
-export function ResumeBoard() {
+export function PassationBoard() {
   const { session } = useAuth();
   const user = session?.user;
 
@@ -140,6 +140,27 @@ export function ResumeBoard() {
     }
   }
 
+  /**
+   * Same, for the points de blocage. The whole list is sent: the PATCH
+   * replaces the section, so an add, an edit and a removal are one and the
+   * same call. `evidence` is carried back untouched, which is what keeps a
+   * generated point's sources after someone reworded it.
+   */
+  async function handleBlockersCommit(points: AttentionPoint[]) {
+    if (!user?.id) return;
+    const blockers = points
+      .filter((point) => point.label.trim())
+      .map((point) => ({
+        label: point.label.trim(),
+        evidence: point.evidence ?? [],
+      }));
+    try {
+      setHandover(await saveHandover(user.id, { blockers }));
+    } catch {
+      setError("Vos modifications des points de blocage n'ont pas pu être enregistrées.");
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center gap-3 text-sm text-gray-500">
@@ -159,8 +180,19 @@ export function ResumeBoard() {
   if (mails) sourceTags.push({ kind: "email", count: mails });
   if (documents) sourceTags.push({ kind: "drive", count: documents });
 
+  // A stable id per position: the backend stores an ordered list, with no ids
+  // of its own, and the card needs one to edit or remove a line.
+  const attentionPoints: AttentionPoint[] = (handover?.blockers ?? []).map(
+    (blocker, index) => ({
+      id: `blocker-${index}`,
+      label: blocker.label,
+      evidence: blocker.evidence,
+    })
+  );
+
   const passation: Passation = {
     ...demoPassation,
+    attentionPoints,
     title: `Passation — ${user?.full_name || user?.email || "moi"}`,
     lastUpdated: handover ? frenchDateTime(handover.updatedAt) : "—",
     completude: completeness(handover),
@@ -238,7 +270,8 @@ export function ResumeBoard() {
         key={handover?.updatedAt ?? "empty"}
         passation={passation}
         onResumeCommit={handleResumeCommit}
-        resumeGenerating={generating}
+        onBlockersCommit={handleBlockersCommit}
+        generating={generating}
       />
     </>
   );

@@ -1,7 +1,7 @@
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { RequireSession } from "@/components/RequireSession";
-import { ResumeBoard } from "@/components/passation/ResumeBoard";
+import { PassationBoard } from "@/components/passation/PassationBoard";
 
 export default function HomePage() {
   return (
@@ -13,7 +13,7 @@ export default function HomePage() {
 
           <main className="flex-1 overflow-y-auto bg-[#f5f6f8] px-8 py-8">
             <div className="mx-auto max-w-5xl">
-              <ResumeBoard />
+              <PassationBoard />
             </div>
           </main>
         </div>

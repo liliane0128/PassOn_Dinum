@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, Folder, Mail, MoreVertical, Send } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Contact, Passation } from "@/lib/types";
+import { AttentionPoint, Contact, Passation } from "@/lib/types";
 import { usePassationStatus } from "@/components/PassationStatusProvider";
 import { useRole } from "@/context/RoleContext";
 import { ResumeSection } from "./ResumeSection";
@@ -24,12 +24,16 @@ const MESSAGES_COMPOSE_URL: string | null = null;
 export function PassationCard({
   passation: initialPassation,
   onResumeCommit,
-  resumeGenerating = false,
+  onBlockersCommit,
+  generating = false,
 }: {
   passation: Passation;
   /** Set when the résumé is backed by the API; absent for the demo fixture. */
   onResumeCommit?: (resume: string) => void;
-  resumeGenerating?: boolean;
+  /** Set when the points de blocage are backed by the API. */
+  onBlockersCommit?: (points: AttentionPoint[]) => void;
+  /** True while a generation is running, for the sections that are wired. */
+  generating?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Aperçu");
   const [passation, setPassation] = useState<Passation>(initialPassation);
@@ -218,13 +222,15 @@ export function PassationCard({
               passation={passation}
               onResumeChange={updateResume}
               onResumeCommit={onResumeCommit}
-              generating={resumeGenerating}
+              generating={generating}
             />
             <PointsAttentionSection
               passation={passation}
               onAdd={addAttentionPoint}
               onChange={updateAttentionPoint}
               onRemove={removeAttentionPoint}
+              onCommit={onBlockersCommit}
+              generating={generating}
             />
           </div>
           <div className="flex flex-col gap-5">

@@ -15,6 +15,8 @@ export interface DocumentAssocie {
 export interface AttentionPoint {
   id: string;
   label: string;
+  /** The items this point was drawn from; empty for a hand-written one. */
+  evidence?: { id: string; title?: string; url?: string }[];
 }
 
 export interface Contact {

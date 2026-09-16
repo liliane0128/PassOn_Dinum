@@ -1,9 +1,9 @@
 /**
  * Client for the stored handover and for the generator.
  *
- * Only what the Résumé needs, on purpose: the other three sections of the card
- * (points de blocage, documents prioritaires, contacts clés) still show their
- * demo fixture, and wiring them is a later step.
+ * Only what the wired sections need, on purpose: the résumé and the points de
+ * blocage. Documents prioritaires and contacts clés still show their demo
+ * fixture, and wiring them is a later step.
  *
  *   GET   /api/collaborators/<id>/items/     the person's documents and mails
  *   GET   /api/dossier/                      one model pass over them -> a sheet
@@ -17,23 +17,36 @@
  * the backend finds the Drive and Messages credentials obtained at login.
  */
 
+export interface EvidenceRef {
+  id: string;
+  title?: string;
+  url?: string;
+  excerpt?: string;
+}
+
+/** One bulleted line of a generated sheet, with what backs it. */
+export interface Bullet {
+  label: string;
+  evidence?: EvidenceRef[];
+}
+
 /**
  * The stored sheet.
  *
- * Only `text` is displayed for now. The section arrays are read all the same:
- * a whole generation is saved, so they are what the card's completeness figure
- * is measured against -- a real count of what the pass found, rather than a
- * number chosen by hand.
+ * `text` and `blockers` are displayed; the other sections are read all the
+ * same. A whole generation is saved, so they are what the card's completeness
+ * figure is measured against -- a real count of what the pass found, rather
+ * than a number chosen by hand.
  */
 export interface Handover {
   collaboratorId: string;
   text: string;
   validated: boolean;
   updatedAt: string;
+  blockers?: Bullet[];
   actions?: unknown[];
   decisions?: unknown[];
   deadlines?: unknown[];
-  blockers?: unknown[];
   documents?: unknown[];
 }
 

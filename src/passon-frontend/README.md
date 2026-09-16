@@ -98,10 +98,11 @@ où nginx sert la page d'accueil, relaie `/login` et `/dashboard` vers ce serveu
 Next, et `/api/` vers Django — une seule origine, condition du cookie de session
 et de la vérification CSRF.
 
-## Le résumé
+## Le résumé et les points de blocage
 
-Le tableau de bord affiche le résumé de la personne connectée, composé à partir
-de ses documents (Drive) et de ses mails (Messages). **Le code de génération
+Le tableau de bord affiche le résumé et les points de blocage de la personne
+connectée, composés à partir de ses documents (Drive) et de ses mails
+(Messages). **Le code de génération
 n'a pas été modifié** : trois routes existantes suffisent.
 
 ```
@@ -117,17 +118,27 @@ découpage que dans l'ancien frontend.
 | Fichier | Rôle |
 | --- | --- |
 | `lib/handover.ts` | les appels et les messages d'erreur |
-| `components/passation/ResumeBoard.tsx` | charge, génère, enregistre |
+| `components/passation/PassationBoard.tsx` | charge, génère, enregistre |
 | `components/passation/ResumeSection.tsx` | l'affichage et l'édition du résumé |
+| `components/passation/PointsAttentionSection.tsx` | l'affichage et l'édition des points de blocage |
 
 Ce qu'il faut savoir :
 
-- **Ce qui est branché, et ce qui ne l'est pas.** `ResumeBoard` part du jeu de
-  démonstration et n'y remplace que ce qui est réel : le titre (le nom de la
-  personne connectée), la date de dernière mise à jour, la complétude, le résumé
-  et le décompte des sources. Les points de blocage, les documents prioritaires
-  et les contacts clés viennent toujours de `mock-data.ts`. Construire une
-  passation entière donnerait l'illusion que le reste est réel.
+- **Ce qui est branché, et ce qui ne l'est pas.** `PassationBoard` part du jeu
+  de démonstration et n'y remplace que ce qui est réel : le titre (le nom de la
+  personne connectée), la date de dernière mise à jour, la complétude, le
+  résumé, les points de blocage et le décompte des sources. Les documents
+  prioritaires et les contacts clés viennent toujours de `mock-data.ts`.
+  Construire une passation entière donnerait l'illusion que le reste est réel.
+- **Les sources ne sont pas affichées.** Chaque point généré porte pourtant les
+  éléments dont il provient (`evidence`, rempli côté backend à partir des
+  documents réellement lus). Ils sont conservés et transmis tels quels à
+  l'enregistrement — reformuler un point garde ses sources — mais la rubrique
+  n'affiche que le texte, sur demande.
+- **Les modifications des points de blocage sont enregistrées** à la fermeture
+  de l'éditeur, comme le résumé. La liste entière est envoyée : le PATCH
+  remplace la rubrique, si bien qu'ajouter, corriger et retirer sont un seul et
+  même appel.
 - **La complétude se mesure sur la fiche enregistrée**, pas sur ce que la page
   affiche : la part des six rubriques revenues non vides. Une passe complète
   donne donc 100 %, même si seul le résumé est montré.
