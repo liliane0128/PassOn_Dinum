@@ -1,5 +1,5 @@
 """
-ASGI config for relais_dinum project.
+ASGI config for passon_dinum project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'relais_dinum.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'passon_dinum.settings')
 
 application = get_asgi_application()

@@ -1,5 +1,5 @@
 """
-WSGI config for relais_dinum project.
+WSGI config for passon_dinum project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'relais_dinum.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'passon_dinum.settings')
 
 application = get_wsgi_application()
