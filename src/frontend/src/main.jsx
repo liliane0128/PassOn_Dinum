@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "@gouvfr-lasuite/ui-components/style";
+import "@gouvfr-lasuite/ui-components/fonts/marianne";
 import "@gouvfr-lasuite/ui-components/fonts/roboto";
 import "@gouvfr-lasuite/ui-components/fonts/material-icons";
 import "./index.css";
