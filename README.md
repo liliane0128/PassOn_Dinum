@@ -1,15 +1,15 @@
 <p align="center">
-  <a href="https://github.com/liliane0128/Relais_Dinum">
+  <a href="https://github.com/liliane0128/PassOn_Dinum">
     <img alt="Pass'on" src="src/frontend/src/assets/suite-logo.svg" width="120" />
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/liliane0128/Relais_Dinum/stargazers/">
-    <img src="https://img.shields.io/github/stars/liliane0128/Relais_Dinum" alt="Stars" />
+  <a href="https://github.com/liliane0128/PassOn_Dinum/stargazers/">
+    <img src="https://img.shields.io/github/stars/liliane0128/PassOn_Dinum" alt="Stars" />
   </a>
-  <a href="https://github.com/liliane0128/Relais_Dinum/blob/main/LICENSE">
-    <img alt="MIT License" src="https://img.shields.io/github/license/liliane0128/Relais_Dinum" />
+  <a href="https://github.com/liliane0128/PassOn_Dinum/blob/main/LICENSE">
+    <img alt="MIT License" src="https://img.shields.io/github/license/liliane0128/PassOn_Dinum" />
   </a>
 </p>
 

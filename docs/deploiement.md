@@ -44,7 +44,7 @@ OnlyOffice (9981) and its databases (6433/6434). Messages exposes its database o
 ### 2. Starting the three projects
 
 The three repositories sit side by side (`~/hackathon/drive`,
-`~/hackathon/messages`, `~/hackathon/Relais_Dinum`). The order matters: Pass'on
+`~/hackathon/messages`, `~/hackathon/PassOn_Dinum`). The order matters: Pass'on
 queries the other two as soon as someone logs in.
 
 ```bash
@@ -65,7 +65,7 @@ make superuser            # also creates the autojoin domain example.local
 make start                # backend, worker, frontend, Keycloak
 
 # 3. Pass'on
-cd ~/hackathon/Relais_Dinum
+cd ~/hackathon/PassOn_Dinum
 make up                   # postgres + Django + nginx  ->  http://localhost:8090
 ```
 
@@ -189,7 +189,7 @@ neither, and generation then answers `no_data_to_summarize` — that is not a
 failure.
 
 ```bash
-cd ~/hackathon/Relais_Dinum
+cd ~/hackathon/PassOn_Dinum
 docker compose exec web python manage.py seed_demo \
   --email you@mydomain.fr --password '...'
 ```
@@ -288,7 +288,7 @@ OnlyOffice (9981) et ses bases (6433/6434). Messages expose sa base sur 8912.
 ### 2. Démarrer les trois projets
 
 Les trois dépôts sont voisins (`~/hackathon/drive`, `~/hackathon/messages`,
-`~/hackathon/Relais_Dinum`). L'ordre a son importance : Pass‘on interroge les
+`~/hackathon/PassOn_Dinum`). L'ordre a son importance : Pass‘on interroge les
 deux autres dès la connexion.
 
 ```bash
@@ -309,7 +309,7 @@ make superuser            # crée aussi le domaine autojoin example.local
 make start                # backend, worker, frontend, Keycloak
 
 # 3. Pass‘on
-cd ~/hackathon/Relais_Dinum
+cd ~/hackathon/PassOn_Dinum
 make up                   # postgres + Django + nginx  ->  http://localhost:8090
 ```
 
@@ -436,7 +436,7 @@ compte neuf n'a ni l'un ni l'autre, et la génération répond alors
 `no_data_to_summarize` — ce n'est pas une panne.
 
 ```bash
-cd ~/hackathon/Relais_Dinum
+cd ~/hackathon/PassOn_Dinum
 docker compose exec web python manage.py seed_demo \
   --email vous@mondomaine.fr --password '...'
 ```
