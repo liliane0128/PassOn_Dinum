@@ -73,6 +73,9 @@ export function ManagerPage() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  // L'annuaire Drive est interrogé avec la session Drive du manager : elle
+  // peut avoir expiré alors qu'il est toujours connecté ici.
+  const [directoryReachable, setDirectoryReachable] = useState(true);
   const [newJobTitle, setNewJobTitle] = useState("");
   const [adding, setAdding] = useState(false);
   const searchToken = useRef(0);
@@ -135,8 +138,11 @@ export function ManagerPage() {
     }
     setSearching(true);
     try {
-      const results = await teamApi.searchCollaborators(value.trim());
-      if (searchToken.current === token) setSearchResults(results);
+      const { results, directory } = await teamApi.searchCollaborators(value.trim());
+      if (searchToken.current === token) {
+        setSearchResults(results);
+        setDirectoryReachable(directory);
+      }
     } catch (err) {
       if (searchToken.current !== token) return;
       if (err.status === 401) {
@@ -163,8 +169,11 @@ export function ManagerPage() {
       return;
     }
     try {
-      const results = await teamApi.searchCollaborators(value.trim());
-      if (recipientToken.current === token) setRecipientResults(results);
+      const { results, directory } = await teamApi.searchCollaborators(value.trim());
+      if (recipientToken.current === token) {
+        setRecipientResults(results);
+        setDirectoryReachable(directory);
+      }
     } catch (err) {
       if (recipientToken.current !== token) return;
       if (err.status === 401) {
@@ -423,9 +432,9 @@ export function ManagerPage() {
                 )}
                 {!searching && search.trim().length >= 2 && searchResults.length === 0 && (
                   <p className="manager-page__team__search__hint">
-                    Aucun compte ne correspond. L'annuaire ne liste que les
-                    personnes ayant déjà utilisé Drive, et la recherche se fait
-                    par début de nom ou d'adresse.
+                    {directoryReachable
+                      ? "Aucun compte ne correspond. L'annuaire ne liste que les personnes ayant déjà utilisé Drive, et la recherche se fait par début de nom ou d'adresse."
+                      : "Annuaire Drive indisponible : votre session Drive a peut-être expiré. Reconnectez-vous, ou saisissez l'adresse complète pour ajouter la personne."}
                   </p>
                 )}
 
@@ -693,7 +702,7 @@ export function ManagerPage() {
         title="Retirer ce collaborateur ?"
       >
         {pendingRemove
-          ? `Voulez-vous vraiment retirer ${pendingRemove.firstName} ${pendingRemove.lastName} de votre équipe ? Son résumé et son compte ne seront plus accessibles.`
+          ? `Retirer ${pendingRemove.firstName} ${pendingRemove.lastName} de votre équipe ? Sa passation et son compte sont conservés : vous ne les verrez simplement plus, et vous pourrez le rattacher à nouveau.`
           : null}
       </DeleteConfirmationModal>
     </div>

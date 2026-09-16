@@ -120,6 +120,15 @@ def team(request):
 
 @require_http_methods(["DELETE"])
 def team_member(request, collaborator_id):
+    """Take someone off this manager's team.
+
+    Detached, not deleted: leaving a team is not leaving the organisation.
+    Deleting the row destroyed the person's handover with it -- the very thing
+    the application exists to preserve -- and lost their job title, their
+    identity and the link to their Drive account, none of which a manager
+    means to discard by reorganising a team. They keep everything and simply
+    have no manager until someone adds them again.
+    """
     manager, error = _current_manager(request)
     if error:
         return error
@@ -130,8 +139,9 @@ def team_member(request, collaborator_id):
         # distinction is not the caller's business.
         return _error("not_found", 404)
 
-    member.delete()
-    return JsonResponse({}, status=200)
+    member.manager = None
+    member.save(update_fields=["manager"])
+    return JsonResponse(as_json(member), status=200)
 
 
 # Drive's directory is the authority on who exists: an address typed by hand
@@ -143,16 +153,18 @@ SEARCH_LIMIT = 10
 
 
 def _drive_directory(request, query):
-    """Accounts matching `query` in Drive, as [(email, full_name)].
+    """Accounts matching `query` in Drive, as (entries, reachable).
 
     Uses the Drive session stored at login: Drive answers for the person
-    asking, and that is the only credential we hold. If it is missing or the
-    call fails, the search falls back to what we already know locally rather
-    than failing outright.
+    asking, and that is the only credential we hold. When it is missing or no
+    longer accepted, `reachable` is False -- the difference matters. An empty
+    result then means "the directory could not be consulted", not "no such
+    person", and the interface has to say so rather than let someone conclude
+    the account does not exist.
     """
     credential = request.session.get(CREDENTIAL_KEYS["drive"])
     if not credential:
-        return []
+        return [], False
 
     config = settings.DINUM_SERVICES["drive"]
     session = requests.Session()
@@ -165,15 +177,19 @@ def _drive_directory(request, query):
             f"{oidc_login.public_base_url('drive')}/api/v1.0/users/",
             params={"q": query},
         )
+        if response.status_code == 401:
+            # The Drive session expired: still logged into Pass'on, no longer
+            # into Drive.
+            return [], False
         if response.status_code != 200:
-            return []
+            return [], False
         return [
             (user["email"], user.get("full_name") or user["email"])
             for user in response.json()
             if user.get("email")
-        ]
+        ], True
     except (requests.RequestException, ValueError, KeyError, TypeError):
-        return []
+        return [], False
     finally:
         session.close()
 
@@ -205,8 +221,9 @@ def search(request):
         )[: SEARCH_LIMIT * 2]
     }
 
+    directory, reachable = _drive_directory(request, query)
     found = {}
-    for email, full_name in _drive_directory(request, query):
+    for email, full_name in directory:
         found[email.lower()] = {"email": email, "fullName": full_name}
     for email, person in known.items():
         found.setdefault(email, {"email": person.email, "fullName": person.full_name})
@@ -224,4 +241,11 @@ def search(request):
             status = "available"
         results.append({**entry, "status": status})
 
-    return JsonResponse({"results": results[:SEARCH_LIMIT]})
+    return JsonResponse(
+        {
+            "results": results[:SEARCH_LIMIT],
+            # False when Drive's directory could not be consulted, so that no
+            # result does not read as "this person does not exist".
+            "directory": reachable,
+        }
+    )

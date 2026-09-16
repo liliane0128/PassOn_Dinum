@@ -43,8 +43,12 @@ identity by email on first login. Making this field required would make the
 may await their first login, since SQL does not treat NULLs as duplicates.
 
 **`manager` uses `SET_NULL`, not `CASCADE`.** A manager leaving must not delete
-their team — that is the exact situation the application exists to handle.
-Deleting a collaborator does delete their handover, which is `CASCADE`.
+their team — that is the exact situation the application exists to handle. For
+the same reason, removing someone from a team detaches them (`manager = NULL`)
+rather than deleting them: leaving a team is not leaving the organisation, and
+deleting the row would take their handover, job title and Drive link with it.
+Deleting a collaborator outright does cascade to their handover, but nothing in
+the interface does that today.
 
 **`sections` is JSON.** It holds the six structured lists the interface shows
 (actions, décisions, deadlines, blocages, contacts, documents). They are always

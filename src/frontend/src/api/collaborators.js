@@ -34,7 +34,14 @@ export async function searchCollaborators(query) {
     { credentials: "same-origin" },
   );
   if (!response.ok) throw await failure(response);
-  return (await response.json()).results ?? [];
+  const body = await response.json();
+  return {
+    results: body.results ?? [],
+    // false = l'annuaire Drive n'a pas pu être interrogé (session Drive
+    // expirée, service indisponible) : aucun résultat ne veut alors pas dire
+    // que la personne n'existe pas.
+    directory: body.directory !== false,
+  };
 }
 
 /** Ajoute un collaborateur à l'équipe du manager connecté. */

@@ -133,7 +133,9 @@ class TeamApiTests(TestCase):
         self.assertEqual(self.add().status_code, 401)
         self.assertEqual(self.client.get("/api/collaborators/").status_code, 401)
 
-    def test_removing_someone_takes_their_handover_with_them(self):
+    def test_removing_someone_keeps_them_and_their_handover(self):
+        """Leaving a team is not leaving the organisation: deleting the row
+        destroyed the handover this application exists to preserve."""
         self.log_in_as(self.manager)
         self.add()
         member = Collaborator.objects.get(email="jean@example.test")
@@ -141,8 +143,30 @@ class TeamApiTests(TestCase):
 
         response = self.client.delete(f"/api/collaborators/{member.id}/")
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(Collaborator.objects.filter(id=member.id).exists())
-        self.assertEqual(Handover.objects.count(), 0)
+
+        member.refresh_from_db()
+        self.assertIsNone(member.manager)
+        self.assertEqual(member.handover.text, "En cours")
+        self.assertEqual(self.manager.team_members.count(), 0)
+
+    def test_someone_removed_can_be_added_again(self):
+        self.log_in_as(self.manager)
+        self.add()
+        member = Collaborator.objects.get(email="jean@example.test")
+        member.job_title = "Chargé de mission"
+        member.external_id = "drive-9"
+        member.save()
+
+        self.client.delete(f"/api/collaborators/{member.id}/")
+        response = self.add()
+
+        self.assertEqual(response.status_code, 200)  # attached, not created
+        member.refresh_from_db()
+        self.assertEqual(member.manager, self.manager)
+        # Nothing about them was lost in the meantime.
+        self.assertEqual(member.job_title, "Chargé de mission")
+        self.assertEqual(member.external_id, "drive-9")
+        self.assertEqual(Collaborator.objects.filter(email="jean@example.test").count(), 1)
 
     def test_a_manager_cannot_remove_someone_else_s_collaborator(self):
         other_manager = Collaborator.objects.create(
@@ -178,8 +202,10 @@ class TeamSearchTests(TestCase):
         session[USER_KEY] = {"id": str(collaborator.id), "email": collaborator.email}
         session.save()
 
-    def search(self, query, directory=()):
-        with mock.patch("passon.views._drive_directory", return_value=list(directory)):
+    def search(self, query, directory=(), reachable=True):
+        with mock.patch(
+            "passon.views._drive_directory", return_value=(list(directory), reachable)
+        ):
             return self.client.get(f"/api/collaborators/search/?q={query}")
 
     def test_someone_with_a_drive_account_is_offered(self):
@@ -253,3 +279,34 @@ class TeamSearchTests(TestCase):
 
     def test_a_visitor_who_is_not_logged_in_cannot(self):
         self.assertEqual(self.search("jean").status_code, 401)
+
+
+class DirectoryAvailabilityTests(TeamSearchTests):
+    """An unreachable directory must not read as "no such person".
+
+    The directory is queried with the manager's own Drive session, which can
+    expire while they are still logged into Pass'on. It then returned nothing,
+    with a 200 -- so a colleague who exists, and who had just been removed
+    from the team, looked as though they had never existed.
+    """
+
+    def test_a_reachable_directory_says_so(self):
+        self.log_in_as(self.manager)
+        body = self.search("jean", directory=[("jean@example.test", "Jean Dupont")]).json()
+        self.assertTrue(body["directory"])
+
+    def test_an_unreachable_directory_is_reported(self):
+        self.log_in_as(self.manager)
+        body = self.search("jean", directory=[], reachable=False).json()
+        self.assertFalse(body["directory"])
+        self.assertEqual(body["results"], [])
+
+    def test_what_we_know_ourselves_is_still_returned(self):
+        """Our own collaborators do not depend on Drive being reachable."""
+        Collaborator.objects.create(
+            email="connu@example.test", first_name="Con", last_name="Nu", manager=self.manager,
+        )
+        self.log_in_as(self.manager)
+        body = self.search("connu", directory=[], reachable=False).json()
+        self.assertEqual([r["email"] for r in body["results"]], ["connu@example.test"])
+        self.assertFalse(body["directory"])
