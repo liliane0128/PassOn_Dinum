@@ -1,125 +1,173 @@
-# Pass‘on Dinum
+<p align="center">
+  <a href="https://github.com/liliane0128/Relais_Dinum">
+    <img alt="Pass'on" src="src/frontend/src/assets/suite-logo.svg" width="120" />
+  </a>
+</p>
 
-## Run the whole app (`make up`)
+<p align="center">
+  <a href="https://github.com/liliane0128/Relais_Dinum/stargazers/">
+    <img src="https://img.shields.io/github/stars/liliane0128/Relais_Dinum" alt="Stars" />
+  </a>
+  <a href="https://github.com/liliane0128/Relais_Dinum/blob/main/LICENSE">
+    <img alt="MIT License" src="https://img.shields.io/github/license/liliane0128/Relais_Dinum" />
+  </a>
+</p>
 
-nginx serves the built React app and proxies the API to Django, so everything
-lives on a single port.
+<p align="center">
+  <a href="#getting-started-">Getting started</a> ·
+  <a href="src/backend/connectors/README.md">Connectors</a> ·
+  <a href="src/backend/accounts/README.md">Accounts</a> ·
+  <a href="src/backend/passon/README.md">Schema</a>
+</p>
+
+# Pass'on: Handover Assistant
+
+**Pass'on reads a colleague's Docs, Drive and Messages to generate a structured handover sheet — powered by an LLM.**
+
+## Why use Pass'on ❓
+
+* 📋 Pulls documents, files and emails from the three La Suite services automatically
+* 🤖 Extracts six structured handover sections via LLM (needs `GROQ_API_KEY`)
+* 🔑 Login with your existing Drive account — no separate account needed
+* 🛡️ Runs on mock data without any upstream service for quick local testing
+* 🗄️ Stores collaborators and handover sheets in a local Postgres database
+
+## Getting started 🔧
+
+### Prerequisites
+
+- Docker
+- Docker Compose
+- GNU Make
 
 ```bash
-make up    # builds and starts nginx + Django
-make down  # stops them
-make logs  # follows both containers' logs
+$ docker -v
+$ docker compose version
 ```
 
-Everything is on **http://localhost:8090**:
+### Bootstrap Pass'on
+
+```bash
+make up
+```
+
+Builds and starts nginx + Django + Postgres. The full app is on **http://localhost:8090**.
 
 | URL | Served by |
-| --- | --- |
-| `/`, `/manager`, `/moi` | the built React app (`src/frontend`) |
-| `/api/...` | Django (`src/backend`, see the connectors doc below) |
+|-----|-----------|
+| `/`, `/manager`, `/moi` | React frontend |
+| `/api/…` | Django backend |
 | `/admin/`, `/static/` | Django admin |
 
-Data lives in **postgres**, started as part of both stacks. The full stack keeps
-its database in a Docker-managed volume (`passon-db`) rather than the
-`./database` directory the backend-only stack uses, so the two never write to
-the same files; credentials come from the repository-root `.env` (copy
-`template.env` on a fresh clone).
-
-Configuration lives in `src/backend/.env`, created from `.env.example` on the
-first `make up`. It defaults to `DINUM_USE_MOCK=true`, so the app runs on demo
-data without Docs/Drive/Messages running and without any credential.
-
-The React build is baked into the nginx image, so **run `make up` again after
-changing the frontend** — see [`src/server/README.md`](src/server/README.md)
-for what the nginx layer does and why.
-
-## Working on a single part
-
-Backend alone — Django on **http://localhost:8000**, no frontend, no nginx.
-From the repository root (this is `make`'s default target):
+On first run, copy the env template:
 
 ```bash
-make run     # starts postgres + Django, opens the browser
-make build   # rebuilds the images
-make stop    # stops everything
+cp template.env .env
+cp src/backend/.env.example src/backend/.env
 ```
 
-Same `docker-compose.yml`, same postgres, same data as `make up` — it just
-leaves nginx and the compiled frontend out.
+By default `DINUM_USE_MOCK=true` — the app runs on demo data without Docs, Drive or Messages.
 
-Note that you cannot log in *from the interface* this way: the login screen is
-served by the frontend, and the session cookies need the app and the API on one
-origin, which is what `make up` provides. The API itself works on :8000 for
-curl.
+### Login
 
-Frontend alone — Vite dev server with hot reload on **http://localhost:5173**,
-mock data, no backend:
+Pass'on has no accounts of its own. Log in with your **Drive** credentials:
+
+```
+POST /api/auth/login/   {"email": "...", "password": "..."}
+```
+
+With `DINUM_USE_MOCK=true`, demo accounts are accepted without Drive running.
+
+### Useful commands
 
 ```bash
-cd src/frontend
-npm install
-npm run dev
+make up      # build and start the full stack
+make down    # stop everything
+make logs    # follow logs
+
+make run     # backend only (Django on http://localhost:8000)
+make stop    # stop backend stack
+make build   # rebuild images
 ```
 
-See `src/frontend/PLAN.md` and `src/frontend/DOCUMENTATION.md` for the
-project's scope and design decisions.
+Frontend dev server (hot reload, mock data):
 
-## Running it alongside Drive and Messages
+```bash
+cd src/frontend && npm install && npm run dev
+# → http://localhost:5173
+```
 
-Pass‘on has no accounts and no documents of its own: it reads them from **Drive**
-and **Messages**, as the person using it. Running it for real therefore means
-running those two next to it, with an account that exists in both.
+## Running alongside upstream services 🔌
 
-**[docs/deploiement.md](docs/deploiement.md)** covers that end to end — which
-ports, in which order, how to create an account that works on both sides, and
-what each failure message actually means. Read it before the first `make up`
-against real services; most of what it documents is not guessable.
+Pass'on reads real data from **Docs**, **Drive** and **Messages**. Each is an independent Docker Compose stack.
 
-## Logging in
+### Upstream ports
 
-Pass‘on has no accounts of its own: users log in with their **Drive** email and
-password, which is checked against the local Drive instance. A successful login
-also yields the Drive session needed to read that person's documents.
+| Service | API | Frontend | Keycloak |
+|---------|-----|----------|----------|
+| Docs | http://localhost:8071 | http://localhost:3000 | localhost:8083 |
+| Drive | http://localhost:8072 | http://localhost:3000 | localhost:8084 |
+| Messages | http://localhost:8901 | http://localhost:8900 | localhost:8902 |
 
-| Route | Method |
-| --- | --- |
-| `/api/auth/login/` | POST `{"email": ..., "password": ...}` |
-| `/api/auth/logout/` | POST |
-| `/api/auth/me/` | GET |
+### Start each service
 
-The login screen of the app uses these routes, so signing in there also gives
-the app access to that person's Drive files and, when the same account exists in
-Messages' own Keycloak, their mail. The response's `services` field says which
-ones answered.
+```bash
+# Docs
+cd /path/to/docs && make bootstrap FLUSH_ARGS='--no-input' && make run
 
-Once logged in, the app shows that user's **real** items (`/api/extraction/items/`)
-and can generate the AI handover from them (`/api/dossier/`, needs `GROQ_API_KEY`).
-Other collaborators in the manager view keep showing mock data — we can only read
-files for the account whose session we hold.
+# Drive
+cd /path/to/drive && make bootstrap && make demo && make run
 
-With `DINUM_USE_MOCK=true`, demo accounts are accepted without Drive running. To check credentials against a real Drive, set `DINUM_USE_MOCK=false`
-and `DRIVE_URL` in `src/backend/.env`, and start Drive separately.
-See [the accounts doc](src/backend/accounts/README.md) for the routes, the CSRF
-handshake the frontend needs, and the Keycloak quirks involved.
+# Messages
+cd /path/to/messages && make bootstrap
+# then seed demo mail:
+docker compose exec -e DJANGO_CONFIGURATION=E2E backend-dev-light \
+    python manage.py e2e_demo
+```
 
-## Database
+### Default credentials
 
-One postgres, started by both `make up` and `make run`. Besides Django's own
-tables (sessions, admin), it holds the project's two:
+| Service | Username | Password |
+|---------|----------|----------|
+| Docs | `impress` | `impress` |
+| Drive | `drive` | `drive` |
+| Messages | `user1@example.local` | `user1` |
+
+### Session cookies
+
+| Service | Cookie name |
+|---------|-------------|
+| Docs | `docs_sessionid` |
+| Drive | `drive_sessionid` |
+| Messages | `st_messages_sessionid` |
+
+> [!WARNING]
+> Set `DINUM_USE_MOCK=false` and `DRIVE_URL` in `src/backend/.env` before connecting to a real Drive instance.
+> See [the accounts doc](src/backend/accounts/README.md) for the CSRF handshake and Keycloak quirks.
+
+## Database 🗄️
+
+One Postgres instance, shared by both stacks (`make up` and `make run`).
 
 | Table | What |
-| --- | --- |
-| `Collaborator` | one row per person — role, team, and who they report to |
-| `Handover` | their handover sheet: text, the six structured sections, validated or not |
+|-------|------|
+| `Collaborator` | One row per person — role, team, reporting line |
+| `Handover` | Handover sheet: free text + six structured sections, validated or not |
 
-See [the schema and why it looks like that](src/backend/passon/README.md).
-To rebuild the demo documents and mails in Drive and Messages:
-`python manage.py seed_demo --email ... --password ...`.
-Nothing writes to these yet — login still does not create a collaborator.
+To seed demo data in Drive and Messages:
 
-## Service APIs
+```bash
+python manage.py seed_demo --email ... --password ...
+```
 
-Docs, Drive, and Messages share read-only Django routes under `/api/`.
-See [connector setup, authentication, and limitations](src/backend/connectors/README.md).
-Those routes are reachable at `http://localhost:8090/api/` through the full
-stack, and at `http://localhost:8000/api/` when running the backend alone.
+## Contributing 🙌
+
+PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) if it exists, or open an issue.
+
+## License 📝
+
+This work is released under the MIT License.
+
+## Gov ❤️ open source
+
+Pass'on is part of the **La Suite Numérique** ecosystem, a joint initiative led by [DINUM](https://www.numerique.gouv.fr/dinum/).
