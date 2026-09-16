@@ -38,9 +38,18 @@ beside it.
 ```
 browser ---> nginx (:8091) ---> /           the homepage (static, src/server/html)
                            \--> /dashboard  host:3001  (Next.js, prefix stripped)
-                            \-> /_next/     host:3001  (its assets and hot reload)
-                             \> /equipe     host:3001
+                            \-> /login      host:3001  (same path on both sides)
+                             \> /_next/     host:3001  (its assets and hot reload)
+                              \> /equipe    host:3001
+                               \> /api/     web:8000   (Django, same as :8090)
 ```
+
+`/api/` is proxied here as well, and that is not a convenience. The session
+lives in a cookie and Django checks the browser's `Origin` against its own host
+before accepting a POST, so the app and the API have to share an origin. Served
+from another one, the login would need CORS *and* an entry in
+`CSRF_TRUSTED_ORIGINS`, and the cookie would still be dropped by a browser that
+blocks third-party cookies.
 
 The homepage is a hand-written page with no build step, laid out like the
 ui-kit's `Hero`, whose single button points at `/dashboard`.
@@ -178,9 +187,18 @@ nouvelle se construit à côté.
 ```
 navigateur ---> nginx (:8091) ---> /           la page d'accueil (statique, src/server/html)
                               \--> /dashboard  host:3001  (Next.js, préfixe retiré)
-                               \-> /_next/     host:3001  (ses fichiers et le rechargement à chaud)
-                                \> /equipe     host:3001
+                               \-> /login      host:3001  (même chemin des deux côtés)
+                                \> /_next/     host:3001  (ses fichiers et le rechargement à chaud)
+                                 \> /equipe    host:3001
+                                  \> /api/     web:8000   (Django, comme sur :8090)
 ```
+
+`/api/` est relayé ici aussi, et ce n'est pas un confort. La session tient dans
+un cookie, et Django compare l'en-tête `Origin` du navigateur à son propre hôte
+avant d'accepter un POST : l'application et l'API doivent donc partager une
+origine. Servie depuis une autre, la connexion demanderait CORS *et* une entrée
+dans `CSRF_TRUSTED_ORIGINS`, et le cookie serait de toute façon écarté par un
+navigateur qui bloque les cookies tiers.
 
 La page d'accueil est écrite à la main, sans étape de compilation, sur la
 structure du `Hero` du ui-kit, et son unique bouton pointe vers `/dashboard`.

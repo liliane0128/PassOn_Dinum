@@ -1,10 +1,11 @@
 "use client";
 
-import { Bell, ChevronDown, CircleHelp, Search } from "lucide-react";
+import { Bell, CircleHelp, LogOut, Search } from "lucide-react";
 import { PassOnLogo } from "./PassOnLogo";
-import { currentUser } from "@/lib/mock-data";
 import { cn } from "@/lib/cn";
 import { Role, useRole } from "@/context/RoleContext";
+import { useAuth } from "@/context/AuthContext";
+import { LOGIN_PATH } from "@/lib/routes";
 
 const roleOptions: { value: Role; label: string }[] = [
   { value: "agent", label: "Agent" },
@@ -42,7 +43,23 @@ function RoleSwitcher() {
   );
 }
 
+/** Initials from the name the backend reports, for the avatar. */
+function initialsOf(fullName: string, email: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return email.slice(0, 2).toUpperCase();
+}
+
 export function Header() {
+  const { session, logout } = useAuth();
+  const user = session?.user;
+
+  async function handleLogout() {
+    await logout();
+    window.location.href = LOGIN_PATH;
+  }
+
   return (
     <header className="flex h-16 w-full items-center justify-between border-b border-gray-200 bg-white px-6">
       <div className="flex items-center gap-3">
@@ -73,16 +90,28 @@ export function Header() {
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
         </button>
         <RoleSwitcher />
-        <button className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
-            {currentUser.initials}
+            {user ? initialsOf(user.full_name, user.email) : "?"}
           </span>
           <span className="hidden flex-col items-start leading-tight sm:flex">
-            <span className="font-medium text-gray-800">{currentUser.name}</span>
-            <span className="text-xs text-gray-400">{currentUser.jobTitle}</span>
+            <span className="font-medium text-gray-800">
+              {user?.full_name || user?.email || "Non connecté"}
+            </span>
+            <span className="text-xs text-gray-400">
+              {user?.jobTitle || user?.email}
+            </span>
           </span>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
-        </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Se déconnecter"
+            aria-label="Se déconnecter"
+            className="ml-1 rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </header>
   );

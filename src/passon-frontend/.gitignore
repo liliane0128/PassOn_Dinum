@@ -4,3 +4,6 @@ out
 .env*.local
 .DS_Store
 next-env.d.ts
+
+# Incremental typecheck cache, rewritten by every `tsc` run.
+*.tsbuildinfo

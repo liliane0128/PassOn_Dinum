@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 import { RoleProvider } from "@/context/RoleContext";
 import { PassationStatusProvider } from "@/components/PassationStatusProvider";
 
@@ -17,9 +18,11 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className="font-sans text-gray-900 antialiased">
-        <RoleProvider>
-          <PassationStatusProvider>{children}</PassationStatusProvider>
-        </RoleProvider>
+        <AuthProvider>
+          <RoleProvider>
+            <PassationStatusProvider>{children}</PassationStatusProvider>
+          </RoleProvider>
+        </AuthProvider>
       </body>
     </html>
   );

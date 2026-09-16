@@ -45,10 +45,16 @@
                 vers chaque source.
               </p>
 
-              <!-- La seule action de la page : rejoindre le tableau de bord.
-                   Servi par nginx, qui relaie /dashboard vers l'application
-                   Next (port 3001 en développement). -->
-              <a class="c__button c__button--primary" href="/dashboard">
+              <!-- La seule action de la page. Elle mène au tableau de bord
+                   si une session est ouverte, et à la page de connexion sinon
+                   (voir le script en bas de page). Le href reste /dashboard :
+                   sans JavaScript, le bouton fonctionne quand même, et c'est
+                   le garde de l'application qui renvoie vers /login. -->
+              <a
+                class="c__button c__button--primary"
+                href="/dashboard"
+                data-entry-point
+              >
                 Accéder au tableau de bord
                 <span aria-hidden="true">→</span>
               </a>
@@ -182,5 +188,27 @@
         par elles, ni un produit officiel.
       </p>
     </footer>
+    <!-- Le bouton demande au serveur qui est connecté, puis envoie au bon
+         endroit. La page reste statique : c'est le seul script, il ne
+         s'exécute qu'au clic, et son échec ne bloque rien — la navigation
+         se fait alors vers /dashboard, dont le garde décidera. -->
+    <script>
+      document
+        .querySelector("[data-entry-point]")
+        .addEventListener("click", async (event) => {
+          event.preventDefault();
+          let destination = "/dashboard";
+          try {
+            const response = await fetch("/api/auth/me/", {
+              credentials: "same-origin",
+              headers: { Accept: "application/json" },
+            });
+            if (response.status === 401) destination = "/login";
+          } catch {
+            // API injoignable : on laisse l'application s'en expliquer.
+          }
+          window.location.href = destination;
+        });
+    </script>
   </body>
 </html>

@@ -63,7 +63,13 @@ The migration is going step by step, so :8090 above is untouched by it.
 | URL | Served by |
 |-----|-----------|
 | `http://localhost:8091/` | the homepage, a static page |
+| `http://localhost:8091/login` | the new login page, proxied to the Next app |
 | `http://localhost:8091/dashboard` | the new dashboard, proxied to the Next app |
+| `http://localhost:8091/api/…` | Django, so the app and the API share one origin |
+
+The homepage button asks `/api/auth/me/` who is logged in and goes to the
+dashboard or to the login page accordingly; the dashboard redirects to `/login`
+on its own if it is opened without a session.
 
 The dashboard needs that app running on the host:
 
@@ -251,7 +257,13 @@ pas affecté.
 | URL | Servi par |
 |-----|-----------|
 | `http://localhost:8091/` | la page d'accueil, une page statique |
+| `http://localhost:8091/login` | la nouvelle page de connexion, relayée vers l'application Next |
 | `http://localhost:8091/dashboard` | le nouveau tableau de bord, relayé vers l'application Next |
+| `http://localhost:8091/api/…` | Django, pour que l'application et l'API partagent une origine |
+
+Le bouton de la page d'accueil demande à `/api/auth/me/` qui est connecté et
+mène au tableau de bord ou à la page de connexion selon la réponse ; le tableau
+de bord renvoie de lui-même vers `/login` s'il est ouvert sans session.
 
 Le tableau de bord suppose cette application lancée sur la machine :
 
