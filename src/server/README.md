@@ -75,11 +75,17 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
   `src/backend/docker-compose.yml` still publishes port 8000 for backend-only
   work; the two stacks use different project and container names and can run at
   the same time.
-- **No `environment:` block for `web` in the root compose file** — `settings.py`
-  calls `load_dotenv("/app/.env")` and `/app` is the bind mount, so
-  `src/backend/.env` stays the single place configuration lives. Compose-level
-  variables would take priority over that file and silently blank out anything
-  it defines (`GROQ_API_KEY: ${GROQ_API_KEY:-}` being the obvious trap).
+- **The full stack runs its own postgres** — Django moved off SQLite, and
+  sessions (so, logins) live in the database. It uses a named volume instead of
+  the `./database` bind mount the backend-only stack uses, and publishes no
+  port: either stack can be started without the other's postgres fighting it
+  for the same files or the same 5432.
+- **Only the database credentials are set in `environment:` for `web`** — `settings.py`
+  — everything else stays in `src/backend/.env`, which `settings.py` loads
+  through the bind mount. Compose-level variables take priority over that file
+  and would silently blank out anything it defines (`GROQ_API_KEY:
+  ${GROQ_API_KEY:-}` being the obvious trap); the `POSTGRES_*` keys are safe
+  because that file has no entry for them.
 
 ## Not done here
 

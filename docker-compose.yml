@@ -10,21 +10,51 @@ services:
   web:
     build: ./src/backend
     container_name: passon_web
-    # Sessions (used by the login flow) live in the database, so the tables
-    # have to exist before the server accepts a request.
-    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    # No command override: the image's entrypoint waits for nothing, migrates,
+    # then serves. Sessions (used by the login flow) live in the database, so
+    # those tables have to exist before the first request.
     # Deliberately not published: nginx reaches it over the compose network,
     # and the browser reaches it through http://localhost:8090/api/.
     expose:
       - "8000"
     volumes:
       - ./src/backend:/app
-    # No environment block on purpose: settings.py calls load_dotenv() on
-    # /app/.env, which this mount provides, so src/backend/.env stays the one
-    # place where DOCS_URL, DINUM_USE_MOCK, GROQ_API_KEY... are configured.
-    # (Compose-level variables would silently win over that file.)
+    # Only the database credentials are set here. Everything else
+    # (DOCS_URL, DINUM_USE_MOCK, GROQ_API_KEY...) stays in src/backend/.env,
+    # which settings.py loads through the mount above -- compose-level
+    # variables would silently win over that file. These four have no entry
+    # there, so there is nothing to override; they come from the repository
+    # root's .env (see template.env).
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-db}
+      POSTGRES_HOST: postgres
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Own database, on a named volume rather than the ./database directory the
+  # backend-only stack binds: the two stacks can then be started in any order
+  # without two postgres instances writing to the same files. It publishes no
+  # port, so it never collides with that stack's postgres either.
+  postgres:
+    image: postgres:16-alpine
+    container_name: passon_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-db}
+    volumes:
+      - passon-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   nginx:
     build:
@@ -35,3 +65,6 @@ services:
       - "8090:8090"
     depends_on:
       - web
+
+volumes:
+  passon-db:

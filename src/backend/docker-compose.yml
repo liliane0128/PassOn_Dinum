@@ -26,7 +26,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - postgres
+      postgres:
+        # Wait for the database to actually accept connections, not merely for
+        # its container to exist -- the image's own healthcheck knows when.
+        condition: service_healthy
     networks:
       - backend   # can talk to db
       - frontend  # can talk to other services / be exposed

@@ -19,6 +19,12 @@ Everything is on **http://localhost:8090**:
 | `/api/...` | Django (`src/backend`, see the connectors doc below) |
 | `/admin/`, `/static/` | Django admin |
 
+Data lives in **postgres**, started as part of both stacks. The full stack keeps
+its database in a Docker-managed volume (`passon-db`) rather than the
+`./database` directory the backend-only stack uses, so the two never write to
+the same files; credentials come from the repository-root `.env` (copy
+`template.env` on a fresh clone).
+
 Configuration lives in `src/backend/.env`, created from `.env.example` on the
 first `make up`. It defaults to `DINUM_USE_MOCK=true`, so the app runs on demo
 data without Docs/Drive/Messages running and without any credential.
