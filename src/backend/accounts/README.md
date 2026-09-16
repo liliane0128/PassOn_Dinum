@@ -117,9 +117,10 @@ Messages' own Keycloak (`messages/src/keycloak/realm.json`, seeded with
 the account there with the same email and password, and one login covers both;
 otherwise `services.messages` stays `false` and the handover has no mail in it.
 
-Sessions are stored in the database, so `python manage.py migrate` must have
-run. The root `docker-compose.yml` does this on every start; the backend-only
-stack in `src/backend/docker-compose.yml` does not.
+Sessions are stored in postgres, so the migrations must have run. The
+container's entrypoint does that on every start, whichever way the project is
+launched (`make up` or `make run` — both select services from the single
+`docker-compose.yml` at the repository root, so both use the same database).
 
 ### Mock mode
 

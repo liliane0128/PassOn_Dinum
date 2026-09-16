@@ -70,16 +70,15 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
   8080, and the login flow needs Drive running (see
   `src/backend/accounts/README.md`), so the two would collide on any machine
   where both are up.
-- **Django is not published on a host port** — the compose file exposes it to
-  nginx only, so there is a single way in and no second URL to keep in sync.
-  `src/backend/docker-compose.yml` still publishes port 8000 for backend-only
-  work; the two stacks use different project and container names and can run at
-  the same time.
-- **The full stack runs its own postgres** — Django moved off SQLite, and
-  sessions (so, logins) live in the database. It uses a named volume instead of
-  the `./database` bind mount the backend-only stack uses, and publishes no
-  port: either stack can be started without the other's postgres fighting it
-  for the same files or the same 5432.
+- **Django is published on 127.0.0.1:8000 as well** — `make run` serves the API
+  without nginx for backend-only work, and curl and the tests use that port.
+  The browser still goes through :8090, which is the only place the app and the
+  API share an origin; anything that needs a session cookie has to use it.
+- **One postgres, one compose file** — Django moved off SQLite, and sessions
+  (so, logins) live in the database. There is a single definition at the
+  repository root and a single named volume, so `make up` and `make run` are
+  two service selections over the same database rather than two stacks with
+  rival copies of the data.
 - **Only the database credentials are set in `environment:` for `web`** — `settings.py`
   — everything else stays in `src/backend/.env`, which `settings.py` loads
   through the bind mount. Compose-level variables take priority over that file

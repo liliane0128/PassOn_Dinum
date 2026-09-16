@@ -1,29 +1,29 @@
 NAME	:=	PASS'ON
 
-# Deux façons de lancer le projet :
+# Un seul docker-compose.yml, à la racine : une seule base de données, quelle
+# que soit la façon de lancer le projet.
 #
-#   make          (= make run)  backend seul, Django sur http://localhost:8000
-#   make up                     pile complète, appli + API sur http://localhost:8090
+#   make          (= make run)  API seule, Django sur http://localhost:8000
+#   make up                     appli complète sur http://localhost:8090
 #
-# La pile complète compile le frontend et le sert derrière nginx, qui relaie
-# /api/ vers Django : c'est la seule qui permet de se connecter depuis
-# l'interface (même origine, cookies de session). Voir src/server/README.md.
+# `make up` compile le frontend et le sert derrière nginx, qui relaie /api/
+# vers Django : c'est la seule façon de se connecter depuis l'interface (même
+# origine, cookies de session). Voir src/server/README.md.
 
 all: run
 
-# --- Backend seul (docker compose de src/backend) ---------------------------
+# --- API seule (postgres + Django, sans nginx ni frontend) ------------------
 
-run:
-	@docker compose -f ./src/backend/docker-compose.yml --env-file ./.env up -d
+run: src/backend/.env
+	@docker compose up -d --build postgres web
 	@firefox http://localhost:8000 &
 
 build:
-	@docker compose -f ./src/backend/docker-compose.yml --env-file ./.env build
+	@docker compose build
 
-stop:
-	@docker compose -f ./src/backend/docker-compose.yml --env-file ./.env down
+stop: down
 
-# --- Pile complète : nginx + frontend compilé + Django ----------------------
+# --- Appli complète : nginx + frontend compilé + Django + postgres ----------
 
 up: src/backend/.env
 	docker compose up -d --build
@@ -34,22 +34,6 @@ down:
 
 logs:
 	docker compose logs -f
-
-ps:
-	@docker compose -f ./src/backend/docker-compose.yml --env-file ./.env ps
-
-
-help:
-	@echo "Option available:"
-	@echo "    run: Start every container and launched a firefox tab with the site"
-	@echo "    build: Build every container"
-	@echo "    re: Build an run every container"
-	@echo "    stop: Stop every container"
-	@echo "    logs CONTAINER=NAME: Show the logs of one/every container.s"
-	@echo "    ps: Show the states of every container"
-	@echo "    help: Show this message"
-
-re: up
 
 # Le backend lit ce fichier au démarrage : on le crée depuis l'exemple au
 # premier lancement (mode mock, aucun service externe requis).

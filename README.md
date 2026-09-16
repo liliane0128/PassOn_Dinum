@@ -39,19 +39,18 @@ Backend alone — Django on **http://localhost:8000**, no frontend, no nginx.
 From the repository root (this is `make`'s default target):
 
 ```bash
-make run     # starts Django + the postgres container, opens the browser
-make build   # rebuilds their images
-make stop    # stops them
+make run     # starts postgres + Django, opens the browser
+make build   # rebuilds the images
+make stop    # stops everything
 ```
 
-This stack reads the repository-root `.env` for the postgres credentials.
-Copy `template.env` to `.env` on a fresh clone. Django itself still uses
-SQLite, so the postgres service is in place for a future migration but is not
-wired up yet.
+Same `docker-compose.yml`, same postgres, same data as `make up` — it just
+leaves nginx and the compiled frontend out.
 
-Note that you cannot log in from this stack: the login screen is served by the
-frontend, and the session cookies need the app and the API on one origin, which
-is what `make up` provides.
+Note that you cannot log in *from the interface* this way: the login screen is
+served by the frontend, and the session cookies need the app and the API on one
+origin, which is what `make up` provides. The API itself works on :8000 for
+curl.
 
 Frontend alone — Vite dev server with hot reload on **http://localhost:5173**,
 mock data, no backend:
