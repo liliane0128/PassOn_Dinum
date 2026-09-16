@@ -1,32 +1,45 @@
 import { useState } from "react";
-import { Cloud, FileText, FileType2, Mail } from "lucide-react";
+import { ArrowUpRight, FileType2 } from "lucide-react";
 import { SectionCard } from "./SectionCard";
-import { Passation, SourceKind } from "@/lib/types";
-
-const tagConfig: Record<
-  SourceKind,
-  { label: string; icon: typeof Mail }
-> = {
-  email: { label: "Email", icon: Mail },
-  docs: { label: "Docs", icon: FileText },
-  drive: { label: "Drive", icon: Cloud },
-};
+import { Passation } from "@/lib/types";
 
 export function ResumeSection({
   passation,
   onResumeChange,
+  variant = "card",
+  onRequestEdit,
+  id,
 }: {
   passation: Passation;
   onResumeChange: (resume: string) => void;
+  variant?: "card" | "document";
+  onRequestEdit?: () => void;
+  id?: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
 
+  // In Aperçu ("card"), the pencil no longer edits inline: it jumps to
+  // Fichier de passation, the only place this now happens, so the two tabs
+  // stop duplicating the same editable form.
+  function handleToggleEdit() {
+    if (variant === "card") {
+      onRequestEdit?.();
+      return;
+    }
+    setIsEditing((v) => !v);
+  }
+
   return (
     <SectionCard
+      id={id}
       icon={FileType2}
       title="Résumé"
-      editing={isEditing}
-      onToggleEdit={() => setIsEditing((v) => !v)}
+      variant={variant}
+      editing={variant === "document" && isEditing}
+      onToggleEdit={handleToggleEdit}
+      editIcon={variant === "card" ? ArrowUpRight : undefined}
+      editLabel={variant === "card" ? "Modifier dans Fichier de passation" : "Modifier"}
+      highlight
     >
       {isEditing ? (
         <textarea
@@ -39,21 +52,6 @@ export function ResumeSection({
       ) : (
         <p className="text-sm leading-relaxed text-gray-600">{passation.resume}</p>
       )}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {passation.sourceTags.map((tag) => {
-          const config = tagConfig[tag.kind];
-          const Icon = config.icon;
-          return (
-            <span
-              key={tag.kind}
-              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600"
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {config.label} ({tag.count})
-            </span>
-          );
-        })}
-      </div>
     </SectionCard>
   );
 }

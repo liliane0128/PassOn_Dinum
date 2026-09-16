@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, TriangleAlert, X } from "lucide-react";
+import { ArrowUpRight, Plus, TriangleAlert, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { Passation } from "@/lib/types";
 
@@ -8,11 +8,17 @@ export function PointsAttentionSection({
   onAdd,
   onChange,
   onRemove,
+  variant = "card",
+  onRequestEdit,
+  id,
 }: {
   passation: Passation;
   onAdd: (label: string) => void;
   onChange: (id: string, label: string) => void;
   onRemove: (id: string) => void;
+  variant?: "card" | "document";
+  onRequestEdit?: () => void;
+  id?: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -24,13 +30,25 @@ export function PointsAttentionSection({
     setDraft("");
   }
 
+  function handleToggleEdit() {
+    if (variant === "card") {
+      onRequestEdit?.();
+      return;
+    }
+    setIsEditing((v) => !v);
+  }
+
   return (
     <SectionCard
+      id={id}
       icon={TriangleAlert}
       title="Points de blocage"
       tone="warning"
-      editing={isEditing}
-      onToggleEdit={() => setIsEditing((v) => !v)}
+      variant={variant}
+      editing={variant === "document" && isEditing}
+      onToggleEdit={handleToggleEdit}
+      editIcon={variant === "card" ? ArrowUpRight : undefined}
+      editLabel={variant === "card" ? "Modifier dans Fichier de passation" : "Modifier"}
     >
       <ul className="flex flex-col gap-2">
         {passation.attentionPoints.map((point) =>

@@ -17,7 +17,7 @@ export function Sidebar() {
       id: "mes-passations",
       label: role === "manager" ? "Passations équipe" : "Gérer ma passation",
       icon: FolderOpen,
-      href: "#",
+      href: "/gerer-ma-passation",
     },
   ];
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Users, X } from "lucide-react";
+import { ArrowUpRight, Plus, Users, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { Contact, Passation } from "@/lib/types";
 
@@ -8,11 +8,17 @@ export function ContactsSection({
   onAdd,
   onChange,
   onRemove,
+  variant = "card",
+  onRequestEdit,
+  id: sectionId,
 }: {
   passation: Passation;
   onAdd: (contact: Omit<Contact, "id">) => void;
   onChange: (id: string, field: keyof Omit<Contact, "id">, value: string) => void;
   onRemove: (id: string) => void;
+  variant?: "card" | "document";
+  onRequestEdit?: () => void;
+  id?: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState({ name: "", role: "", email: "" });
@@ -23,12 +29,25 @@ export function ContactsSection({
     setDraft({ name: "", role: "", email: "" });
   }
 
+  function handleToggleEdit() {
+    if (variant === "card") {
+      onRequestEdit?.();
+      return;
+    }
+    setIsEditing((v) => !v);
+  }
+
   return (
     <SectionCard
+      id={sectionId}
       icon={Users}
       title="Contacts clés"
-      editing={isEditing}
-      onToggleEdit={() => setIsEditing((v) => !v)}
+      tone="success"
+      variant={variant}
+      editing={variant === "document" && isEditing}
+      onToggleEdit={handleToggleEdit}
+      editIcon={variant === "card" ? ArrowUpRight : undefined}
+      editLabel={variant === "card" ? "Modifier dans Fichier de passation" : "Modifier"}
     >
       <div className="flex flex-col divide-y divide-gray-100">
         {passation.contacts.map((contact) =>
@@ -107,8 +126,13 @@ export function ContactsSection({
         </div>
       )}
       {!isEditing && (
-        <button className="mt-3 text-sm font-medium text-brand-600 hover:text-brand-700">
-          Voir tous les contacts ({passation.contactsTotal})
+        <button
+          type="button"
+          onClick={onRequestEdit}
+          aria-label="Voir tous les contacts dans Fichier de passation"
+          className="mt-3 text-sm font-medium text-brand-600 hover:text-brand-700"
+        >
+          ...
         </button>
       )}
     </SectionCard>

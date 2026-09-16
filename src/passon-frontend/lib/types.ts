@@ -1,8 +1,10 @@
-export type SourceKind = "email" | "docs" | "drive";
+export type SourceKind = "docs" | "drive";
 
-export interface SourceTag {
+export interface SourceItem {
+  id: string;
   kind: SourceKind;
-  count: number;
+  name: string;
+  url: string;
 }
 
 export interface DocumentAssocie {
@@ -37,9 +39,8 @@ export interface Passation {
   status: "Générée par l'agent" | "Brouillon";
   lastUpdated: string;
   completude: number;
-  sourcesCount: number;
   resume: string;
-  sourceTags: SourceTag[];
+  sources: SourceItem[];
   attentionPoints: AttentionPoint[];
   documents: DocumentAssocie[];
   documentsTotal: number;
