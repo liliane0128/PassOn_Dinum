@@ -21,8 +21,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET, require_POST
 
-from . import mock_accounts, oidc_login
+from . import collaborators, mock_accounts, oidc_login
 from .session import CREDENTIAL_KEYS, USER_KEY
+from passon.models import Collaborator
 
 
 def _error(code, status):
@@ -34,13 +35,26 @@ def _connected(request):
     return {name: key in request.session for name, key in CREDENTIAL_KEYS.items()}
 
 
-def _public_user(user):
-    """Keep the response to what the interface needs to show someone."""
-    return {
-        "id": user.get("id"),
-        "email": user.get("email"),
-        "full_name": user.get("full_name") or user.get("short_name") or user.get("email"),
-    }
+def _team_of(user):
+    """The collaborators reporting to this person, for the manager view."""
+    manager_id = user.get("id")
+    if not manager_id or user.get("accountRole") != "manager":
+        return []
+    return [
+        collaborators.as_json(member)
+        for member in Collaborator.objects.filter(manager_id=manager_id)
+    ]
+
+
+def _public_user(account):
+    """The logged-in person, as our own database knows them.
+
+    Drive says who they are; `passon.Collaborator` says what they are here --
+    manager or employee, and whose team they are on. The interface routes on
+    that role, so it has to come from us, not from Drive.
+    """
+    collaborator = collaborators.sync_from_login(account)
+    return collaborators.as_json(collaborator)
 
 
 @require_POST
@@ -74,7 +88,10 @@ def login(request):
     except oidc_login.LoginFailed:
         request.session.pop(CREDENTIAL_KEYS["messages"], None)
 
-    return JsonResponse({"user": request.session[USER_KEY], "services": _connected(request)})
+    user = request.session[USER_KEY]
+    return JsonResponse(
+        {"user": user, "services": _connected(request), "team": _team_of(user)}
+    )
 
 
 @require_POST
@@ -97,4 +114,6 @@ def me(request):
     user = request.session.get(USER_KEY)
     if not user:
         return _error("not_authenticated", 401)
-    return JsonResponse({"user": user, "services": _connected(request)})
+    return JsonResponse(
+        {"user": user, "services": _connected(request), "team": _team_of(user)}
+    )

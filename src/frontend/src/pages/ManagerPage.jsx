@@ -21,15 +21,24 @@ import "./ManagerPage.css";
 const SUMMARY_HEADING_ID = "manager-summary-heading";
 
 export function ManagerPage() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, team: storedTeam, logout } = useAuth();
   const { collaborators, addCollaborator, removeCollaborator } = useCollaborators();
   const { getSummary, updateSummary } = useSummaries();
   const { toast } = useToastProvider();
   const navigate = useNavigate();
 
-  const team = currentUser
-    ? collaborators.filter((c) => c.managerId === currentUser.id)
+  // L'équipe vient de la base (`passon.Collaborator.manager`), renvoyée par
+  // /api/auth/me/. Les collaborateurs ajoutés depuis cette page ne sont pas
+  // encore enregistrés côté serveur : ils vivent dans CollaboratorsContext le
+  // temps de la session, et sont ajoutés ici pour rester visibles.
+  const locallyAdded = currentUser
+    ? collaborators.filter(
+        (c) =>
+          c.managerId === currentUser.id &&
+          !storedTeam.some((member) => member.id === c.id),
+      )
     : [];
+  const team = [...storedTeam, ...locallyAdded];
 
   const [selectedId, setSelectedId] = useState(() => team[0]?.id ?? null);
   const selected = team.find((c) => c.id === selectedId) ?? null;

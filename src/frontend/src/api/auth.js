@@ -24,13 +24,13 @@ async function readError(response) {
   }
 }
 
-/** L'utilisateur connecté, ou null. Pose aussi le cookie CSRF. */
+/** La session en cours ({ user, services, team }), ou null. Pose aussi le
+ * cookie CSRF. */
 export async function fetchCurrentUser() {
   try {
     const response = await fetch("/api/auth/me/", { credentials: "same-origin" });
     if (!response.ok) return null;
-    const body = await response.json();
-    return body.user ?? null;
+    return await response.json();
   } catch {
     return null;
   }
@@ -60,7 +60,7 @@ export async function login(email, password) {
 
   if (!response.ok) return { error: await readError(response) };
   const body = await response.json();
-  return { user: body.user };
+  return { user: body.user, services: body.services, team: body.team ?? [] };
 }
 
 /** Ferme la session côté serveur. Sans effet si personne n'est connecté. */

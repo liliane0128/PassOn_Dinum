@@ -1,49 +1,33 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { useCollaborators } from "./CollaboratorsContext.jsx";
 import * as authApi from "../api/auth.js";
 
 const AuthContext = createContext(null);
 
-// Le backend renvoie l'identité que Drive connaît : { id, email, full_name }.
-// Les pages, elles, attendent encore le profil complet des collaborateurs —
-// `accountRole` décide quelle page s'affiche, `id` sert à retrouver le résumé
-// et les documents de la personne. On relie les deux par l'email.
+// Le backend renvoie désormais le profil tel que *notre* base le connaît
+// (`passon.Collaborator`) : rôle, équipe, manager. C'est lui qui décide quelle
+// page s'affiche — Drive ne sait pas qui encadre qui.
 //
-// C'est volontairement une passerelle temporaire : le jour où le rôle et la
-// hiérarchie viendront du backend (voir PLAN.md), `toAppUser` disparaît et les
-// pages lisent directement ce que renvoie l'API.
-function toAppUser(account, collaborators) {
-  const email = (account.email ?? "").toLowerCase();
-  const known = collaborators.find((c) => c.email.toLowerCase() === email);
-  if (known) {
-    // Collaborateur connu de l'appli : on garde son profil (rôle, équipe,
-    // poste) et on note au passage l'identifiant Drive réel.
-    return { ...known, driveId: account.id };
-  }
-
-  // Vrai compte Drive sans équivalent dans la liste des collaborateurs (le cas
-  // normal une fois le mock éteint). Faute de rôle côté Drive, on ouvre
-  // l'espace employé : c'est le moins privilégié des deux. Son résumé et ses
-  // documents seront vides tant que les données ne viennent pas du backend, ce
-  // que les pages gèrent déjà.
-  const fullName = (account.full_name ?? "").trim();
-  const [firstName, ...rest] = (fullName || account.email || "").split(" ");
+// Les données mockées ne servent plus qu'aux collaborateurs dont personne n'a
+// la session : la liste d'équipe du manager tant qu'elle n'est pas alimentée,
+// et leurs mails/documents (voir ItemsContext).
+function toAppUser(account) {
   return {
     id: account.id,
-    firstName,
-    lastName: rest.join(" "),
-    jobTitle: "Poste non renseigné",
-    team: "Drive",
+    firstName: account.firstName || account.full_name || account.email,
+    lastName: account.lastName || "",
+    jobTitle: account.jobTitle || "Poste non renseigné",
+    team: account.team || "",
     email: account.email,
-    accountRole: "employee",
-    managerId: null,
-    driveId: account.id,
+    accountRole: account.accountRole || "employee",
+    managerId: account.managerId ?? null,
   };
 }
 
 export function AuthProvider({ children }) {
-  const { collaborators } = useCollaborators();
   const [currentUser, setCurrentUser] = useState(null);
+  // Les collaborateurs qui rattachent leur manager à l'utilisateur connecté,
+  // tels que la base les connaît. Vide tant que personne n'a été rattaché.
+  const [team, setTeam] = useState([]);
   // La session est un cookie côté serveur : au chargement de la page on ne
   // sait pas encore qui est connecté. Tant que `restoring` est vrai, App
   // n'affiche aucune page, sinon les pages protégées redirigeraient vers
@@ -54,9 +38,12 @@ export function AuthProvider({ children }) {
   // session déjà ouverte, pas de la recalculer à chaque ajout de collaborateur.
   useEffect(() => {
     let cancelled = false;
-    authApi.fetchCurrentUser().then((account) => {
+    authApi.fetchCurrentUser().then((session) => {
       if (cancelled) return;
-      if (account) setCurrentUser(toAppUser(account, collaborators));
+      if (session?.user) {
+        setCurrentUser(toAppUser(session.user));
+        setTeam((session.team ?? []).map(toAppUser));
+      }
       setRestoring(false);
     });
     return () => {
@@ -70,8 +57,9 @@ export function AuthProvider({ children }) {
   async function login(email, password) {
     const result = await authApi.login(email, password);
     if (result.error) return { error: result.error };
-    const user = toAppUser(result.user, collaborators);
+    const user = toAppUser(result.user);
     setCurrentUser(user);
+    setTeam((result.team ?? []).map(toAppUser));
     return { user };
   }
 
@@ -81,10 +69,11 @@ export function AuthProvider({ children }) {
     // serveur (elle expirera).
     await authApi.logout();
     setCurrentUser(null);
+    setTeam([]);
   }
 
   return (
-    <AuthContext.Provider value={{ currentUser, restoring, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, team, restoring, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

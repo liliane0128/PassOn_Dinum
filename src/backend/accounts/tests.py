@@ -15,6 +15,7 @@ from django.test import Client, TestCase, override_settings
 
 from . import oidc_login
 from .session import CREDENTIAL_KEYS, USER_KEY
+from passon.models import Collaborator
 
 DRIVE_URL = "http://drive.test:8071"
 KEYCLOAK_URL = "http://keycloak.test:8083/realms/drive/protocol/openid-connect/auth?state=x"
@@ -311,3 +312,71 @@ class MessagesLinkTests(TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertNotIn(CREDENTIAL_KEYS["drive"], client.session)
         self.assertNotIn(CREDENTIAL_KEYS["messages"], client.session)
+
+
+@override_settings(
+    DINUM_SERVICES=SERVICES, DINUM_API_TIMEOUT=1, DINUM_PUBLIC_HOST="localhost",
+    DINUM_USE_MOCK=False,
+)
+class CollaboratorSyncTests(TestCase):
+    """Logging in resolves the Drive identity to a row in our own database --
+    that row, not Drive, is what says whether someone is a manager."""
+
+    def login_as(self, email, drive_id, full_name="Some One"):
+        client = Client()
+        client.get("/api/auth/me/")
+        account = {"id": drive_id, "email": email, "full_name": full_name}
+        with mock.patch.object(oidc_login, "login", side_effect=lambda service, *a: (f"cookie-{service}", account)):
+            return client, client.post(
+                "/api/auth/login/", data=json.dumps({"email": email, "password": "pw"}),
+                content_type="application/json",
+                HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value,
+            )
+
+    def test_a_first_login_creates_the_collaborator_as_an_employee(self):
+        _, response = self.login_as("nouveau@example.test", "drive-1", "Jean Nouveau")
+        self.assertEqual(response.status_code, 200)
+        person = Collaborator.objects.get(email="nouveau@example.test")
+        self.assertEqual(person.external_id, "drive-1")
+        self.assertEqual(person.first_name, "Jean")
+        self.assertEqual(person.role, Collaborator.Role.EMPLOYEE)
+
+    def test_a_row_created_by_a_manager_is_claimed_on_first_login(self):
+        """`set_role` creates the row before that person has ever logged in, so
+        it has no Drive id; the first login must claim it rather than making a
+        second row -- otherwise the promotion would be silently lost."""
+        Collaborator.objects.create(
+            email="chef@example.test", first_name="chef", last_name="",
+            role=Collaborator.Role.MANAGER,
+        )
+        _, response = self.login_as("chef@example.test", "drive-42", "Fanny Benech")
+
+        self.assertEqual(Collaborator.objects.filter(email="chef@example.test").count(), 1)
+        person = Collaborator.objects.get(email="chef@example.test")
+        self.assertEqual(person.external_id, "drive-42")
+        self.assertEqual(person.role, Collaborator.Role.MANAGER)
+        self.assertEqual(response.json()["user"]["accountRole"], "manager")
+        # Drive's name replaces the placeholder the command wrote.
+        self.assertEqual(person.first_name, "Fanny")
+
+    def test_logging_in_again_does_not_reset_the_role(self):
+        self.login_as("chef@example.test", "drive-42")
+        Collaborator.objects.filter(email="chef@example.test").update(role="manager")
+        _, response = self.login_as("chef@example.test", "drive-42")
+        self.assertEqual(response.json()["user"]["accountRole"], "manager")
+
+    def test_a_manager_receives_their_team(self):
+        manager = Collaborator.objects.create(
+            email="chef@example.test", first_name="Chef", last_name="Fe",
+            role=Collaborator.Role.MANAGER,
+        )
+        Collaborator.objects.create(
+            email="membre@example.test", first_name="Mem", last_name="Bre", manager=manager,
+        )
+        _, response = self.login_as("chef@example.test", "drive-42", "Chef Fe")
+        team = response.json()["team"]
+        self.assertEqual([m["email"] for m in team], ["membre@example.test"])
+
+    def test_an_employee_receives_no_team(self):
+        _, response = self.login_as("employe@example.test", "drive-7")
+        self.assertEqual(response.json()["team"], [])
