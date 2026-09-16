@@ -5,6 +5,37 @@
  * image prop -- there is no product screenshot to show yet.
  */
 
+/* Marianne, the French State's typeface (used by Docs, Drive, and every
+ * other La Suite product): only the three weights this page actually sets
+ * (400/500/700 below), not the full family, to keep this static page light
+ * (~125 KB total, in the same order of magnitude as the hero logo already
+ * here). Files copied from @gouvfr-lasuite/ui-components' own Marianne
+ * bundle. Falls back to the kit's own stack (tokens.css) where it fails to
+ * load. */
+@font-face {
+  font-family: Marianne;
+  src: url("fonts/Marianne/Marianne-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Marianne;
+  src: url("fonts/Marianne/Marianne-Medium.woff2") format("woff2");
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Marianne;
+  src: url("fonts/Marianne/Marianne-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -64,7 +95,7 @@ body {
   display: flex;
   width: 100%;
   max-width: 78rem;
-  min-height: 76vh;
+  min-height: 52vh;
   align-items: center;
   justify-content: space-around;
   padding: var(--c--globals--spacings--xl) 0;
@@ -89,10 +120,38 @@ body {
   max-width: 640px;
 }
 
-.c__hero__display__captions__logo {
-  width: 240px;
-  height: auto;
-  margin-bottom: var(--c--globals--spacings--xs);
+.c__hero__display__captions__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--c--globals--spacings--lg);
+  margin: 0 0 var(--c--globals--spacings--sm);
+}
+
+.c__hero__display__captions__passon {
+  display: flex;
+  align-items: center;
+  gap: var(--c--globals--spacings--sm);
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--page-content);
+}
+
+.c__hero__display__captions__passon img {
+  height: 96px;
+  width: auto;
+}
+
+.c__hero__display__captions__brand__sep {
+  width: 1px;
+  height: 96px;
+  background: var(--page-border);
+}
+
+.c__hero__display__captions__suite-logo {
+  height: 96px;
+  width: auto;
 }
 
 .c__hero__display__captions h1 {
@@ -290,6 +349,33 @@ body {
   text-align: center;
 }
 
+/* Connectors variant of the mock, for the "connected to La Suite" card. Real
+ * product logos (own colours, not currentColor) sit on the white mock card
+ * rather than directly on the panel's purple background, same as every
+ * other mock here. */
+.mock--connectors {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: var(--c--globals--spacings--sm);
+  padding: var(--c--globals--spacings--lg) var(--c--globals--spacings--sm);
+}
+
+.mock__connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--c--globals--spacings--xs);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--page-content);
+}
+
+.mock__connector img {
+  width: 38px;
+  height: 38px;
+}
+
 .mock__label {
   margin: 0;
   font-size: 0.75rem;
@@ -386,6 +472,12 @@ body {
 
   .c__hero__display__captions h1 {
     font-size: 2rem;
+  }
+
+  /* Safety net on very narrow screens: wrap rather than overflow. */
+  .c__hero__display__captions__brand {
+    flex-wrap: wrap;
+    row-gap: var(--c--globals--spacings--sm);
   }
 
   .cards {

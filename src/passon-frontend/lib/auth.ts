@@ -48,12 +48,66 @@ function csrfToken(): string {
 }
 
 /**
+ * Local-only bypass for running this app without the Django backend (no
+ * Docker, no Drive/Messages) -- set `NEXT_PUBLIC_MOCK_AUTH=true` in a
+ * gitignored `.env.local` to turn it on for yourself only. Everyone else,
+ * and any real build, keeps talking to the real `/api/auth/` endpoints.
+ */
+const MOCK_AUTH =
+  process.env.NEXT_PUBLIC_MOCK_AUTH === "true" &&
+  process.env.NODE_ENV !== "production";
+
+const MOCK_USER: SessionUser = {
+  id: "mock-1",
+  email: "demo@example.fr",
+  firstName: "Lili",
+  lastName: "Wang",
+  full_name: "Lili Wang",
+  jobTitle: "Cheffe de projet — Dossier Continuity",
+  team: "Produit",
+  accountRole: "manager",
+  managerId: null,
+};
+
+const MOCK_SESSION: Session = {
+  user: MOCK_USER,
+  services: { drive: true, messages: true },
+  team: [],
+};
+
+// Stand-in for the session cookie in mock mode: login/logout navigate with a
+// full page reload (see routes.ts), which remounts the whole app, so an
+// in-memory-only session would be lost right after logging in.
+const MOCK_SESSION_KEY = "passon-mock-session";
+
+function readMockSession(): Session | null {
+  try {
+    const raw = sessionStorage.getItem(MOCK_SESSION_KEY);
+    return raw ? (JSON.parse(raw) as Session) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeMockSession(session: Session | null): void {
+  try {
+    if (session) sessionStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(session));
+    else sessionStorage.removeItem(MOCK_SESSION_KEY);
+  } catch {
+    // Stockage indisponible (navigation privée...) : la session mock ne
+    // survivra pas à un rechargement complet, tant pis.
+  }
+}
+
+/**
  * Who is logged in, or `null`.
  *
  * This call is also what sets the `csrftoken` cookie (the view carries
  * `@ensure_csrf_cookie`), so it has to happen before any POST below.
  */
 export async function fetchSession(): Promise<Session | null> {
+  if (MOCK_AUTH) return readMockSession();
+
   const response = await fetch("/api/auth/me/", {
     credentials: "same-origin",
     headers: { Accept: "application/json" },
@@ -71,6 +125,14 @@ export async function login(
   email: string,
   password: string
 ): Promise<LoginResult> {
+  if (MOCK_AUTH) {
+    if (!email.trim() || !password) {
+      return { ok: false, code: "invalid_request" };
+    }
+    writeMockSession(MOCK_SESSION);
+    return { ok: true, session: MOCK_SESSION };
+  }
+
   // The CSRF cookie may not be set yet if the login page was opened directly.
   if (!csrfToken()) await fetchSession().catch(() => null);
 
@@ -96,6 +158,11 @@ export async function login(
 }
 
 export async function logout(): Promise<void> {
+  if (MOCK_AUTH) {
+    writeMockSession(null);
+    return;
+  }
+
   await fetch("/api/auth/logout/", {
     method: "POST",
     credentials: "same-origin",

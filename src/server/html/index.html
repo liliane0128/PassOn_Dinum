@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pass'on — l'assistant de passation</title>
+    <title>PassOn — l'assistant de passation</title>
     <meta
       name="description"
-      content="Pass'on rassemble les documents et les mails d'un agent qui s'absente, et en compose une fiche de passation prête à relire."
+      content="PassOn rassemble les documents et les mails d'un agent qui s'absente, et en compose une fiche de passation prête à relire."
     />
     <link rel="icon" href="assets/favicon-32.png" sizes="32x32" />
     <link rel="stylesheet" href="assets/tokens.css" />
@@ -26,20 +26,39 @@
         <section class="c__hero">
           <div class="c__hero__display">
             <div class="c__hero__display__captions">
-              <picture>
-                <source srcset="assets/logo-full.webp" type="image/webp" />
-                <img
-                  class="c__hero__display__captions__logo"
-                  src="assets/logo-full.png"
-                  alt="Pass'on"
-                  width="240"
-                />
-              </picture>
+              <!-- Co-marquage : PassOn est construit par-dessus La Suite
+                   numérique (voir le disclaimer du pied de page), donc son
+                   logo apparaît ici aussi, pas seulement en lien texte —
+                   côte à côte avec celui de PassOn, à la même taille.
+                   L'icône seule (pas le lockup "logo-full", dont le texte
+                   incrusté dit encore "pass on") + "PassOn" en vrai texte. -->
+              <div class="c__hero__display__captions__brand">
+                <p class="c__hero__display__captions__passon">
+                  <picture>
+                    <source srcset="assets/logo-mark.webp" type="image/webp" />
+                    <img src="assets/logo-mark.png" alt="" width="137" height="96" />
+                  </picture>
+                  PassOn
+                </p>
 
-              <h1>Le Relais en un clic</h1>
+                <span
+                  class="c__hero__display__captions__brand__sep"
+                  aria-hidden="true"
+                ></span>
+
+                <img
+                  class="c__hero__display__captions__suite-logo"
+                  src="assets/suite-logo.svg"
+                  alt="La Suite numérique"
+                  width="236"
+                  height="96"
+                />
+              </div>
+
+              <h1>Passer le relais en un clic</h1>
 
               <p class="c__hero__display__captions__subtitle">
-                Pass'on relit les documents et les mails d'un agent qui
+                PassOn relit les documents et les mails d'un agent qui
                 s'absente, et en compose une fiche de passation structurée —
                 actions en cours, décisions, échéances, blocages — avec un lien
                 vers chaque source.
@@ -77,7 +96,7 @@
           <div class="feature__text">
             <h2>L'Intelligence Artificielle, au cœur de la passation</h2>
             <p>
-              Pass'on relit les documents et les mails d'un agent qui s'absente,
+              PassOn relit les documents et les mails d'un agent qui s'absente,
               et en compose une fiche structurée : actions en cours, décisions
               prises, échéances, blocages, contacts et documents clés — chaque
               point renvoyant à la source dont il vient.
@@ -150,7 +169,7 @@
           <div class="feature__text">
             <h2>Ouvert, vérifiable, et réversible</h2>
             <p>
-              Pass'on est publié sous licence MIT et construit sur les services
+              PassOn est publié sous licence MIT et construit sur les services
               libres de La Suite numérique : les fichiers restent dans Drive, les
               mails dans Messages, aucun compte supplémentaire n'est créé et
               aucun mot de passe n'est stocké. Le code et sa documentation, en
@@ -176,12 +195,41 @@
             </div>
           </div>
         </article>
+
+        <article class="feature" id="connecteurs">
+          <div class="feature__text">
+            <h2>Connecté à tout l'écosystème La Suite</h2>
+            <p>
+              PassOn lit directement Docs et Fichiers : documents rédigés,
+              fichiers partagés — tout est récupéré automatiquement pour
+              composer la passation, sans export ni ressaisie manuelle.
+            </p>
+          </div>
+
+          <div class="feature__panel" aria-hidden="true">
+            <div class="mock mock--connectors">
+              <div class="mock__connector">
+                <img src="assets/logo-docs.svg" alt="" width="38" height="38" />
+                <span>Docs</span>
+              </div>
+              <div class="mock__connector">
+                <img
+                  src="assets/logo-fichiers.svg"
+                  alt=""
+                  width="38"
+                  height="38"
+                />
+                <span>Fichiers</span>
+              </div>
+            </div>
+          </div>
+        </article>
       </section>
     </div>
 
     <footer class="page-footer">
       <p>
-        Pass'on est un projet indépendant construit sur
+        PassOn est un projet indépendant construit sur
         <a href="https://lasuite.numerique.gouv.fr/" rel="noreferrer noopener"
           >La Suite numérique</a
         >. Il n'est ni affilié à la DINUM ou à La Suite numérique, ni approuvé
