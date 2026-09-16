@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -9,7 +9,8 @@ import {
   useToastProvider,
 } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useCollaborators } from "../context/CollaboratorsContext.jsx";
+import * as teamApi from "../api/collaborators.js";
+import { sendHandover } from "../api/handover.js";
 import { useSummaries } from "../context/SummaryContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
@@ -21,28 +22,85 @@ import "./ManagerPage.css";
 const SUMMARY_HEADING_ID = "manager-summary-heading";
 
 export function ManagerPage() {
-  const { currentUser, logout } = useAuth();
-  const { collaborators, addCollaborator, removeCollaborator } = useCollaborators();
-  const { getSummary, updateSummary } = useSummaries();
+  const { currentUser, team, logout, sessionExpired, refreshTeam } = useAuth();
+  const { getSummary, isLoaded, updateSummary } = useSummaries();
   const { toast } = useToastProvider();
   const navigate = useNavigate();
 
-  const team = currentUser
-    ? collaborators.filter((c) => c.managerId === currentUser.id)
-    : [];
 
   const [selectedId, setSelectedId] = useState(() => team[0]?.id ?? null);
   const selected = team.find((c) => c.id === selectedId) ?? null;
   const summary = selected ? getSummary(selected.id) : null;
   const [draftText, setDraftText] = useState(summary?.text ?? "");
+
+  // La passation arrive du serveur après le premier rendu, alors que l'éditeur
+  // a déjà été initialisé — sans cette synchronisation il resterait sur le
+  // texte vide du départ, et le résumé semblerait vide alors qu'il est bien
+  // enregistré. On ne réécrit pas par-dessus une saisie en cours : seul un
+  // texte qu'on n'a pas modifié depuis la dernière synchronisation est
+  // remplacé.
+  const loadedText = selected && isLoaded(selected.id) ? (summary?.text ?? "") : null;
+  // Lu dans l'effet sans en être une dépendance : la frappe en cours sert à
+  // décider s'il faut écraser le brouillon, elle ne doit pas relancer la
+  // synchronisation à chaque caractère.
+  const draftTextRef = useRef(draftText);
+  draftTextRef.current = draftText;
+
+  const lastSynced = useRef({ id: null, text: "" });
+  useEffect(() => {
+    if (loadedText === null || !selected) return;
+    const otherCollaborator = lastSynced.current.id !== selected.id;
+    const edited =
+      !otherCollaborator && draftTextRef.current !== lastSynced.current.text;
+    if (otherCollaborator || !edited) setDraftText(loadedText);
+    lastSynced.current = { id: selected.id, text: loadedText };
+  }, [selected, loadedText]);
   const [pendingShare, setPendingShare] = useState(false);
+  // Les destinataires se constituent en liste : on cherche la personne, on
+  // l'ajoute, on peut la retirer. Une adresse extérieure à l'annuaire reste
+  // saisissable telle quelle -- une passation se transmet parfois à quelqu'un
+  // qui n'utilise ni Drive ni Pass'on.
+  const [recipients, setRecipients] = useState([]);
+  const [recipientSearch, setRecipientSearch] = useState("");
+  const [recipientResults, setRecipientResults] = useState([]);
+  const recipientToken = useRef(0);
+  const [sending, setSending] = useState(false);
 
   const [isAddingCollaborator, setIsAddingCollaborator] = useState(false);
-  const [newFirstName, setNewFirstName] = useState("");
-  const [newLastName, setNewLastName] = useState("");
+  // On cherche la personne dans l'annuaire plutôt que de saisir son adresse :
+  // une adresse tapée à la main ne désigne quelqu'un que si elle correspond
+  // exactement à un compte existant.
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  // L'annuaire Drive est interrogé avec la session Drive du manager : elle
+  // peut avoir expiré alors qu'il est toujours connecté ici.
+  const [directoryReachable, setDirectoryReachable] = useState(true);
   const [newJobTitle, setNewJobTitle] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newCollaboratorError, setNewCollaboratorError] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const searchToken = useRef(0);
+
+  // Une adresse email tapée en entier, si aucun résultat ne la porte déjà :
+  // quelqu'un qui n'a jamais ouvert Drive n'est pas dans l'annuaire, et doit
+  // pouvoir être ajouté quand même.
+  // Une adresse email saisie en entier pour le partage, si elle n'est ni déjà
+  // dans la liste ni proposée par la recherche.
+  const trimmedRecipient = recipientSearch.trim().toLowerCase();
+  const typedRecipient =
+    trimmedRecipient.includes("@") &&
+    !trimmedRecipient.endsWith("@") &&
+    !recipients.some((r) => r.email === trimmedRecipient) &&
+    !recipientResults.some((p) => p.email.toLowerCase() === trimmedRecipient)
+      ? trimmedRecipient
+      : null;
+
+  const trimmedSearch = search.trim().toLowerCase();
+  const typedAddress =
+    trimmedSearch.includes("@") &&
+    !trimmedSearch.endsWith("@") &&
+    !searchResults.some((person) => person.email.toLowerCase() === trimmedSearch)
+      ? trimmedSearch
+      : null;
   const [pendingRemove, setPendingRemove] = useState(null);
 
   if (!currentUser || currentUser.accountRole !== "manager") {
@@ -61,11 +119,41 @@ export function ManagerPage() {
   }
 
   function resetAddCollaboratorForm() {
-    setNewFirstName("");
-    setNewLastName("");
+    setSearch("");
+    setSearchResults([]);
+    setSearching(false);
     setNewJobTitle("");
-    setNewEmail("");
-    setNewCollaboratorError(false);
+  }
+
+  // Recherche à la frappe, au-delà de deux caractères. Une réponse est ignorée
+  // si une frappe plus récente est partie entre-temps, pour qu'un résultat
+  // lent n'écrase pas un résultat plus récent.
+  async function handleSearchChange(value) {
+    setSearch(value);
+    const token = ++searchToken.current;
+    if (value.trim().length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const { results, directory } = await teamApi.searchCollaborators(value.trim());
+      if (searchToken.current === token) {
+        setSearchResults(results);
+        setDirectoryReachable(directory);
+      }
+    } catch (err) {
+      if (searchToken.current !== token) return;
+      if (err.status === 401) {
+        toast("Votre session a expiré, reconnectez-vous.", "warning");
+        sessionExpired();
+        return;
+      }
+      setSearchResults([]);
+    } finally {
+      if (searchToken.current === token) setSearching(false);
+    }
   }
 
   function handleCancelAddCollaborator() {
@@ -73,32 +161,106 @@ export function ManagerPage() {
     resetAddCollaboratorForm();
   }
 
-  function handleAddCollaborator(event) {
-    event.preventDefault();
-    const firstName = newFirstName.trim();
-    const lastName = newLastName.trim();
-    const email = newEmail.trim().toLowerCase();
-    if (!firstName || !lastName || !email || !email.includes("@")) {
-      setNewCollaboratorError(true);
+  async function handleRecipientSearch(value) {
+    setRecipientSearch(value);
+    const token = ++recipientToken.current;
+    if (value.trim().length < 2) {
+      setRecipientResults([]);
       return;
     }
-    const collaborator = addCollaborator({
-      firstName,
-      lastName,
-      jobTitle: newJobTitle.trim(),
-      team: currentUser.team,
-      email,
-      managerId: currentUser.id,
-    });
-    toast(`${firstName} ${lastName} a été ajouté à votre équipe.`, "success");
+    try {
+      const { results, directory } = await teamApi.searchCollaborators(value.trim());
+      if (recipientToken.current === token) {
+        setRecipientResults(results);
+        setDirectoryReachable(directory);
+      }
+    } catch (err) {
+      if (recipientToken.current !== token) return;
+      if (err.status === 401) {
+        toast("Votre session a expiré, reconnectez-vous.", "warning");
+        sessionExpired();
+        return;
+      }
+      setRecipientResults([]);
+    }
+  }
+
+  function addRecipient(person) {
+    const email = person.email.trim().toLowerCase();
+    if (!email.includes("@")) return;
+    // Sans doublon : envoyer deux fois à la même adresse n'a pas de sens, et
+    // le bouton doit pouvoir être cliqué sans y penser.
+    if (!recipients.some((r) => r.email === email)) {
+      setRecipients([...recipients, { email, fullName: person.fullName || email }]);
+    }
+    setRecipientSearch("");
+    setRecipientResults([]);
+  }
+
+  function removeRecipient(email) {
+    setRecipients(recipients.filter((r) => r.email !== email));
+  }
+
+  async function handleAddCollaborator(person) {
+    // Le nom vient de l'annuaire, pas d'une saisie : c'est celui que Drive
+    // connaît, et c'est par l'email que sa fiche sera rattachée à son compte
+    // à sa première connexion.
+    const [firstName, ...rest] = (person.fullName || person.email).split(" ");
+    setAdding(true);
+    let collaborator;
+    try {
+      collaborator = await teamApi.addCollaborator({
+        firstName,
+        lastName: rest.join(" "),
+        email: person.email,
+        jobTitle: newJobTitle.trim(),
+        team: currentUser.team,
+      });
+    } catch (err) {
+      if (err.status === 401) {
+        toast("Votre session a expiré, reconnectez-vous.", "warning");
+        sessionExpired();
+        return;
+      }
+      const messages = {
+        collaborator_has_manager: `${person.email} fait déjà partie de l'équipe d'un autre manager.`,
+        cannot_manage_yourself: "Vous ne pouvez pas vous ajouter à votre propre équipe.",
+        would_create_a_cycle: `${person.email} est déjà, directement ou non, votre manager.`,
+        invalid_request: "Ce compte n'a pas les informations nécessaires.",
+      };
+      toast(
+        messages[err.code] ?? "Impossible d'ajouter ce collaborateur pour le moment.",
+        "error",
+      );
+      return;
+    } finally {
+      setAdding(false);
+    }
+
+    await refreshTeam();
+    toast(`${person.fullName || person.email} a été ajouté à votre équipe.`, "success");
     setIsAddingCollaborator(false);
     resetAddCollaboratorForm();
     handleSelect(collaborator);
   }
 
-  function handleRemoveCollaboratorDecide(decision) {
+
+  async function handleRemoveCollaboratorDecide(decision) {
     if (decision === "delete" && pendingRemove) {
-      removeCollaborator(pendingRemove.id);
+      try {
+        await teamApi.removeCollaborator(pendingRemove.id);
+      } catch (err) {
+        if (err.status === 401) {
+          toast("Votre session a expiré, reconnectez-vous.", "warning");
+          sessionExpired();
+          setPendingRemove(null);
+          return;
+        }
+        toast("Impossible de retirer ce collaborateur pour le moment.", "error");
+        setPendingRemove(null);
+        return;
+      }
+      await refreshTeam();
       if (selectedId === pendingRemove.id) {
         setSelectedId(null);
         setDraftText("");
@@ -119,8 +281,42 @@ export function ManagerPage() {
 
   // Ouvre l'application mail pour envoyer ce résumé ; le lien réel sera
   // branché côté backend plus tard (voir PLAN.md).
-  function sendMail() {
-    toast(`Ouverture de l'application mail pour ${selected.firstName}...`, "info");
+  async function sendMail() {
+    // Envoyé depuis le compte Messages du manager, via le backend : le mail
+    // part donc de sa vraie adresse. Plusieurs destinataires séparés par des
+    // virgules ou des points-virgules.
+    const to = recipients.map((recipient) => recipient.email);
+    if (to.length === 0) {
+      toast("Ajoutez au moins un destinataire.", "error");
+      return;
+    }
+
+    setSending(true);
+    try {
+      await sendHandover(selected.id, to);
+      toast(
+        `Résumé de ${selected.firstName} envoyé à ${to.join(", ")}.`,
+        "success",
+      );
+      setRecipients([]);
+    } catch (err) {
+      if (err.status === 401) {
+        toast("Votre session a expiré, reconnectez-vous.", "warning");
+        sessionExpired();
+        return;
+      }
+      const messages = {
+        empty_handover: "Ce résumé est vide : il n'y a rien à envoyer.",
+        messages_not_connected:
+          "Votre compte Messages n'est pas connecté : reconnectez-vous pour envoyer un mail.",
+        no_mailbox: "Aucune boîte mail n'est associée à votre compte Messages.",
+        messages_unreachable: "Messages est injoignable pour le moment.",
+        messages_timeout: "Messages met trop de temps à répondre.",
+      };
+      toast(messages[err.code] ?? "L'envoi a échoué. Réessayez.", "error");
+    } finally {
+      setSending(false);
+    }
   }
 
   function handleShare() {
@@ -139,7 +335,7 @@ export function ManagerPage() {
     setPendingShare(false);
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     if (
       selected &&
       draftText !== summary.text &&
@@ -149,7 +345,7 @@ export function ManagerPage() {
     ) {
       return;
     }
-    logout();
+    await logout();
     navigate("/");
   }
 
@@ -216,56 +412,95 @@ export function ManagerPage() {
             ))}
 
             {isAddingCollaborator ? (
-              <form
-                className="manager-page__team__add-form"
-                onSubmit={handleAddCollaborator}
-              >
+              <div className="manager-page__team__add-form">
                 <Input
-                  label="Prénom"
+                  label="Rechercher une personne"
                   fullWidth
-                  state={newCollaboratorError ? "error" : "default"}
-                  value={newFirstName}
-                  onChange={(e) => {
-                    setNewFirstName(e.target.value);
-                    setNewCollaboratorError(false);
-                  }}
+                  text="Par nom ou adresse email, dans l'annuaire"
+                  value={search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                 />
                 <Input
-                  label="Nom"
-                  fullWidth
-                  state={newCollaboratorError ? "error" : "default"}
-                  value={newLastName}
-                  onChange={(e) => {
-                    setNewLastName(e.target.value);
-                    setNewCollaboratorError(false);
-                  }}
-                />
-                <Input
-                  label="Poste"
+                  label="Poste (facultatif)"
                   fullWidth
                   value={newJobTitle}
                   onChange={(e) => setNewJobTitle(e.target.value)}
                 />
-                <Input
-                  label="Email professionnel"
-                  type="email"
-                  fullWidth
-                  state={newCollaboratorError ? "error" : "default"}
-                  text={
-                    newCollaboratorError
-                      ? "Prénom, nom et email valide requis."
-                      : undefined
-                  }
-                  value={newEmail}
-                  onChange={(e) => {
-                    setNewEmail(e.target.value);
-                    setNewCollaboratorError(false);
-                  }}
-                />
+
+                {searching && (
+                  <p className="manager-page__team__search__hint">Recherche...</p>
+                )}
+                {!searching && search.trim().length >= 2 && searchResults.length === 0 && (
+                  <p className="manager-page__team__search__hint">
+                    {directoryReachable
+                      ? "Aucun compte ne correspond. L'annuaire ne liste que les personnes ayant déjà utilisé Drive, et la recherche se fait par début de nom ou d'adresse."
+                      : "Annuaire Drive indisponible : votre session Drive a peut-être expiré. Reconnectez-vous, ou saisissez l'adresse complète pour ajouter la personne."}
+                  </p>
+                )}
+
+                <ul className="manager-page__team__search__results">
+                  {/* Une adresse complète est toujours proposée, même absente
+                      de l'annuaire : quelqu'un qui n'a jamais ouvert Drive n'y
+                      figure pas encore. Sa fiche sera rattachée à son compte à
+                      sa première connexion, par cet email. */}
+                  {typedAddress && (
+                    <li key={typedAddress}>
+                      <button
+                        type="button"
+                        className="manager-page__team__search__result"
+                        disabled={adding}
+                        onClick={() =>
+                          handleAddCollaborator({
+                            email: typedAddress,
+                            fullName: typedAddress.split("@")[0],
+                          })
+                        }
+                      >
+                        <span className="manager-page__team__search__result__name">
+                          Ajouter {typedAddress}
+                        </span>
+                        <span className="manager-page__team__search__result__email">
+                          Adresse saisie — la personne n'a pas encore utilisé Drive
+                        </span>
+                      </button>
+                    </li>
+                  )}
+                  {searchResults.map((person) => {
+                    // Le serveur dit déjà pourquoi quelqu'un n'est pas
+                    // ajoutable : on l'affiche au lieu de laisser le clic
+                    // échouer.
+                    const reasons = {
+                      on_your_team: "Déjà dans votre équipe",
+                      on_another_team: "Dans l'équipe d'un autre manager",
+                      yourself: "C'est vous",
+                    };
+                    const blocked = person.status !== "available";
+                    return (
+                      <li key={person.email}>
+                        <button
+                          type="button"
+                          className="manager-page__team__search__result"
+                          disabled={blocked || adding}
+                          onClick={() => handleAddCollaborator(person)}
+                        >
+                          <span className="manager-page__team__search__result__name">
+                            {person.fullName}
+                          </span>
+                          <span className="manager-page__team__search__result__email">
+                            {person.email}
+                          </span>
+                          {blocked && (
+                            <span className="manager-page__team__search__result__reason">
+                              {reasons[person.status]}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+
                 <div className="manager-page__team__add-form__actions">
-                  <Button type="submit" fullWidth>
-                    Ajouter
-                  </Button>
                   <Button
                     type="button"
                     variant="tertiary"
@@ -275,7 +510,7 @@ export function ManagerPage() {
                     Annuler
                   </Button>
                 </div>
-              </form>
+              </div>
             ) : (
               <Button
                 variant="secondary"
@@ -362,11 +597,84 @@ export function ManagerPage() {
             ) : (
               <>
                 <p className="manager-page__share__hint">
-                  Envoyer le résumé de {selected.firstName} par mail.
+                  Envoyer le résumé de {selected.firstName} par mail, depuis
+                  votre propre adresse.
                 </p>
 
-                <Button fullWidth onClick={handleShare}>
-                  Envoyer par mail
+                <Input
+                  label="Destinataires"
+                  fullWidth
+                  text="Chercher par nom ou adresse, puis ajouter"
+                  value={recipientSearch}
+                  onChange={(e) => handleRecipientSearch(e.target.value)}
+                />
+
+                <ul className="manager-page__share__results">
+                  {/* Une adresse complète peut toujours être ajoutée telle
+                      quelle : le destinataire n'est pas forcément quelqu'un
+                      que l'annuaire connaît. */}
+                  {typedRecipient && (
+                    <li key={typedRecipient}>
+                      <button
+                        type="button"
+                        className="manager-page__share__result"
+                        onClick={() =>
+                          addRecipient({ email: typedRecipient, fullName: typedRecipient })
+                        }
+                      >
+                        <span>Ajouter {typedRecipient}</span>
+                        <span className="manager-page__share__result__add">
+                          Ajouter
+                        </span>
+                      </button>
+                    </li>
+                  )}
+                  {recipientResults.map((person) => (
+                    <li key={person.email}>
+                      <button
+                        type="button"
+                        className="manager-page__share__result"
+                        onClick={() => addRecipient(person)}
+                      >
+                        <span>
+                          {person.fullName}
+                          <span className="manager-page__share__result__email">
+                            {person.email}
+                          </span>
+                        </span>
+                        <span className="manager-page__share__result__add">
+                          Ajouter
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                {recipients.length > 0 && (
+                  <ul className="manager-page__share__chips">
+                    {recipients.map((recipient) => (
+                      <li key={recipient.email} className="manager-page__share__chip">
+                        <span title={recipient.email}>{recipient.fullName}</span>
+                        <button
+                          type="button"
+                          aria-label={`Retirer ${recipient.email}`}
+                          onClick={() => removeRecipient(recipient.email)}
+                        >
+                          <span className="material-icons">close</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <Button
+                  fullWidth
+                  onClick={handleShare}
+                  disabled={sending || recipients.length === 0}
+                >
+                  {sending
+                    ? "Envoi..."
+                    : `Envoyer par mail${recipients.length > 1 ? ` (${recipients.length})` : ""}`}
                 </Button>
               </>
             )}
@@ -394,7 +702,7 @@ export function ManagerPage() {
         title="Retirer ce collaborateur ?"
       >
         {pendingRemove
-          ? `Voulez-vous vraiment retirer ${pendingRemove.firstName} ${pendingRemove.lastName} de votre équipe ? Son résumé et son compte ne seront plus accessibles.`
+          ? `Retirer ${pendingRemove.firstName} ${pendingRemove.lastName} de votre équipe ? Sa passation et son compte sont conservés : vous ne les verrez simplement plus, et vous pourrez le rattacher à nouveau.`
           : null}
       </DeleteConfirmationModal>
     </div>

@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'connectors',
+    'passon',
 ]
 
 MIDDLEWARE = [
@@ -85,9 +86,13 @@ WSGI_APPLICATION = 'relais_dinum.wsgi.application'
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("POSTGRES_DB", "db"),
+        "USER": os.environ.get("POSTGRES_USER", "user"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "password"),
+        "HOST": "postgres",
+        "PORT": "5432",
     }
 }
 
@@ -145,9 +150,17 @@ DINUM_API_TIMEOUT = float(os.getenv("DINUM_API_TIMEOUT", "10"))
 DINUM_USE_MOCK = os.getenv("DINUM_USE_MOCK", "false").lower() == "true"
 DINUM_SERVICES = {
     "docs": {"url": os.getenv("DOCS_URL", "http://localhost:8071").rstrip("/"), "cookie": "docs_sessionid", "header": "X-Docs-Session"},
-    "drive": {"url": os.getenv("DRIVE_URL", "http://localhost:8072").rstrip("/"), "cookie": "drive_sessionid", "header": "X-Drive-Session"},
+    "drive": {"url": os.getenv("DRIVE_URL", "http://localhost:8071").rstrip("/"), "cookie": "drive_sessionid", "header": "X-Drive-Session"},
     "messages": {"url": os.getenv("MESSAGES_URL", "http://localhost:8901").rstrip("/"), "cookie": os.getenv("MESSAGES_SESSION_COOKIE", "sessionid"), "header": "X-Messages-Session"},
 }
+
+# Host that the services and their Keycloaks know each other by. Login walks
+# each service's OIDC redirect chain (accounts/oidc_login.py), and the URLs in
+# it -- including the redirect_uri Keycloak validates -- are built from the
+# host the caller presents. DOCS_URL/DRIVE_URL/MESSAGES_URL say where to
+# *reach* each service (host.docker.internal from a container); this says which
+# host to *claim* while doing so.
+DINUM_PUBLIC_HOST = os.getenv("DINUM_PUBLIC_HOST", "localhost")
 
 # LLM used by /api/dossier/ (connectors/generation.py), via the groq SDK.
 # Get a free key at https://console.groq.com/keys.

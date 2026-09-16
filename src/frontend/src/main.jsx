@@ -7,6 +7,7 @@ import "./index.css";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 import { CollaboratorsProvider } from "./context/CollaboratorsContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
+import { ItemsProvider } from "./context/ItemsContext.jsx";
 import { SummaryProvider } from "./context/SummaryContext.jsx";
 import App from "./App.jsx";
 
@@ -15,9 +16,11 @@ createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <CollaboratorsProvider>
         <AuthProvider>
-          <SummaryProvider>
-            <App />
-          </SummaryProvider>
+          <ItemsProvider>
+            <SummaryProvider>
+              <App />
+            </SummaryProvider>
+          </ItemsProvider>
         </AuthProvider>
       </CollaboratorsProvider>
     </BrowserRouter>

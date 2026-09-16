@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, DeleteConfirmationModal } from "@gouvfr-lasuite/ui-components";
 import { useSummaries } from "../context/SummaryContext.jsx";
 import { useCollaborators } from "../context/CollaboratorsContext.jsx";
-import { getCollaboratorItems } from "../utils/collaboratorItems.js";
+import { useItems } from "../context/ItemsContext.jsx";
 import "./SummaryDetails.css";
 
 function formatDate(iso) {
@@ -370,20 +370,28 @@ function ContactSection({ collaboratorId, contactIds, onAdd, onEdit, onRemove })
 // frontend's own mock items when picked manually (url left null). Keeping
 // a single shape means this section never needs to know which side an
 // entry came from.
+// Un élément réel porte déjà l'identifiant du backend ("drive:<uuid>"), celui
+// que le résumé généré utilise dans ses "documents importants" ; les éléments
+// mockés n'en ont pas, on le reconstruit. Comparer des clés entières plutôt
+// que de découper sur ":" évite de casser sur les identifiants composés.
+function itemKey(item) {
+  return item.refId ?? `${item.type}:${item.id}`;
+}
+
 function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
   const [selectedKey, setSelectedKey] = useState("");
-  const availableItems = getCollaboratorItems(collaboratorId);
+  const { getItems } = useItems();
+  const availableItems = getItems(collaboratorId);
   const pickable = availableItems.filter(
-    (it) => !docRefs.some((ref) => ref.id === `${it.type}:${it.id}`),
+    (it) => !docRefs.some((ref) => ref.id === itemKey(it)),
   );
 
   function handleSubmit(event) {
     event.preventDefault();
     if (!selectedKey) return;
-    const [type, id] = selectedKey.split(":");
-    const item = availableItems.find((it) => it.type === type && it.id === id);
+    const item = availableItems.find((it) => itemKey(it) === selectedKey);
     if (!item) return;
-    onAdd({ id: selectedKey, title: item.title, url: null });
+    onAdd({ id: selectedKey, title: item.title, url: item.url ?? null });
     setSelectedKey("");
   }
 
@@ -428,7 +436,7 @@ function DocumentSection({ collaboratorId, docRefs, onAdd, onRemove }) {
           >
             <option value="">Choisir un document...</option>
             {pickable.map((it) => (
-              <option key={`${it.type}:${it.id}`} value={`${it.type}:${it.id}`}>
+              <option key={itemKey(it)} value={itemKey(it)}>
                 {it.title}
               </option>
             ))}
@@ -458,16 +466,23 @@ export function SummaryDetails({ collaboratorId }) {
   }
 
   function editInList(field, id, changes) {
+    const list = summary[field] ?? [];
+    const at = list.findIndex((x) => x.id === id);
+    if (at === -1) return;
     updateSummary(collaboratorId, {
-      [field]: (summary[field] ?? []).map((x) =>
-        x.id === id ? { ...x, ...changes } : x,
-      ),
+      [field]: list.map((x, i) => (i === at ? { ...x, ...changes } : x)),
     });
   }
 
+  // Par position, une seule à la fois : filtrer sur l'identifiant supprimait
+  // toute la section dès que deux puces le partageaient -- ou, pire, quand
+  // aucune n'en avait.
   function removeFromList(field, id) {
+    const list = summary[field] ?? [];
+    const at = list.findIndex((x) => x.id === id);
+    if (at === -1) return;
     updateSummary(collaboratorId, {
-      [field]: (summary[field] ?? []).filter((x) => x.id !== id),
+      [field]: list.filter((_, i) => i !== at),
     });
   }
 

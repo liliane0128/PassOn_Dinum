@@ -82,11 +82,38 @@ surrounding code block, no markdown.
 """
 
 
+# Each item's content is capped before it reaches the model. Groq's ceiling
+# counts the prompt *and* the answer against the same per-minute budget, so an
+# oversized prompt either gets refused outright (413) or leaves too little room
+# for the JSON, which then comes back truncated and unparseable. A real mailbox
+# of a dozen items blows past it, so without a cap the endpoint works only on
+# toy data. The beginning of a document is also where its subject, decisions
+# and dates almost always are; what gets cut is the tail.
+MAX_CONTENT_CHARS = 500
+TRUNCATION_MARKER = "\n[...] (contenu tronqué)"
+
+
+def _trimmed(item):
+    content = item.get("content") or ""
+    if len(content) <= MAX_CONTENT_CHARS:
+        return item
+    return {**item, "content": content[:MAX_CONTENT_CHARS] + TRUNCATION_MARKER}
+
+
 def build_user_message(items):
-    """Serialize the normalized items as the JSON input for the prompt."""
+    """Serialize the normalized items as the JSON input for the prompt.
+
+    Compact separators rather than indentation: the whitespace of a pretty
+    dump is billed as tokens like anything else, and the model does not read
+    the JSON any better for it.
+    """
     return (
         "Here are the items to summarize (JSON format):\n\n"
-        + json.dumps(items, ensure_ascii=False, indent=2)
+        + json.dumps(
+            [_trimmed(item) for item in items],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
     )
 
 
@@ -128,6 +155,18 @@ def generate_dossier(items, client=None):
     response = client.chat.completions.create(
         model=settings.GROQ_MODEL,
         response_format={"type": "json_object"},
+        # Bounded on purpose: an unbounded request is billed against the
+        # per-minute budget at the model's full output size, which alone can
+        # exceed the free tier's limit. Wide enough for the six sections.
+        max_completion_tokens=3000,
+        # The reasoning tokens of gpt-oss models are drawn from the same
+        # completion budget as the answer. Left to its own devices the model
+        # thinks its way past the limit and the JSON comes back truncated,
+        # which Groq rejects outright ("Failed to validate JSON"): roughly two
+        # calls in three failed that way. Thinking less produces a valid
+        # object nearly every time, and a shorter one -- around 1600
+        # completion tokens instead of 2600 -- for the same six sections.
+        reasoning_effort="low",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_user_message(items)},

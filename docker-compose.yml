@@ -1,0 +1,76 @@
+# The project's only compose file, so there is only ever one database.
+#
+#   make up    postgres + web + nginx -> the whole app on http://localhost:8090
+#   make run   postgres + web         -> the API alone on http://localhost:8000
+#
+# Both select services from this file, so either way it is the same postgres
+# and the same data.
+name: passon
+
+services:
+  web:
+    build: ./src/backend
+    container_name: passon_web
+    # No command override: the image's entrypoint migrates, then serves.
+    # Sessions (used by the login flow) live in the database, so those tables
+    # have to exist before the first request.
+    # Bound to 127.0.0.1 for `make run`, which serves the API without nginx.
+    # With the full stack the browser still goes through http://localhost:8090,
+    # where the app and the API share one origin; :8000 is for curl and tests.
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./src/backend:/app
+    # Only the database credentials are set here. Everything else
+    # (DOCS_URL, DINUM_USE_MOCK, GROQ_API_KEY...) stays in src/backend/.env,
+    # which settings.py loads through the mount above -- compose-level
+    # variables would silently win over that file. These four have no entry
+    # there, so there is nothing to override; they come from the repository
+    # root's .env (see template.env).
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-db}
+      POSTGRES_HOST: postgres
+      # Regenerates missing migrations on boot (dev convenience, from the
+      # backend-only stack this file absorbed). Currently a no-op: the models
+      # in relais_dinum/models.py are not part of an installed app yet.
+      DJANGO_AUTO_MIGRATE: ${DJANGO_AUTO_MIGRATE:-1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # The one database: users, their relations, and the sessions the login flow
+  # depends on. Stored in a named volume, so `make down` keeps the data and
+  # `docker compose down -v` is what wipes it. No published port -- nothing
+  # outside the compose network needs to reach it.
+  postgres:
+    image: postgres:16-alpine
+    container_name: passon_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-db}
+    volumes:
+      - passon-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    build:
+      context: .
+      dockerfile: src/server/Dockerfile
+    container_name: passon_nginx
+    ports:
+      - "8090:8090"
+    depends_on:
+      - web
+
+volumes:
+  passon-db:

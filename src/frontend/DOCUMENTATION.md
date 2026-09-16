@@ -80,12 +80,14 @@ composant en dessous du `Provider` qui la fournit, sans avoir à la faire passer
 composant en composant ("prop drilling"). Deux fichiers dans `src/context/` :
 
 **`AuthContext.jsx`** : contient un `useState` pour `currentUser` (le collaborateur
-connecté, ou `null`), et deux fonctions :
-- `login(email, password)` : cherche dans `mockData.js` un collaborateur dont l'email
-  et le mot de passe correspondent. Si trouvé, il devient `currentUser` et la fonction
-  le retourne (pour que `LoginPage` sache tout de suite vers quelle page rediriger,
-  sans attendre un nouveau rendu).
-- `logout()` : remet `currentUser` à `null`.
+connecté, ou `null`), et deux fonctions **asynchrones** (elles parlent au backend,
+voir « La connexion réelle » plus bas) :
+- `login(email, password)` : envoie les identifiants à `POST /api/auth/login/`, qui
+  les fait vérifier par Drive. Renvoie `{ user }` en cas de succès, `{ error: "<code>" }`
+  sinon — `LoginPage` traduit le code en message et sait tout de suite vers quelle page
+  rediriger.
+- `logout()` : ferme la session côté serveur (`POST /api/auth/logout/`) puis remet
+  `currentUser` à `null`.
 
 Le hook `useAuth()` (défini dans le même fichier) est juste un raccourci pour aller
 lire ce Context depuis n'importe quel composant : `const { currentUser, logout } = useAuth();`.
@@ -95,22 +97,85 @@ lire ce Context depuis n'importe quel composant : `const { currentUser, logout }
 et trois fonctions : `getSummary(id)`, `updateSummary(id, text)` (remet aussi
 `validated` à `false`), `validateSummary(id)` (passe `validated` à `true`).
 
-⚠️ Ces deux Context ne vivent qu'en mémoire côté navigateur : un rafraîchissement de
-page déconnecte l'utilisateur et remet les résumés à leur valeur de départ. C'est
-attendu pour un prototype sans backend (voir `PLAN.md`).
+⚠️ `SummaryContext` ne vit qu'en mémoire côté navigateur : un rafraîchissement remet
+les résumés à leur valeur de départ (voir `PLAN.md`). La connexion, elle, **survit
+désormais au rafraîchissement** : elle repose sur un cookie de session posé par le
+backend, que `AuthProvider` retrouve au démarrage.
+
+## La connexion réelle
+
+Il n'y a **pas de compte propre à Pass'on** : on se connecte avec ses identifiants
+**Drive**, et c'est l'instance Drive locale qui dit si le couple email/mot de passe est
+bon. Le mot de passe n'est jamais comparé dans le navigateur, et n'est stocké nulle
+part de notre côté.
+
+```
+LoginPage ──► AuthContext.login() ──► api/auth.js ──► POST /api/auth/login/
+                                                          │  (Django)
+                                                          ▼
+                                                    Drive + Keycloak
+```
+
+- **`src/api/auth.js`** : les trois appels réseau (`me`, `login`, `logout`). Chaque
+  requête part avec `credentials: "same-origin"` pour emporter le cookie de session, et
+  les POST ajoutent l'en-tête `X-CSRFToken` lu dans le cookie `csrftoken` — le
+  mécanisme standard de Django. C'est `GET /api/auth/me/` qui pose ce cookie, donc il
+  est appelé au démarrage de l'appli.
+- **`AuthContext`** expose en plus `restoring` : au chargement de la page, on ne sait
+  pas encore qui est connecté tant que `GET /api/auth/me/` n'a pas répondu. `App.jsx`
+  n'affiche aucune route pendant ce temps, sinon une page protégée renverrait vers
+  l'écran de connexion à chaque rafraîchissement.
+- **`toAppUser()`** (dans `AuthContext.jsx`) est une passerelle temporaire : le backend
+  renvoie l'identité connue de Drive (`{ id, email, full_name }`), alors que les pages
+  attendent encore le profil mocké complet (`accountRole`, `managerId`, poste, équipe).
+  On fait le lien par l'email ; un compte Drive sans équivalent mocké ouvre l'espace
+  employé, avec un résumé et une liste de documents vides. Cette fonction disparaîtra
+  le jour où le rôle viendra du backend.
+
+Détails backend (routes, codes d'erreur, poignée de main CSRF) :
+[`src/backend/accounts/README.md`](../backend/accounts/README.md).
+
+## D'où viennent les mails et les documents affichés
+
+Deux sources, selon de qui on parle :
+
+- **L'utilisateur connecté** : ses vrais fichiers Drive et ses vrais mails
+  Messages, via `GET /api/extraction/items/` (`src/api/items.js`). Le backend
+  n'interroge que les services pour lesquels la session contient des
+  identifiants, donc quelqu'un connecté à Drive mais absent du Keycloak de
+  Messages reçoit ses fichiers sans ses mails.
+- **Les autres collaborateurs** (vue manager) : toujours les données mockées.
+  On ne peut lire les fichiers que du compte dont on détient la session ; tant
+  que le backend ne sait pas répondre pour quelqu'un d'autre que l'appelant, il
+  n'y a rien de réel à afficher.
+
+`src/context/ItemsContext.jsx` tient cet arbitrage dans une seule fonction,
+`getItems(collaboratorId)` : les composants (`CollaboratorItemsList`,
+`EmployeePage`, la section « documents importants » de `SummaryDetails`)
+l'appellent sans savoir d'où viennent les données. Tant que la requête n'a pas
+abouti, c'est le mock qui est renvoyé, pour que l'interface ne soit jamais vide
+pendant le chargement.
+
+Les éléments réels portent un champ `refId` — l'identifiant tel que le backend
+le connaît (`"drive:<uuid>"`), celui qu'utilise le résumé généré par l'IA dans
+ses « documents importants ». C'est ce qui permet de comparer un document
+choisi à la main et un document proposé par l'IA sans se tromper.
 
 ## Page de connexion (`LoginPage.jsx`)
 
 Un formulaire contrôlé classique : `email`/`password` en state React, `Input` et
 `InputPassword` du kit (ce dernier ajoute juste un bouton œil pour afficher/masquer
-le mot de passe). À la soumission, `login(email, password)` est appelé ; s'il ne
-trouve personne, un état `error` local affiche un message sous le champ mot de passe
-(`state="error"` sur les composants du kit). S'il trouve quelqu'un, on navigue vers
-`/manager` ou `/moi` selon `user.accountRole`.
+le mot de passe). À la soumission, `login(email, password)` est **attendu** (`await`) ;
+le bouton affiche « Connexion... » et les champs sont désactivés pendant l'appel.
 
-Un `<details>`/`<summary>` HTML (repliable nativement, pas besoin de JS) affiche les
-comptes de test — email + rôle de chacun, mot de passe commun "demo" — puisqu'il n'y
-a pas de vrai backend pour l'instant.
+En cas d'échec, le code renvoyé par le backend est traduit en message sous le champ
+mot de passe : identifiants refusés, Drive injoignable, Drive trop lent, serveur
+inaccessible. Distinguer ces cas évite de chercher une faute de frappe quand c'est le
+service qui est éteint. En cas de succès, on navigue vers `/manager` ou `/moi` selon
+`user.accountRole`.
+
+Le `<details>`/`<summary>` sous le formulaire rappelle qu'il faut ses identifiants
+Drive, et donne les comptes de démonstration de Drive.
 
 ## Espace manager (`ManagerPage.jsx`)
 
@@ -190,6 +255,30 @@ dur, et `SummaryContext` lit/écrit sur une API au lieu d'un simple `useState`.
   `var(--c--globals--spacings--sm)`...) plutôt que des couleurs ou tailles en dur.
   C'est ce qui garantit que l'interface reste visuellement cohérente avec le reste de
   la Suite Numérique, même là où on code nous-mêmes.
+
+## Comment l'appli est servie (ajout du 2026-09-15)
+
+Deux façons de lancer le front, selon ce que tu fais :
+
+- **En développement** : `npm run dev` comme avant, serveur Vite sur
+  http://localhost:5173, rechargement à chaud. C'est ce qu'il faut utiliser pour
+  travailler sur l'interface.
+- **Avec tout le reste** : `make up` à la racine du dépôt. Un serveur **nginx**
+  compile l'appli (`npm run build`) et sert le résultat sur
+  http://localhost:8090, en renvoyant au passage tout ce qui commence par
+  `/api/` vers le Django du projet.
+
+L'intérêt du second mode : le front et l'API sont sur **la même origine**. Le
+jour où `mockData.js` sera remplacé par de vrais appels réseau, il suffira
+d'écrire `fetch("/api/...")` — pas d'URL de backend à configurer, pas de CORS à
+gérer, et les cookies de session fonctionnent naturellement. C'est aussi ce qui
+fait qu'un rafraîchissement sur `/manager` ou `/moi` ne renvoie pas une erreur
+404 : nginx est configuré pour retourner `index.html` sur toute URL qui ne
+correspond pas à un fichier, et laisser React Router décider de la suite.
+
+Attention : dans ce mode l'appli est **compilée dans l'image Docker**, donc une
+modification du front n'apparaît qu'après un nouveau `make up`. Les détails de
+configuration sont dans [`src/server/README.md`](../server/README.md).
 
 ## Le nettoyage disque du 2026-09-15
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import {
   Badge,
@@ -7,7 +7,7 @@ import {
 } from "@gouvfr-lasuite/ui-components";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useSummaries } from "../context/SummaryContext.jsx";
-import { getCollaboratorItems } from "../utils/collaboratorItems.js";
+import { useItems } from "../context/ItemsContext.jsx";
 import { generateDossier } from "../api/dossier.js";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { AppFooter } from "../components/AppFooter.jsx";
@@ -19,45 +19,129 @@ import "./EmployeePage.css";
 const SUMMARY_HEADING_ID = "employee-summary-heading";
 
 export function EmployeePage() {
-  const { currentUser, logout } = useAuth();
-  const { getSummary, updateSummary, validateSummary } = useSummaries();
+  const { currentUser, logout, sessionExpired } = useAuth();
+  const { getSummary, isLoaded, updateSummary, validateSummary } = useSummaries();
   const { toast } = useToastProvider();
   const navigate = useNavigate();
 
+  const { getItems } = useItems();
   const items = useMemo(
-    () => getCollaboratorItems(currentUser?.id),
-    [currentUser],
+    () => getItems(currentUser?.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentUser, getItems],
   );
 
   const summary = currentUser ? getSummary(currentUser.id) : { text: "", validated: false };
   const [draftText, setDraftText] = useState(summary.text);
 
-  // Auto-generate the AI summary from the backend's mock data as soon as
-  // this collaborator's own page loads (see connectors/generation.py) --
-  // this only fills the draft, it never auto-validates.
+  // La passation arrive du serveur après le premier rendu, alors que l'éditeur
+  // a déjà été initialisé — sans cette synchronisation il resterait sur le
+  // texte vide du départ, et le résumé semblerait vide alors qu'il est bien
+  // enregistré. On ne réécrit pas par-dessus une saisie en cours : seul un
+  // texte qu'on n'a pas modifié depuis la dernière synchronisation est
+  // remplacé.
+  const loadedText =
+    currentUser && isLoaded(currentUser.id) ? (summary.text ?? "") : null;
+  // Lu dans l'effet sans en être une dépendance : voir ManagerPage.
+  const draftTextRef = useRef(draftText);
+  draftTextRef.current = draftText;
+
+  const lastSynced = useRef({ id: null, text: "" });
+  useEffect(() => {
+    if (loadedText === null || !currentUser) return;
+    const otherCollaborator = lastSynced.current.id !== currentUser.id;
+    const edited =
+      !otherCollaborator && draftTextRef.current !== lastSynced.current.text;
+    if (otherCollaborator || !edited) setDraftText(loadedText);
+    lastSynced.current = { id: currentUser.id, text: loadedText };
+  }, [currentUser, loadedText]);
+  const [regenerating, setRegenerating] = useState(false);
+
+  // Le résumé généré remplace la passation enregistrée : texte et sections
+  // d'un coup, ce qui la repasse en non validée (updateSummary s'en charge).
+  function applyDossier(result) {
+    updateSummary(currentUser.id, {
+      text: result.text,
+      actions: result.actions.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      decisions: result.decisions.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      deadlines: result.deadlines.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      blockers: result.blockers.map((item) => ({ ...item, id: crypto.randomUUID() })),
+      documents: result.documents,
+    });
+    setDraftText(result.text);
+  }
+
+  // Régénération demandée explicitement. C'est le seul moyen de rafraîchir un
+  // résumé existant : la génération automatique ne se déclenche que sur une
+  // passation vide, pour ne pas écraser un texte corrigé à chaque affichage.
+  async function handleRegenerate() {
+    if (
+      summary.text &&
+      !window.confirm(
+        "Régénérer remplacera le résumé actuel et ses sections par une nouvelle version générée par l'IA. Continuer ?",
+      )
+    ) {
+      return;
+    }
+    setRegenerating(true);
+    try {
+      applyDossier(await generateDossier());
+      toast("Nouveau résumé généré à partir de vos documents.", "success");
+    } catch (err) {
+      if (err.status === 401) {
+        toast("Votre session a expiré, reconnectez-vous.", "warning");
+        sessionExpired();
+        return;
+      }
+      toast(
+        err.code === "no_data_to_summarize"
+          ? "Aucun document ni mail à résumer : ajoutez des fichiers dans Drive ou attendez de recevoir des messages."
+          : `Échec de la génération du résumé IA : ${err.message}`,
+        err.code === "no_data_to_summarize" ? "info" : "error",
+      );
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
+  // Génère le résumé IA (connectors/generation.py) la première fois, et
+  // seulement s'il n'y en a pas déjà un enregistré : régénérer à chaque
+  // affichage écraserait le texte que l'employé a corrigé et validé, et le
+  // repasserait en non validé. Ne remplit que le brouillon, ne valide jamais.
+  const generationAttempted = useRef(false);
   useEffect(() => {
     if (!currentUser) return;
+    if (!isLoaded(currentUser.id)) return; // on ne sait pas encore ce qui existe
+    if (generationAttempted.current) return;
+    generationAttempted.current = true;
+    if (summary.text) return; // déjà une passation enregistrée
+
     let cancelled = false;
     generateDossier()
       .then((result) => {
         if (cancelled) return;
-        updateSummary(currentUser.id, {
-          text: result.text,
-          actions: result.actions.map((item) => ({ ...item, id: crypto.randomUUID() })),
-          decisions: result.decisions.map((item) => ({ ...item, id: crypto.randomUUID() })),
-          deadlines: result.deadlines.map((item) => ({ ...item, id: crypto.randomUUID() })),
-          blockers: result.blockers.map((item) => ({ ...item, id: crypto.randomUUID() })),
-          documents: result.documents,
-        });
-        setDraftText(result.text);
+        applyDossier(result);
       })
       .catch((err) => {
-        if (!cancelled) toast(`Échec de la génération du résumé IA : ${err.message}`, "error");
+        if (cancelled) return;
+        if (err.status === 401) {
+          // Session perdue côté serveur : ce n'est pas l'IA qui a échoué.
+          toast("Votre session a expiré, reconnectez-vous.", "warning");
+          sessionExpired();
+          return;
+        }
+        if (err.code === "no_data_to_summarize") {
+          // Rien à résumer : c'est un état normal (Drive et boîte mail vides),
+          // pas une panne. La génération automatique se tait, l'utilisateur
+          // n'a rien demandé.
+          return;
+        }
+        toast(`Échec de la génération du résumé IA : ${err.message}`, "error");
       });
     return () => {
       cancelled = true;
     };
-  }, [currentUser]);
+  }, [currentUser, summary]);
 
   if (!currentUser || currentUser.accountRole !== "employee") {
     return <Navigate to="/" replace />;
@@ -66,18 +150,28 @@ export function EmployeePage() {
   const fullName = `${currentUser.firstName} ${currentUser.lastName}`;
   const hasUnsavedChanges = draftText !== summary.text;
 
-  function handleSave() {
-    updateSummary(currentUser.id, { text: draftText });
-    toast("Résumé enregistré.", "success");
+  async function handleSave() {
+    const saved = await updateSummary(currentUser.id, { text: draftText });
+    if (saved) toast("Résumé enregistré.", "success");
   }
 
-  function handleValidate() {
-    updateSummary(currentUser.id, { text: draftText });
-    validateSummary(currentUser.id);
-    toast("Résumé validé — votre manager pourra le consulter.", "success");
+  async function handleValidate() {
+    // Enregistrer *puis* valider, dans cet ordre et en attendant le premier :
+    // l'enregistrement repasse la passation en non validée (toute modification
+    // le fait), donc lancer les deux en parallèle laissait une chance sur deux
+    // que l'enregistrement arrive en dernier et annule la validation -- côté
+    // serveur, sans que rien ne le signale.
+    if (hasUnsavedChanges) {
+      const saved = await updateSummary(currentUser.id, { text: draftText });
+      if (!saved) return; // l'échec a déjà été signalé
+    }
+    const validated = await validateSummary(currentUser.id);
+    if (validated) {
+      toast("Résumé validé — votre manager pourra le consulter.", "success");
+    }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     if (
       hasUnsavedChanges &&
       !window.confirm(
@@ -86,7 +180,7 @@ export function EmployeePage() {
     ) {
       return;
     }
-    logout();
+    await logout();
     navigate("/");
   }
 
@@ -151,6 +245,14 @@ export function EmployeePage() {
               </Button>
               <Button onClick={handleValidate} disabled={summary.validated && !hasUnsavedChanges}>
                 Valider ce résumé
+              </Button>
+              <Button
+                variant="tertiary"
+                icon={<span className="material-icons">autorenew</span>}
+                onClick={handleRegenerate}
+                disabled={regenerating}
+              >
+                {regenerating ? "Génération..." : "Régénérer"}
               </Button>
             </div>
 
