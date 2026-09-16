@@ -64,6 +64,17 @@ npm run dev
 See `src/frontend/PLAN.md` and `src/frontend/DOCUMENTATION.md` for the
 project's scope and design decisions.
 
+## Running it alongside Drive and Messages
+
+Pass‘on has no accounts and no documents of its own: it reads them from **Drive**
+and **Messages**, as the person using it. Running it for real therefore means
+running those two next to it, with an account that exists in both.
+
+**[docs/deploiement.md](docs/deploiement.md)** covers that end to end — which
+ports, in which order, how to create an account that works on both sides, and
+what each failure message actually means. Read it before the first `make up`
+against real services; most of what it documents is not guessable.
+
 ## Logging in
 
 Pass‘on has no accounts of its own: users log in with their **Drive** email and
