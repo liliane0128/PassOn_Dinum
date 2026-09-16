@@ -91,6 +91,19 @@ and `DRIVE_URL` in `src/backend/.env`, and start Drive separately.
 See [the accounts doc](src/backend/accounts/README.md) for the routes, the CSRF
 handshake the frontend needs, and the Keycloak quirks involved.
 
+## Database
+
+One postgres, started by both `make up` and `make run`. Besides Django's own
+tables (sessions, admin), it holds the project's two:
+
+| Table | What |
+| --- | --- |
+| `Collaborator` | one row per person — role, team, and who they report to |
+| `Handover` | their handover sheet: text, the six structured sections, validated or not |
+
+See [the schema and why it looks like that](src/backend/passon/README.md).
+Nothing writes to these yet — login still does not create a collaborator.
+
 ## Service APIs
 
 Docs, Drive, and Messages share read-only Django routes under `/api/`.
