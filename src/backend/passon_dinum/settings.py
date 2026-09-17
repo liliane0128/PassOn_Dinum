@@ -154,6 +154,24 @@ DINUM_SERVICES = {
     "messages": {"url": os.getenv("MESSAGES_URL", "http://localhost:8901").rstrip("/"), "cookie": os.getenv("MESSAGES_SESSION_COOKIE", "sessionid"), "header": "X-Messages-Session"},
 }
 
+
+# Which of the three upstream services this deployment actually reads.
+#
+# Dropping one is a configuration change, not a code change: everything that
+# talks to a service stays in place and simply goes unused, so a decision to
+# stop reading mail can be tried out and reversed by editing one line. Setting
+# it back to "docs,drive,messages" restores mail everywhere at once -- the
+# item routes, the merged extraction, the generated handover, the login that
+# opens a Messages session, and sending a handover by mail.
+#
+# A service left out is not an error anywhere: its items are absent, its
+# per-service routes answer 404, and no credential is asked for it.
+DINUM_ENABLED_SERVICES = {
+    name.strip().lower()
+    for name in os.getenv("DINUM_ENABLED_SERVICES", "docs,drive,messages").split(",")
+    if name.strip()
+}
+
 # Host that the services and their Keycloaks know each other by. Login walks
 # each service's OIDC redirect chain (accounts/oidc_login.py), and the URLs in
 # it -- including the redirect_uri Keycloak validates -- are built from the

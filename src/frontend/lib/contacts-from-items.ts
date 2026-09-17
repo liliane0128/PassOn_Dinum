@@ -8,6 +8,12 @@ import type { Item, StoredContact } from "./handover";
  * corresponded with, most frequent first. Deriving them here keeps the change
  * out of the generation code entirely.
  *
+ * Documents count too, through whoever owns them. A colleague who shared a
+ * dossier is someone the successor will have to deal with, and as mail leaves
+ * the product that ownership becomes the only evidence left of who works on
+ * what. Their own documents are skipped, though: a list of yourself is not a
+ * list of contacts.
+ *
  * Two fields matter, and they are separate on purpose. `subtitle` is the
  * display name (`extraction.py` builds it as `sender.name || sender.email`, so
  * the name wins whenever there is one), and `authorEmail` is the address the
@@ -18,13 +24,18 @@ import type { Item, StoredContact } from "./handover";
 export function contactsFromItems(
   items: Item[],
   /** The logged-in person, left out of their own contacts. */
-  excludeEmail?: string
+  excludeEmail?: string,
+  /** Their name, for the items that carry no address to match on. */
+  excludeName?: string
 ): StoredContact[] {
-  const byKey = new Map<string, { name: string; email: string; count: number }>();
+  const byKey = new Map<
+    string,
+    { name: string; email: string; mails: number; documents: number }
+  >();
   const own = (excludeEmail || "").trim().toLowerCase();
+  const ownName = (excludeName || "").trim().toLowerCase();
 
   for (const item of items) {
-    if (item.type !== "mail") continue;
     const sender = (item.subtitle || "").trim();
     const declared = (item.authorEmail || "").trim().toLowerCase();
     if (!sender && !declared) continue;
@@ -39,25 +50,52 @@ export function contactsFromItems(
           : "");
     const name = (angled ? angled[1].trim() : sender) || email.split("@")[0];
 
-    // A mail you sent yourself is not one of your contacts.
+    // Nothing of your own belongs in your own contacts -- neither a mail you
+    // sent yourself nor a document you created. The name is checked as well
+    // as the address because an upstream payload may carry only one of the
+    // two, and matching on the address alone let people appear as their own
+    // contact through their own documents.
     if (own && email === own) continue;
+    if (ownName && !email && name.toLowerCase() === ownName) continue;
 
     const key = email || name.toLowerCase();
     const existing = byKey.get(key);
     if (existing) {
-      existing.count += 1;
+      if (item.type === "mail") existing.mails += 1;
+      else existing.documents += 1;
       if (!existing.email && email) existing.email = email;
     } else {
-      byKey.set(key, { name, email, count: 1 });
+      byKey.set(key, {
+        name,
+        email,
+        mails: item.type === "mail" ? 1 : 0,
+        documents: item.type === "mail" ? 0 : 1,
+      });
     }
   }
 
   return [...byKey.values()]
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        b.mails + b.documents - (a.mails + a.documents) ||
+        a.name.localeCompare(b.name)
+    )
     .slice(0, 6)
     .map((contact) => ({
       name: contact.name,
       email: contact.email,
-      role: contact.count > 1 ? `${contact.count} échanges` : "1 échange",
+      // What the link actually is, rather than one number covering both:
+      // "3 échanges" about a document owner would be a claim the data does
+      // not support.
+      role: describe(contact.mails, contact.documents),
     }));
+}
+
+function describe(mails: number, documents: number): string {
+  const parts: string[] = [];
+  if (mails) parts.push(mails > 1 ? `${mails} échanges` : "1 échange");
+  if (documents) {
+    parts.push(documents > 1 ? `${documents} dossiers` : "1 dossier");
+  }
+  return parts.join(" · ");
 }

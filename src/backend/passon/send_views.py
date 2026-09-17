@@ -133,6 +133,10 @@ def send(request, collaborator_id):
         # failed, which is exactly the confusion worth avoiding.
         return _error("empty_handover", 409)
 
+    if "messages" not in settings.DINUM_ENABLED_SERVICES:
+        # Not "you are not connected": this deployment does not do mail.
+        return _error("messages_disabled", 409)
+
     session = _messages_session(request)
     if session is None:
         return _error("messages_not_connected", 409)

@@ -259,9 +259,12 @@ class MockModeTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
 
+# The suite tests the code, not the operator's current choice of services:
+# DINUM_ENABLED_SERVICES is read from the environment, and a deployment that
+# has dropped mail would otherwise turn every Messages test red.
 @override_settings(
     DINUM_SERVICES=SERVICES, DINUM_API_TIMEOUT=1, DINUM_PUBLIC_HOST="localhost",
-    DINUM_USE_MOCK=False,
+    DINUM_USE_MOCK=False, DINUM_ENABLED_SERVICES={"docs", "drive", "messages"},
 )
 class MessagesLinkTests(TestCase):
     """Messages runs its own Keycloak with its own users, so the same
@@ -303,6 +306,21 @@ class MessagesLinkTests(TestCase):
         client, response = self.post_login(drive_ok_messages_down)
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(CREDENTIAL_KEYS["messages"], client.session)
+
+    @override_settings(DINUM_ENABLED_SERVICES={"docs", "drive"})
+    def test_no_messages_session_is_opened_when_mail_is_dropped(self):
+        """Logging in there would leave a session nothing could ever use."""
+        asked = []
+
+        def record(service, email, password):
+            asked.append(service)
+            return f"cookie-{service}", USER_PAYLOAD
+
+        client, response = self.post_login(record)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(asked, ["drive"])
+        self.assertNotIn(CREDENTIAL_KEYS["messages"], client.session)
+        self.assertEqual(response.json()["services"], {"drive": True, "messages": False})
 
     def test_a_failed_drive_login_stores_nothing_at_all(self):
         def nothing_works(service, email, password):

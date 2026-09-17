@@ -174,6 +174,31 @@ upstream failures return 502. Credentials and upstream bodies are not included
 in errors. Requests have a timeout, do not follow redirects, and responses are
 private/no-store. Only GET is supported.
 
+### Which services are read: `DINUM_ENABLED_SERVICES`
+
+A deployment does not have to read all three. `DINUM_ENABLED_SERVICES`
+(default `docs,drive,messages`) lists the ones it does, and everything in this
+module follows it:
+
+| Where | With a service left out |
+| --- | --- |
+| `/api/<service>/items/` | `404 {"error": "service_disabled"}` |
+| `/api/extraction/items/` | its items are absent; no credential is asked for it, and it never appears in `errors` |
+| `/api/dossier/` | the model is given the other services' items only |
+| Mock mode | that service's fixture is left out too, so the demo matches |
+| Login (`accounts/`) | no session is opened there -- one nothing would use |
+| Sending a handover by mail | `409 {"error": "messages_disabled"}` |
+
+This exists so that dropping mail is a configuration change rather than a code
+change. `messages_client.py`, its routes and its tests all stay where they are;
+they are simply not called. Putting `messages` back in the list restores every
+line of the table above at once, which is what makes the decision reversible.
+
+A service left out is not an error and not a failure: it is absent. That is
+the difference from a service that is down, which does land in `errors`, and
+from a caller with no credential for it, which is a fact about the caller
+rather than a decision about the product.
+
 ### Mock mode
 
 Set `DINUM_USE_MOCK=true` to serve static demo data (`connectors/mock_data.py`)
@@ -192,7 +217,8 @@ LLM-ready items, each with real body content (not just metadata) and a
 ```json
 {
   "id": "docs:b8eb2e3a-1a76-4026-af30-91da9eb7cb80",
-  "title": "...", "author": "...", "date": "...", "content": "...",
+  "title": "...", "author": "...", "author_email": "...", "date": "...",
+  "content": "...",
   "source": {
     "type": "docs", "resource_id": "b8eb2e3a-...",
     "resource_url": "http://.../documents/b8eb2e3a-.../",
@@ -200,6 +226,34 @@ LLM-ready items, each with real body content (not just metadata) and a
   }
 }
 ```
+
+`author` is the display name and `author_email` the address beside it -- a
+mail's sender, a document's creator. They are kept apart because `author` is
+what the model reads (`generation._trimmed()`), while the address is what makes
+a contact reachable; folding one into the other would change the prompt's
+input.
+
+Messages carries a sender's address inline. Drive does not: its item listing
+names a creator, with an id, and no address anywhere. So this route resolves
+them, once per listing, through Drive's own user search
+(`drive_client.list_users`). That search matches on the *address*, which means
+a creator's name is not a usable query -- a domain is. A domain search comes
+back with everyone in it, each carrying the id the creator block already has,
+so the match is by id and never by name.
+
+Which domains get asked is `_directory_domains`: the caller's own first, then
+those of the collaborator rows login has created. The caller's domain alone is
+not enough -- a document shared across two organisations has an owner in
+neither the caller's domain nor any guessable one -- and asking about people
+this application already knows is a narrower question than searching Drive at
+large. The list is capped (`MAX_DIRECTORY_DOMAINS`), since each domain is one
+request.
+
+Two consequences worth knowing. A creator in none of those domains keeps an
+empty `author_email`, deliberately: this puts an address on the people the
+caller and this application already know, it is not a way to walk a directory.
+And the search is best-effort -- if it fails, the items still come back,
+owners and all, just without addresses.
 
 Send one or more of `X-Docs-Session` / `X-Drive-Session` / `X-Messages-Session`
 (or their cookies) -- at least one is required, but not all three: a service
@@ -427,6 +481,32 @@ identifiants ni les corps de réponse amont ne figurent dans les erreurs. Les
 requêtes ont un délai maximal, ne suivent pas les redirections, et les réponses
 sont `private` / `no-store`. Seul GET est accepté.
 
+### Quels services sont lus : `DINUM_ENABLED_SERVICES`
+
+Un déploiement n'est pas tenu de lire les trois services.
+`DINUM_ENABLED_SERVICES` (par défaut `docs,drive,messages`) énumère ceux qu'il
+lit, et tout ce module s'y conforme :
+
+| Où | Quand un service est retiré |
+| --- | --- |
+| `/api/<service>/items/` | `404 {"error": "service_disabled"}` |
+| `/api/extraction/items/` | ses éléments sont absents ; aucun identifiant ne lui est demandé, et il n'apparaît jamais dans `errors` |
+| `/api/dossier/` | le modèle ne reçoit que les éléments des autres services |
+| Mode mock | sa fixture est retirée aussi, pour que la démonstration corresponde |
+| Connexion (`accounts/`) | aucune session n'y est ouverte — elle ne servirait à rien |
+| Envoi d'une passation par mail | `409 {"error": "messages_disabled"}` |
+
+Cela existe pour que renoncer au mail soit un changement de configuration et
+non de code. `messages_client.py`, ses routes et ses tests restent en place :
+ils ne sont simplement plus appelés. Remettre `messages` dans la liste rétablit
+d'un coup toutes les lignes du tableau — c'est ce qui rend la décision
+réversible.
+
+Un service retiré n'est ni une erreur ni une panne : il est absent. C'est la
+différence avec un service en panne, qui figure bien dans `errors`, et avec un
+appelant sans identifiant pour lui, qui est un fait sur l'appelant et non une
+décision sur le produit.
+
 ### Mode mock
 
 `DINUM_USE_MOCK=true` sert des données de démonstration statiques
@@ -445,7 +525,8 @@ métadonnées) et un bloc `source` pour la traçabilité :
 ```json
 {
   "id": "docs:b8eb2e3a-1a76-4026-af30-91da9eb7cb80",
-  "title": "...", "author": "...", "date": "...", "content": "...",
+  "title": "...", "author": "...", "author_email": "...", "date": "...",
+  "content": "...",
   "source": {
     "type": "docs", "resource_id": "b8eb2e3a-...",
     "resource_url": "http://.../documents/b8eb2e3a-.../",
@@ -453,6 +534,37 @@ métadonnées) et un bloc `source` pour la traçabilité :
   }
 }
 ```
+
+`author` porte le nom affiché et `author_email` l'adresse qui l'accompagne —
+l'expéditeur d'un mail, le créateur d'un document. Les deux restent séparés
+parce qu'`author` est ce que lit le modèle (`generation._trimmed()`), tandis que
+l'adresse est ce qui rend un contact joignable : les confondre modifierait
+l'entrée de l'invite.
+
+Messages fournit l'adresse de l'expéditeur dans sa charge utile. Drive, non :
+sa liste d'éléments nomme un créateur, avec un identifiant, et aucune adresse
+nulle part. Cette route les résout donc, une fois par listing, via la recherche
+d'utilisateurs de Drive (`drive_client.list_users`). Cette recherche porte sur
+l'*adresse* : le nom d'un créateur n'est pas une requête utilisable, un domaine
+si. Une recherche par domaine renvoie tout le monde dans ce domaine, chacun
+avec l'identifiant que le bloc `creator` porte déjà — le rapprochement se fait
+donc par identifiant, jamais par nom.
+
+Quels domaines sont interrogés, c'est `_directory_domains` : celui de
+l'appelant d'abord, puis ceux des lignes `Collaborator` créées par la
+connexion. Le seul domaine de l'appelant ne suffit pas — un document partagé
+entre deux organisations a un propriétaire qui n'est ni dans ce domaine ni
+dans un domaine devinable — et interroger les personnes que cette application
+connaît déjà est une question plus étroite que fouiller Drive en entier. La
+liste est plafonnée (`MAX_DIRECTORY_DOMAINS`), chaque domaine coûtant une
+requête.
+
+Deux conséquences à connaître. Un créateur qui n'est dans aucun de ces
+domaines garde un `author_email` vide, volontairement : il s'agit de mettre
+une adresse sur les personnes que l'appelant et cette application connaissent
+déjà, pas de parcourir un annuaire. Et la recherche est au mieux : si elle
+échoue, les éléments reviennent quand même, propriétaires compris, simplement
+sans adresse.
 
 Envoyer un ou plusieurs des en-têtes `X-Docs-Session` / `X-Drive-Session` /
 `X-Messages-Session` (ou leurs cookies) : au moins un est exigé, mais pas les

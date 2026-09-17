@@ -42,6 +42,33 @@ def _extract_author(user):
     return user.get("full_name") or user.get("short_name") or user.get("email") or ""
 
 
+def _extract_author_email(user, directory=None):
+    """The author's address: from the payload, or from a directory.
+
+    Kept beside `author`, never folded into it: `author` is what reaches the
+    model, and its prompt is left exactly as it was. The address is what the
+    interface needs -- to list a document's owner as a contact worth writing
+    to, and to tell whether that owner is the person looking at the page.
+
+    Messages carries a sender's address inline, so the first branch is enough
+    for a mail. Drive does not: its item listing gives a creator's name and
+    id and no address at all, which left a document owner matchable only by
+    name and reachable not at all. `directory` closes that gap -- a map of
+    user id to address that the caller builds from Drive's user search (see
+    `connectors.views._drive_directory`). The lookup is by id, so it is exact
+    rather than a name match, and an id that is absent simply yields nothing,
+    exactly as before.
+    """
+    if not user or isinstance(user, str):
+        return ""
+    email = user.get("email") or ""
+    if email:
+        return email
+    if directory:
+        return directory.get(user.get("id")) or ""
+    return ""
+
+
 def _make_source(source_type, resource_id, resource_url, content_url):
     """Build the nested provenance block and the global id derived from it.
 
@@ -78,13 +105,14 @@ def _normalize_doc(item, base_url, session=None):
         "id": global_id,
         "title": item.get("title") or "",
         "author": _extract_author(item.get("creator")),
+        "author_email": _extract_author_email(item.get("creator")),
         "date": item.get("updated_at") or item.get("created_at") or "",
         "content": content,
         "source": source,
     }
 
 
-def _normalize_drive(item, base_url, session=None):
+def _normalize_drive(item, base_url, session=None, directory=None):
     """Normalize one Drive item (file or folder)."""
     content = item.get("description") or ""
     is_file = item.get("type") == "file"
@@ -114,6 +142,7 @@ def _normalize_drive(item, base_url, session=None):
         "id": global_id,
         "title": item.get("title") or item.get("filename") or "",
         "author": _extract_author(item.get("creator")),
+        "author_email": _extract_author_email(item.get("creator"), directory),
         "date": item.get("updated_at") or item.get("created_at") or "",
         "content": content,
         "source": source,
@@ -181,7 +210,8 @@ def normalize_items(raw_docs, raw_drive, raw_messages,
                     docs_base_url=docs_client.BASE_URL,
                     drive_base_url=drive_client.BASE_URL,
                     messages_base_url=messages_client.BASE_URL,
-                    docs_session=None, drive_session=None):
+                    docs_session=None, drive_session=None,
+                    drive_directory=None):
     """
     Convert raw connector payloads into a unified list of item dicts.
 
@@ -192,11 +222,13 @@ def normalize_items(raw_docs, raw_drive, raw_messages,
         title    – document title or email subject
         author   – creator full name or sender name
         author_email
-                 – the sender's address, for messages only, when the upstream
-                   payload carries one. Separate from `author`, which keeps
-                   the display name: generation._trimmed() sends the model
+                 – the author's address: a mail's sender, or a document's
+                   creator. Separate from `author`, which keeps the display
+                   name: generation._trimmed() sends the model
                    id/title/author/date/content and nothing else, so this
-                   field never reaches it
+                   field never reaches it. Drive publishes no address on its
+                   items, so for those it is filled from `drive_directory`
+                   and is empty without one
         date     – ISO 8601 string (updated_at / sent_at / …)
         content  – body text (see module docstring for how each source is
                    actually fetched)
@@ -216,12 +248,18 @@ def normalize_items(raw_docs, raw_drive, raw_messages,
     docs_client.login() / drive_client.login()) to fetch real content for
     docs and drive items -- one extra request per item. Messages content is
     already in the list payload, no session needed for it.
+
+    `drive_directory` maps a Drive user id to an address (see
+    `drive_client.list_users`). Without it, Drive items come back with an
+    empty `author_email`, since nothing in their own payload carries one.
     """
     result = []
     for raw in _as_list(raw_docs):
         result.append(_normalize_doc(raw, docs_base_url, docs_session))
     for raw in _as_list(raw_drive):
-        result.append(_normalize_drive(raw, drive_base_url, drive_session))
+        result.append(
+            _normalize_drive(raw, drive_base_url, drive_session, drive_directory)
+        )
     for raw in _as_list(raw_messages):
         result.append(_normalize_message(raw, messages_base_url))
     return result

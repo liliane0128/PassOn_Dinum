@@ -22,6 +22,13 @@ gets no mail in their handover, and the `services` field in the response says
 which ones answered, so the interface can explain a partial result instead of
 silently showing less.
 
+That second login is skipped entirely when the deployment does not read mail
+(`DINUM_ENABLED_SERVICES`, see
+[connectors](../connectors/README.md#which-services-are-read-dinum_enabled_services)):
+opening a Messages session that nothing will ever read would only cost a second
+OIDC walk on every login. `services.messages` then comes back `false`, exactly
+as it does for an account Messages has never heard of.
+
 The check is not a yes/no question we can ask these services, because Drive does not
 verify passwords itself — it delegates to **Keycloak** (OIDC), and the Keycloak
 client Drive uses has direct access grants disabled. So `oidc_login.py` walks
@@ -188,6 +195,13 @@ mieux : elle ne bloque jamais la connexion. Quelqu'un qui n'existe que dans Driv
 se connecte quand même, et n'a simplement pas ses mails dans sa passation ; le
 champ `services` de la réponse dit lesquels ont répondu, pour que l'interface
 puisse expliquer un résultat partiel au lieu d'en montrer moins sans rien dire.
+
+Cette seconde connexion est purement et simplement sautée lorsque le
+déploiement ne lit pas le mail (`DINUM_ENABLED_SERVICES`, voir
+[connectors](../connectors/README.md#quels-services-sont-lus--dinum_enabled_services))
+: ouvrir une session Messages que rien n'ira lire ne coûterait qu'un parcours
+OIDC de plus à chaque connexion. `services.messages` revient alors à `false`,
+exactement comme pour un compte que Messages ne connaît pas.
 
 La vérification n'est pas une question oui/non que l'on puisse poser à ces
 services : Drive ne vérifie pas les mots de passe lui-même, il délègue à

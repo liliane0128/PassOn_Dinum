@@ -21,7 +21,8 @@ import {
  */
 export async function runGeneration(
   collaboratorId: string,
-  ownEmail?: string
+  ownEmail?: string,
+  ownName?: string
 ): Promise<Handover> {
   const generated = await generateDossier();
   const items = await fetchItems(collaboratorId)
@@ -30,6 +31,6 @@ export async function runGeneration(
 
   return saveHandover(collaboratorId, {
     ...generated,
-    contacts: contactsFromItems(items, ownEmail),
+    contacts: contactsFromItems(items, ownEmail, ownName),
   });
 }

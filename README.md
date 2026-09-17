@@ -81,6 +81,20 @@ cp src/backend/.env.example src/backend/.env
 
 By default `DINUM_USE_MOCK=true` — the app runs on demo data without Docs or Drive.
 
+**Which services are read** is one line in `src/backend/.env`:
+
+```bash
+DINUM_ENABLED_SERVICES=docs,drive,messages   # the default: read everything
+DINUM_ENABLED_SERVICES=docs,drive            # the same app, without mail
+```
+
+Leaving a service out is a configuration change, not a code change: nothing
+calls it, its routes answer `404 service_disabled`, login stops opening a
+session there, and putting the name back restores all of it at once. Mail is
+the one this is really for — PassOn is meant to stand on documents alone — so
+it can be dropped and brought back without touching the code. See
+[connectors](src/backend/connectors/README.md#which-services-are-read-dinum_enabled_services).
+
 ### Login
 
 PassOn has no accounts of its own. Log in with your **Drive** credentials:
@@ -170,7 +184,21 @@ docker compose exec web python manage.py seed_demo --email ... --password ...
 ```
 
 It uploads five documents to that person's Drive, written so every section of
-the generated handover has something to find. See
+the generated handover has something to find.
+
+For a whole team rather than one account:
+
+```bash
+docker compose exec web python manage.py seed_profiles      # three people
+docker compose exec web python manage.py seed_shared_docs   # what they share
+```
+
+`seed_profiles` creates three demo accounts — names, addresses and passwords
+are editable at the top of the file — and `seed_shared_docs` gives each of them
+documents owned by the others. Add `--share-with you@example.test` to put those
+same documents in your own Drive; it needs no password of yours, only the
+owner's. Documents someone else owns are what fill the
+key-contacts section, which counts owners as well as correspondents. See
 [demo_data](src/backend/passon/demo_data/README.md).
 
 ### Contributing 🙌

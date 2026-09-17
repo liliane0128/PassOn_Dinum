@@ -41,6 +41,15 @@ def failure(service, code, status):
     return JsonResponse({"service": service, "error": code}, status=status)
 
 
+def _enabled(service):
+    """Whether this deployment reads a service at all (DINUM_ENABLED_SERVICES).
+
+    Distinct from having no credential for it: that is a fact about the
+    caller, this is a decision about the product.
+    """
+    return service in settings.DINUM_ENABLED_SERVICES
+
+
 def _is_valid_credential(credential):
     return not any(ord(ch) < 33 or ord(ch) > 126 or ch in ';,"\\' for ch in credential)
 
@@ -147,8 +156,15 @@ def _resolve_client(request, service):
 
 @require_GET
 def items(request, service, item_id=None):
-    session, client, error = _resolve_client(request, service)
     config = settings.DINUM_SERVICES[service]
+    if not _enabled(service):
+        # The route exists in this build but the deployment does not read
+        # this service, so there is nothing here to answer with.
+        response = failure(service, "service_disabled", 404)
+        response["Cache-Control"] = "private, no-store"
+        response["Vary"] = f"Cookie, {config['header']}"
+        return response
+    session, client, error = _resolve_client(request, service)
     if error:
         response = error
     elif request.GET:
@@ -177,6 +193,62 @@ def items(request, service, item_id=None):
     return response
 
 
+# Each domain searched is one upstream request, so the list is capped. The
+# caller's own domain comes first, and it is the one that matters most.
+MAX_DIRECTORY_DOMAINS = 4
+
+
+def _directory_domains(request):
+    """Which domains to ask Drive about, most useful first.
+
+    The caller's own, always: colleagues usually share it. But a document's
+    owner need not -- demo profiles in one domain sharing with a real account
+    in another is exactly the case that showed this up -- so the domains this
+    application already knows about are asked for too. They come from the
+    collaborator rows login creates, which is to say from people who have
+    actually used PassOn, not from an arbitrary search.
+    """
+    from passon.models import Collaborator  # local: passon imports this module
+
+    user = request.session.get(USER_KEY) or {}
+    _, _, own = (user.get("email") or "").partition("@")
+    domains = [own] if own else []
+    for email in Collaborator.objects.values_list("email", flat=True):
+        _, _, domain = (email or "").partition("@")
+        if domain and domain not in domains:
+            domains.append(domain)
+    return domains[:MAX_DIRECTORY_DOMAINS]
+
+
+def _drive_directory(request, session, base_url):
+    """Addresses for the people whose documents this account can see.
+
+    Drive names an item's creator and gives no address for them, so a
+    document owner could be matched by name and written to never. Its user
+    search does return addresses -- but it matches on the address itself, so
+    a creator's name finds nothing. A domain, on the other hand, brings back
+    everyone in it, each carrying the same `id` the item's creator block
+    does, so the match is on that id rather than on a name.
+
+    Which domains to ask for is `_directory_domains`. An owner in none of
+    them stays unresolved: this puts an address on the people the caller and
+    this application already know, it is not a way to walk Drive's directory.
+
+    An error here is never fatal: the items matter more than the addresses,
+    so a failed search leaves that domain out and every owner keeps its name.
+    """
+    directory = {}
+    for domain in _directory_domains(request):
+        try:
+            people = drive_client.list_users(session, domain, base_url=base_url)
+        except (requests.RequestException, ValueError, KeyError, TypeError):
+            continue
+        for person in people:
+            if isinstance(person, dict) and person.get("id") and person.get("email"):
+                directory.setdefault(person["id"], person["email"])
+    return directory
+
+
 @require_GET
 def extraction_items(request):
     """GET /api/extraction/items/ -- normalized, LLM-ready items merged
@@ -198,7 +270,9 @@ def extraction_items(request):
 
     if settings.DINUM_USE_MOCK:
         items_out = _publicize(extraction.normalize_items(
-            mock_data.MOCK_DOCS, mock_data.MOCK_DRIVE_ITEMS, mock_data.MOCK_MESSAGES,
+            mock_data.MOCK_DOCS if _enabled("docs") else [],
+            mock_data.MOCK_DRIVE_ITEMS if _enabled("drive") else [],
+            mock_data.MOCK_MESSAGES if _enabled("messages") else [],
         ))
         response = JsonResponse({"items": items_out, "errors": {}})
         response["Cache-Control"] = "private, no-store"
@@ -206,6 +280,8 @@ def extraction_items(request):
 
     credentials = {}
     for service in REAL_CLIENTS:
+        if not _enabled(service):
+            continue
         config = settings.DINUM_SERVICES[service]
         credential = (
             _credential_for(request, service)
@@ -232,6 +308,12 @@ def extraction_items(request):
                 normalize_kwargs = {_NORMALIZE_BASE_URL_KWARG[service]: config["url"]}
                 if service in _NORMALIZE_SESSION_KWARG:
                     normalize_kwargs[_NORMALIZE_SESSION_KWARG[service]] = session
+                if service == "drive":
+                    # One extra call, once per listing, so that a document's
+                    # owner comes back with an address and not just a name.
+                    normalize_kwargs["drive_directory"] = _drive_directory(
+                        request, session, config["url"]
+                    )
                 raw_by_service = {"docs": [], "drive": [], "messages": []}
                 raw_by_service[service] = raw
 
@@ -302,15 +384,18 @@ def dossier(request):
     sessions = {}
     if settings.DINUM_USE_MOCK:
         raw_docs, raw_drive, raw_messages = (
-            mock_data.MOCK_DOCS,
-            mock_data.MOCK_DRIVE_ITEMS,
-            mock_data.MOCK_MESSAGES,
+            mock_data.MOCK_DOCS if _enabled("docs") else [],
+            mock_data.MOCK_DRIVE_ITEMS if _enabled("drive") else [],
+            mock_data.MOCK_MESSAGES if _enabled("messages") else [],
         )
     else:
         raw = {}
         sessions = {}
         authenticated = False
         for service in REAL_CLIENTS:
+            if not _enabled(service):
+                raw[service] = []
+                continue
             config = settings.DINUM_SERVICES[service]
             has_credential = (
                 _credential_for(request, service)

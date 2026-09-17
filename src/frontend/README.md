@@ -107,8 +107,16 @@ la connexion y échoue avec « Serveur injoignable ».
 
 Le tableau de bord affiche le résumé, les points de blocage, les contacts clés
 et les documents prioritaires de la personne connectée, à partir de ses
-documents (Drive) et de ses mails (Messages). **Le code de génération
-n'a pas été modifié** : trois routes existantes suffisent.
+documents (Drive) et, si le déploiement lit le mail, de ses mails (Messages).
+**Le code de génération n'a pas été modifié** : trois routes existantes
+suffisent.
+
+Le mail peut être retiré côté serveur (`DINUM_ENABLED_SERVICES`, voir
+[connectors](../backend/connectors/README.md)). L'interface n'a rien à changer
+pour cela : elle affiche les éléments qu'on lui donne, et sans mail il ne
+reste que des documents — les contacts viennent alors des seuls propriétaires
+de documents, et la rubrique dit « 2 dossiers » là où elle disait
+« 3 échanges ».
 
 ```
 GET   /api/collaborators/<id>/items/     ses documents et ses mails
@@ -127,7 +135,7 @@ découpage que dans l'ancien frontend.
 | `components/passation/ResumeSection.tsx` | l'affichage et l'édition du résumé |
 | `components/passation/PointsAttentionSection.tsx` | l'affichage et l'édition des points de blocage |
 | `components/passation/ContactsSection.tsx` | l'affichage et l'édition des contacts |
-| `lib/contacts-from-items.ts` | déduit les contacts des expéditeurs des mails |
+| `lib/contacts-from-items.ts` | déduit les contacts des expéditeurs des mails et des propriétaires des documents |
 | `lib/documents-priority.ts` | classe les documents par urgence |
 | `components/passation/PriorityDocsSection.tsx` | l'affichage des documents prioritaires |
 
@@ -160,12 +168,32 @@ Ce qu'il faut savoir :
   plusieurs documents, comme « 30 septembre » ici — mais elle n'est pas affichée
   aujourd'hui : la rubrique montre le nom, la date et le propriétaire, comme
   avant.
-- **Les contacts viennent des mails, pas du modèle.** Son invite ne demande pas
-  de contacts : `contactsFromItems()` compte donc les expéditeurs des mails lus,
-  les plus fréquents d'abord, en laissant de côté la personne connectée
-  elle-même, et une génération les enregistre en même temps que le reste. Tant que rien n'est enregistré, ils sont déduits à l'affichage, si
-  bien que la rubrique n'est jamais vide par accident. Les demander au modèle
-  supposerait de modifier son invite, donc de toucher au code IA.
+- **Les contacts viennent des éléments lus, pas du modèle.** Son invite ne
+  demande pas de contacts : `contactsFromItems()` compte donc les expéditeurs
+  des mails **et les propriétaires des documents**, les plus fréquents d'abord,
+  et une génération les enregistre en même temps que le reste. Tant que rien
+  n'est enregistré, ils sont déduits à l'affichage, si bien que la rubrique
+  n'est jamais vide par accident. Les demander au modèle supposerait de
+  modifier son invite, donc de toucher au code IA.
+- **Les documents comptent autant que les mails.** Un collègue qui a partagé un
+  dossier est quelqu'un que le successeur devra appeler, et comme le mail est
+  appelé à disparaître du produit, cette propriété devient la seule trace de
+  qui travaille sur quoi. Le libellé dit ce qui a été compté — « 3 échanges »,
+  « 2 dossiers », ou les deux séparés par un point médian — plutôt que de faire
+  passer un document pour un échange.
+- **Le propriétaire d'un document est joignable.** Drive ne publie que le nom
+  de son créateur ; le backend résout l'adresse via sa recherche
+  d'utilisateurs, une fois par listing, et la renvoie dans `authorEmail`
+  (voir [connectors](../backend/connectors/README.md)). Un contact déduit d'un
+  document a donc une adresse, comme un contact déduit d'un mail. La recherche
+  couvre le domaine de la personne connectée et ceux des collaborateurs déjà
+  connus de l'application — un propriétaire hors de tous ces domaines reste
+  sans adresse, et c'est le nom qui sert alors.
+- **La personne connectée n'apparaît jamais dans ses propres contacts.**
+  L'exclusion se fait sur l'adresse *et* sur le nom. L'adresse suffit dès que
+  le backend a pu la résoudre ; le nom (`full_name`, pris dans la session)
+  reste le filet pour les propriétaires qu'il n'a pas pu résoudre, sans quoi
+  chacun figurerait parmi ses propres contacts dès qu'il possède un document.
 - **La rubrique `contacts` a été ajoutée au backend** (`handover_views.py`),
   à côté de `contactIds` qui sert à l'ancien frontend : les deux coexistent,
   l'une porte des identifiants de collaborateurs, l'autre des entrées
@@ -174,11 +202,12 @@ Ce qu'il faut savoir :
   type dans `type` (« mail » ou « doc »), le nom de l'expéditeur dans `subtitle`
   et son adresse dans `authorEmail` — il n'y a ni `kind` ni `author` dans cette
   charge utile, quels que soient les noms des champs du modèle.
-- **L'adresse de l'expéditeur est conservée à part.** `extraction.py` construit
+- **L'adresse de l'auteur est conservée à part.** `extraction.py` construit
   `author` comme `sender.name || sender.email` : le nom l'emporte, et l'adresse
   était perdue, si bien qu'aucun contact n'était joignable. Un champ
   `author_email` a donc été ajouté à côté (et une colonne dans
-  `CollaboratorItem`, migration `0003`). `author` est inchangé et
+  `CollaboratorItem`, migration `0003`), pour l'expéditeur d'un mail comme pour
+  le créateur d'un document. `author` est inchangé et
   `generation._trimmed()` n'envoie au modèle que `id/title/author/date/content`
   : son entrée est identique au caractère près.
 - **Les sources ne sont pas affichées.** Chaque point généré porte pourtant les

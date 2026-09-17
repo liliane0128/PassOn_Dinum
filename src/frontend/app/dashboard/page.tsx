@@ -152,7 +152,7 @@ export default function DashboardPage() {
     );
 
     try {
-      await runGeneration(user.id, user.email);
+      await runGeneration(user.id, user.email, user.full_name);
       setCompletedCount(STEPS.length);
       // A beat so the last checkmark reads before the page changes.
       setTimeout(() => leaveFor(PASSATION_PATH), 300);

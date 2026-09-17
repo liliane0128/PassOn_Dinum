@@ -126,6 +126,8 @@ export function PassationBoard() {
   // contacts list.
   const emailRef = useRef<string | undefined>(undefined);
   emailRef.current = user?.email;
+  const nameRef = useRef<string | undefined>(undefined);
+  nameRef.current = user?.full_name;
 
   const generatingRef = useRef(false);
   const autoAttempted = useRef<Set<string>>(new Set());
@@ -138,7 +140,7 @@ export function PassationBoard() {
     setGenerating(true);
     setError(null);
     try {
-      setHandover(await runGeneration(collaboratorId, emailRef.current));
+      setHandover(await runGeneration(collaboratorId, emailRef.current, nameRef.current));
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -279,7 +281,7 @@ export function PassationBoard() {
   const contacts: Contact[] = (
     storedContacts.length > 0
       ? storedContacts
-      : contactsFromItems(items, user?.email)
+      : contactsFromItems(items, user?.email, user?.full_name)
   ).map((contact, index) => ({ id: `contact-${index}`, ...contact }));
 
   const rankedDocuments = rankDocuments(

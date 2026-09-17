@@ -1,8 +1,8 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase
 
-from connectors import extraction
+from connectors import drive_client, extraction
 
 
 class NormalizeDocsTests(SimpleTestCase):
@@ -55,6 +55,55 @@ class NormalizeDriveTests(SimpleTestCase):
         result = extraction.normalize_items([], [item], [], drive_session=object())
         self.assertEqual(result[0]["content"], "")
         download_item.assert_not_called()
+
+
+class DriveAuthorEmailTests(SimpleTestCase):
+    """Drive publishes a creator's name and id, never an address."""
+
+    ITEM = {
+        "id": "f1", "title": "note.md", "type": "file", "mimetype": "text/plain",
+        "creator": {"id": "u-1", "full_name": "Inès Royer"},
+    }
+
+    def test_no_address_without_a_directory(self):
+        result = extraction.normalize_items([], [self.ITEM], [])
+        self.assertEqual(result[0]["author"], "Inès Royer")
+        self.assertEqual(result[0]["author_email"], "")
+
+    def test_directory_puts_an_address_on_the_owner(self):
+        result = extraction.normalize_items(
+            [], [self.ITEM], [], drive_directory={"u-1": "ines.royer@test.example"}
+        )
+        self.assertEqual(result[0]["author_email"], "ines.royer@test.example")
+
+    def test_unknown_creator_is_left_alone(self):
+        result = extraction.normalize_items(
+            [], [self.ITEM], [], drive_directory={"u-2": "someone.else@test.example"}
+        )
+        self.assertEqual(result[0]["author_email"], "")
+
+    def test_payload_address_wins_over_the_directory(self):
+        item = dict(self.ITEM, creator={"id": "u-1", "full_name": "I", "email": "own@test.example"})
+        result = extraction.normalize_items(
+            [], [item], [], drive_directory={"u-1": "stale@test.example"}
+        )
+        self.assertEqual(result[0]["author_email"], "own@test.example")
+
+
+class DriveUserSearchTests(SimpleTestCase):
+    def test_short_queries_are_not_sent(self):
+        session = MagicMock()
+        self.assertEqual(drive_client.list_users(session, "gouv"), [])
+        session.get.assert_not_called()
+
+    def test_search_returns_the_directory(self):
+        session = MagicMock()
+        session.get.return_value.json.return_value = [{"id": "u-1", "email": "a@test.example"}]
+        people = drive_client.list_users(session, "test.example", base_url="http://drive.test")
+        self.assertEqual(people[0]["email"], "a@test.example")
+        session.get.assert_called_once_with(
+            "http://drive.test/api/v1.0/users/", params={"q": "test.example"}
+        )
 
 
 class NormalizeMessagesTests(SimpleTestCase):

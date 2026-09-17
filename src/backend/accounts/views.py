@@ -81,11 +81,16 @@ def login(request):
     request.session[USER_KEY] = _public_user(user)
 
     # Best effort, never fatal: the account may not exist in Messages' own
-    # Keycloak, or Messages may not be running at all.
-    try:
-        messages_credential, _ = backend.login("messages", email, password)
-        request.session[CREDENTIAL_KEYS["messages"]] = messages_credential
-    except oidc_login.LoginFailed:
+    # Keycloak, or Messages may not be running at all -- and this deployment
+    # may not read mail in the first place (DINUM_ENABLED_SERVICES), in which
+    # case logging in there would open a session nothing would ever use.
+    if "messages" in settings.DINUM_ENABLED_SERVICES:
+        try:
+            messages_credential, _ = backend.login("messages", email, password)
+            request.session[CREDENTIAL_KEYS["messages"]] = messages_credential
+        except oidc_login.LoginFailed:
+            request.session.pop(CREDENTIAL_KEYS["messages"], None)
+    else:
         request.session.pop(CREDENTIAL_KEYS["messages"], None)
 
     user = request.session[USER_KEY]

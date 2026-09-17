@@ -97,6 +97,28 @@ def list_items(session, base_url=BASE_URL):
     return response.json()["results"]
 
 
+# Drive's user search ignores anything shorter than this, and matches on the
+# address rather than on the name: "royer" finds nobody, while "ines.royer"
+# and "collectivite.gouv.example" both find Inès Royer.
+USER_SEARCH_MIN_LENGTH = 5
+
+
+def list_users(session, query, base_url=BASE_URL):
+    """Search Drive's user directory, which answers with addresses.
+
+    This is the only Drive endpoint that gives an address for a person: the
+    item listing names a creator and stops there. Since the search matches
+    addresses, a creator's name is not a usable query -- a domain is.
+    """
+    if len(query or "") < USER_SEARCH_MIN_LENGTH:
+        return []
+    response = session.get(
+        f"{base_url.rstrip('/')}/api/v1.0/users/", params={"q": query}
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def get_item(session, item_id, base_url=BASE_URL):
     """Return a single item's metadata by id."""
     response = session.get(f"{base_url.rstrip('/')}/api/v1.0/items/{item_id}/")

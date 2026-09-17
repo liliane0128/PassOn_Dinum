@@ -8,7 +8,7 @@ sheet, and that an empty one is refused rather than delivered blank.
 import json
 from unittest import mock
 
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 
 from accounts.session import CREDENTIAL_KEYS, USER_KEY
 
@@ -16,6 +16,10 @@ from .models import Collaborator, Handover
 from .send_views import as_text
 
 
+# The suite tests the code, not the operator's current choice of services:
+# DINUM_ENABLED_SERVICES is read from the environment, and a deployment that
+# has dropped mail would otherwise turn every Messages test red.
+@override_settings(DINUM_ENABLED_SERVICES={"docs", "drive", "messages"})
 class HandoverMailTests(TestCase):
     def setUp(self):
         self.manager = Collaborator.objects.create(
@@ -113,6 +117,15 @@ class HandoverMailTests(TestCase):
         response, _ = self.send(self.employee)
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["error"], "messages_not_connected")
+
+    @override_settings(DINUM_ENABLED_SERVICES={"docs", "drive"})
+    def test_a_deployment_without_mail_refuses_before_composing(self):
+        """Not "you are not connected": this deployment does not do mail."""
+        self.log_in(self.manager)
+        response, sent = self.send(self.employee)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["error"], "messages_disabled")
+        self.assertEqual(sent, [])
 
     def test_an_address_that_is_not_one_is_refused(self):
         self.log_in(self.manager)
