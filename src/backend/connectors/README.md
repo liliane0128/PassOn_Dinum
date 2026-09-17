@@ -129,9 +129,16 @@ its cookie. For Drive and Messages there is a third source: the sessions stored
 when the user logged in through `/api/auth/login/`, which walks each service's
 OIDC flow and keeps the resulting cookies server-side (see
 `../accounts/README.md`). A logged-in caller therefore needs no
-`X-Drive-Session` or `X-Messages-Session` of its own. An explicit header or
-cookie still takes precedence, so manual calls behave exactly as described here.
-Docs has no login flow, so it still requires one explicitly.
+`X-Drive-Session` or `X-Messages-Session` of its own. Docs has no login flow,
+so it still requires one explicitly.
+
+The order is header, then session, then cookie, and the last position matters.
+Cookies are not scoped by port: Drive on `localhost:8071` and this app on
+`localhost:8090` share one jar, so whichever account a browser last used
+upstream sends its cookie here too. Reading it before the session meant a
+page could be built from a colleague's account — and a handover generated
+from it stored under the caller's name. An explicit header still overrides
+everything, which is what manual calls use.
 
 Links leaving these routes are rewritten to the public host before they are
 returned: items carry URLs built from `DRIVE_URL` and friends, which is how
@@ -139,8 +146,7 @@ returned: items carry URLs built from `DRIVE_URL` and friends, which is how
 container), and that name means nothing in a browser. `DINUM_PUBLIC_HOST`
 (default `localhost`) is substituted, ports and paths untouched. Docs uses `docs_sessionid`, Drive uses `drive_sessionid`, Messages
 uses `st_messages_sessionid` (its `SESSION_COOKIE_NAME`; override via
-`MESSAGES_SESSION_COOKIE` if a deployment changes it). Headers take precedence
-over cookies. No shared account or automatic demo login is used by the Django
+`MESSAGES_SESSION_COOKIE` if a deployment changes it). No shared account or automatic demo login is used by the Django
 API. Log into each upstream app first. The existing Docs and Messages
 `login()` helpers remain unchanged and available for manual local scripts;
 they are not exposed as web login endpoints.
@@ -371,10 +377,17 @@ ci-dessus ou par son cookie. Pour Drive et Messages il existe une troisième
 source : les sessions conservées lors de la connexion par `/api/auth/login/`, qui
 parcourt le flux OIDC de chaque service et en garde les cookies côté serveur
 (voir `../accounts/README.md`). Un appelant connecté n'a donc pas besoin de son
-propre `X-Drive-Session` ni `X-Messages-Session`. Un en-tête ou un cookie
-explicite reste prioritaire, si bien que les appels manuels se comportent
-exactement comme décrit ici. Docs n'a pas de flux de connexion : il en exige donc
-toujours un explicitement.
+propre `X-Drive-Session` ni `X-Messages-Session`. Docs n'a pas de flux de
+connexion : il en exige donc toujours un explicitement.
+
+L'ordre est l'en-tête, puis la session, puis le cookie — et cette dernière
+place compte. Les cookies ne sont pas cloisonnés par port : Drive sur
+`localhost:8071` et cette application sur `localhost:8090` partagent le même
+bocal, si bien que le navigateur envoie ici le cookie du dernier compte utilisé
+en amont. Le lire avant la session permettait de construire une page à partir
+du compte d'un collègue — et d'enregistrer sous le nom de l'appelant une
+passation générée depuis celui-ci. Un en-tête explicite reste prioritaire sur
+tout, ce dont se servent les appels manuels.
 
 Les liens qui sortent de ces routes sont réécrits vers l'hôte public avant
 d'être renvoyés : les éléments portent des URL construites à partir de
@@ -383,8 +396,7 @@ services (`host.docker.internal` dans un conteneur), un nom qui ne veut rien dir
 dans un navigateur. `DINUM_PUBLIC_HOST` (`localhost` par défaut) y est substitué,
 ports et chemins inchangés. Docs utilise `docs_sessionid`, Drive
 `drive_sessionid`, Messages `st_messages_sessionid` (son `SESSION_COOKIE_NAME` ;
-à redéfinir via `MESSAGES_SESSION_COOKIE` si un déploiement le change). Les
-en-têtes priment sur les cookies. L'API Django n'utilise aucun compte partagé ni
+à redéfinir via `MESSAGES_SESSION_COOKIE` si un déploiement le change). L'API Django n'utilise aucun compte partagé ni
 connexion de démonstration automatique : il faut se connecter d'abord à chaque
 application amont. Les fonctions `login()` existantes de Docs et Messages restent
 inchangées et disponibles pour des scripts locaux manuels ; elles ne sont pas

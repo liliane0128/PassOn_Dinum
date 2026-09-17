@@ -101,13 +101,19 @@ def _resolve_client(request, service):
     if settings.DINUM_USE_MOCK:
         session = UpstreamSession()
         return session, MOCK_CLIENTS[service], None
+    # Order matters, and cookies come last on purpose. Cookies are not
+    # scoped by port: a browser that logged into Messages on localhost:8900
+    # sends that cookie to this app on localhost:8090 too, whoever is logged
+    # in here. Reading it first meant a person's page could be built from a
+    # colleague's mailbox -- whichever account happened to be open in that
+    # browser -- and the handover generated from it was stored under their
+    # name. The session credential is the one that belongs to the caller, so
+    # it wins; an explicit header still overrides everything, which is what
+    # manual calls use; the cookie remains for a caller with no session here.
     credential = (
         request.headers.get(config["header"])
-        or request.COOKIES.get(config["cookie"])
-        # Falls back to the Drive session obtained at login (accounts/views.py),
-        # so a logged-in caller needs no credential of their own. Explicit
-        # headers and cookies still win, leaving manual calls unchanged.
         or _session_credential(request, service)
+        or request.COOKIES.get(config["cookie"])
     )
     if not credential:
         return None, None, failure(service, "authentication_required", 401)
@@ -181,9 +187,10 @@ def extraction_items(request):
     for service in REAL_CLIENTS:
         config = settings.DINUM_SERVICES[service]
         credential = (
+            # Session before cookie: see _client_for() above.
             request.headers.get(config["header"])
-            or request.COOKIES.get(config["cookie"])
             or _session_credential(request, service)
+            or request.COOKIES.get(config["cookie"])
         )
         if credential and not _is_valid_credential(credential):
             return failure(service, "invalid_session", 400)
@@ -288,9 +295,10 @@ def dossier(request):
         for service in REAL_CLIENTS:
             config = settings.DINUM_SERVICES[service]
             has_credential = (
+                # Session before cookie: see _client_for() above.
                 request.headers.get(config["header"])
-                or request.COOKIES.get(config["cookie"])
                 or _session_credential(request, service)
+                or request.COOKIES.get(config["cookie"])
             )
             if not has_credential:
                 raw[service] = []

@@ -189,3 +189,31 @@ class DossierFailurePathTests(TestCase):
 
         self.assertEqual(response.status_code, 502)
         self.assertEqual(json.loads(response.content)["error"], "upstream_unavailable")
+
+
+class CredentialPrecedenceTests(TestCase):
+    @patch('connectors.extraction.normalize_items')
+    @patch('connectors.drive_client.list_items')
+    def test_the_caller_s_own_session_beats_a_stray_cookie(self, list_items, normalize_items):
+        """Cookies are not scoped by port.
+
+        Drive on localhost:8071 and this app on localhost:8090 share one
+        cookie jar, so whoever a browser last logged into upstream sends that
+        cookie here as well. Reading it in preference to the session meant a
+        page could be built from a colleague's account -- and, for the
+        handover, stored under the caller's name.
+        """
+        list_items.return_value = [{'id': 'x'}]
+        normalize_items.return_value = [{'id': 'drive:x', 'title': 'File'}]
+
+        session = self.client.session
+        session['drive_session'] = 'the-caller-s-own'
+        session.save()
+        self.client.cookies['drive_sessionid'] = 'someone-else-s'
+
+        result = self.client.get('/api/extraction/items/')
+        self.assertEqual(result.status_code, 200)
+        used = list_items.call_args.args[0]
+        self.assertEqual(
+            used.cookies.get('drive_sessionid'), 'the-caller-s-own'
+        )
