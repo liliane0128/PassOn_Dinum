@@ -5,7 +5,7 @@ urlpatterns = [
     path("extraction/items/", extraction_items),
     path("dossier/", dossier),
 ]
-for service, resource in (("docs", "documents"), ("drive", "items"), ("messages", "messages")):
+for service, resource in (("docs", "documents"), ("drive", "items")):
     urlpatterns += [
         path(f"{service}/items/", items, {"service": service}),
         path(f"{service}/items/<uuid:item_id>/", items, {"service": service}),

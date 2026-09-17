@@ -84,16 +84,20 @@ By default `DINUM_USE_MOCK=true` — the app runs on demo data without Docs or D
 **Which services are read** is one line in `src/backend/.env`:
 
 ```bash
-DINUM_ENABLED_SERVICES=docs,drive,messages   # the default: read everything
-DINUM_ENABLED_SERVICES=docs,drive            # the same app, without mail
+DINUM_ENABLED_SERVICES=docs,drive   # the default: read both
+DINUM_ENABLED_SERVICES=drive        # where Docs is not deployed
 ```
 
 Leaving a service out is a configuration change, not a code change: nothing
-calls it, its routes answer `404 service_disabled`, login stops opening a
-session there, and putting the name back restores all of it at once. Mail is
-the one this is really for — PassOn is meant to stand on documents alone — so
-it can be dropped and brought back without touching the code. See
+calls it, its routes answer `404 service_disabled`, and putting the name back
+restores it at once. See
 [connectors](src/backend/connectors/README.md#which-services-are-read-dinum_enabled_services).
+
+> [!NOTE]
+> PassOn read **Messages** until it was removed in full: mail, the connector,
+> the login it opened there and sending a handover by mail are all gone, and a
+> handover now rests on documents alone. The history is in git if it ever has
+> to come back.
 
 ### Login
 

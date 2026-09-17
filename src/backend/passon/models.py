@@ -1,6 +1,6 @@
 """Who works with whom, and what their handover says.
 
-Identity itself lives in Drive (and Messages): people log in with those
+Identity itself lives in Drive: people log in with those
 accounts and we never store a password. What this app stores is what those
 services do not know -- who reports to whom, who is a manager, and the
 handover sheet itself, which until now only existed in the browser's memory
@@ -81,7 +81,7 @@ class Handover(models.Model):
     the interface shows (actions, décisions, deadlines, blocages, contacts,
     documents) as JSON rather than six tables: their shape is still moving,
     they are always read and written together, and the documents in them are
-    references to items living in Drive/Messages, not rows of ours.
+    references to items living in Drive and Docs, not rows of ours.
     """
 
     collaborator = models.OneToOneField(
@@ -105,7 +105,7 @@ class Handover(models.Model):
 class CollaboratorItem(models.Model):
     """A document or message belonging to a collaborator, as last seen.
 
-    Drive and Messages only ever answer for the person whose session we hold,
+    Drive only ever answers for the person whose session we hold,
     so a manager cannot be shown their collaborator's files live -- there is no
     credential to ask with. What is stored here is a snapshot, refreshed every
     time that person is themselves logged in and their items are listed.
@@ -117,7 +117,6 @@ class CollaboratorItem(models.Model):
 
     class Kind(models.TextChoices):
         DOCUMENT = "doc", "Document"
-        MAIL = "mail", "Mail"
 
     collaborator = models.ForeignKey(
         Collaborator, on_delete=models.CASCADE, related_name="items"
@@ -126,10 +125,10 @@ class CollaboratorItem(models.Model):
     # one the generated handover cites in its documents section.
     reference = models.CharField(max_length=255)
     kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.DOCUMENT)
-    source = models.CharField(max_length=50)  # docs | drive | messages
+    source = models.CharField(max_length=50)  # docs | drive
     title = models.CharField(max_length=512, blank=True)
     author = models.CharField(max_length=255, blank=True)
-    # The sender's address, kept beside the display name: `author` is often
+    # The author's address, kept beside the display name: `author` is often
     # just a name, and a contact with no address cannot be written to.
     author_email = models.CharField(max_length=320, blank=True)
     url = models.URLField(max_length=1024, blank=True)

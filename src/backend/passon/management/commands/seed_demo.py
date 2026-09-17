@@ -1,28 +1,21 @@
-"""Put the demo dataset into Drive and Messages.
+"""Put the demo dataset into Drive.
 
 The handover only means something with material to summarize, and that
-material lives in the upstream services, not in our database -- so it does not
-survive a `docker compose down -v` on Drive or Messages. This rebuilds it:
+material lives in Drive, not in our database -- so it does not survive a
+`docker compose down -v` there. This rebuilds it:
 
     python manage.py seed_demo --email someone@example.test --password ...
 
-The account must already exist in both services' Keycloaks (see
-accounts/README.md). Everything is written as that person, through the same
-APIs their own client would use, so the result is indistinguishable from files
-they uploaded and mail they received.
+The account must already exist in Drive's Keycloak (see accounts/README.md).
+Everything is written as that person, through the same API their own client
+would use, so the result is indistinguishable from files they uploaded.
 
-Re-running is safe: documents already in the Drive and mails whose subject is
-already in the mailbox are skipped.
+Re-running is safe: a document already in the Drive is skipped.
 """
 
-import base64
-import hashlib
-import hmac
 import json
 import mimetypes
 import pathlib
-import time
-from email import message_from_bytes
 from urllib.parse import urlparse, urlunparse
 
 import requests
@@ -30,35 +23,19 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from accounts import oidc_login
-from connectors import messages_client
 
 DATA_DIR = pathlib.Path(__file__).resolve().parents[2] / "demo_data"
 
-# Messages authenticates its inbound mail channel with a JWT signed by this
-# shared secret (MDA_API_SECRET on its side). The development default is
-# public in that project's deploy/env/backend.defaults.
-DEFAULT_MDA_SECRET = "my-shared-secret-mda"
-
 
 class Command(BaseCommand):
-    help = "Upload the demo documents to Drive and deliver the demo mails to Messages."
+    help = "Upload the demo documents to Drive."
 
     def add_arguments(self, parser):
         parser.add_argument("--email", required=True)
         parser.add_argument("--password", required=True)
-        parser.add_argument("--skip-drive", action="store_true")
-        parser.add_argument("--skip-mails", action="store_true")
-        parser.add_argument(
-            "--mda-secret",
-            default=DEFAULT_MDA_SECRET,
-            help="Messages' MDA_API_SECRET (defaults to its development value).",
-        )
 
     def handle(self, *args, **options):
-        if not options["skip_drive"]:
-            self.seed_drive(options["email"], options["password"])
-        if not options["skip_mails"]:
-            self.seed_mails(options["email"], options["password"], options["mda_secret"])
+        self.seed_drive(options["email"], options["password"])
 
     # --- Drive ------------------------------------------------------------
 
@@ -146,104 +123,3 @@ class Command(BaseCommand):
         )
         state = "ok" if ended.status_code in (200, 201, 202) else f"upload-ended {ended.status_code}"
         self.stdout.write(self.style.SUCCESS(f"  {path.name}: {state}"))
-
-    # --- Messages ---------------------------------------------------------
-
-    def seed_mails(self, email, password, secret):
-        """Deliver each mail through the inbound MTA endpoint.
-
-        Not written into Messages' database directly: going through the same
-        door real mail uses means it is parsed, threaded and indexed like any
-        other message.
-        """
-        base_url = oidc_login.public_base_url("messages")
-        existing = self.existing_subjects(email, password)
-
-        self.stdout.write(f"Messages, to {email}:")
-        for path in sorted((DATA_DIR / "mails").iterdir()):
-            body = path.read_bytes()
-            subject = message_from_bytes(body).get("Subject", "")
-            decoded = str(make_header_safe(subject))
-            if decoded and decoded in existing:
-                self.stdout.write(f"  {path.name}: already delivered")
-                continue
-
-            reachable = settings.DINUM_SERVICES["messages"]["url"].rstrip("/")
-            response = requests.post(
-                f"{reachable}/api/v1.0/inbound/mta/deliver/",
-                data=body,
-                headers={
-                    "Host": urlparse(base_url).netloc,
-                    "Authorization": f"Bearer {mta_token(body, [email], secret)}",
-                    "Content-Type": "message/rfc822",
-                },
-                timeout=30,
-            )
-            if response.status_code == 200:
-                self.stdout.write(self.style.SUCCESS(f"  {path.name}: delivered"))
-            else:
-                self.stdout.write(
-                    self.style.ERROR(f"  {path.name}: {response.status_code} {response.text[:120]}")
-                )
-
-    def existing_subjects(self, email, password):
-        """Subjects already in the mailbox, so re-running delivers nothing twice.
-
-        Best effort: if Messages cannot be read (the account may not exist
-        there yet), everything is treated as missing and delivery decides.
-        """
-        try:
-            credential, _ = oidc_login.login("messages", email, password)
-        except oidc_login.LoginFailed:
-            return set()
-
-        session = requests.Session()
-        session.cookies.set(settings.DINUM_SERVICES["messages"]["cookie"], credential)
-        try:
-            messages = messages_client.list_items(
-                session, base_url=settings.DINUM_SERVICES["messages"]["url"]
-            )
-        except requests.RequestException:
-            return set()
-        finally:
-            session.close()
-        return {message.get("subject") for message in messages if message.get("subject")}
-
-
-def make_header_safe(value):
-    """Decode a MIME-encoded header, falling back to its raw form."""
-    from email.header import decode_header, make_header
-
-    try:
-        return make_header(decode_header(value))
-    except (ValueError, UnicodeDecodeError):
-        return value
-
-
-def mta_token(body, recipients, secret):
-    """An HS256 JWT for Messages' inbound channel.
-
-    Signed by hand rather than with a JWT library: this is the only place the
-    project needs one, and a dependency for eleven lines of HMAC is a poor
-    trade. The claims are the ones Messages requires -- an expiry, the
-    recipients, and a hash binding the token to this exact body so it cannot
-    be replayed with another.
-    """
-
-    def b64(raw):
-        return base64.urlsafe_b64encode(raw).rstrip(b"=")
-
-    header = b64(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
-    payload = b64(
-        json.dumps(
-            {
-                "exp": int(time.time()) + 300,
-                "body_hash": hashlib.sha256(body).hexdigest(),
-                "original_recipients": recipients,
-            },
-            separators=(",", ":"),
-        ).encode()
-    )
-    signing_input = header + b"." + payload
-    signature = b64(hmac.new(secret.encode(), signing_input, hashlib.sha256).digest())
-    return (signing_input + b"." + signature).decode()

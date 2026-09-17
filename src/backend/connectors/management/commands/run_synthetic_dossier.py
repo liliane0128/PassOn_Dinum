@@ -41,7 +41,7 @@ class Command(BaseCommand):
 
         from connectors import extraction, generation
 
-        raw_docs, raw_drive, raw_messages = load_workspace()
+        raw_docs, raw_drive = load_workspace()
 
         if options["project"]:
             project_id = options["project"]
@@ -50,15 +50,14 @@ class Command(BaseCommand):
             keep_ids = {item_id for item_id, proj in expected.items() if proj == project_id}
             raw_docs = [i for i in raw_docs if i["id"] in keep_ids]
             raw_drive = [i for i in raw_drive if i["id"] in keep_ids]
-            raw_messages = [i for i in raw_messages if i["id"] in keep_ids]
             if not keep_ids:
                 self.stderr.write(self.style.ERROR(f"No items found for project '{project_id}'"))
                 return
 
-        items = extraction.normalize_items(raw_docs, raw_drive, raw_messages)
+        items = extraction.normalize_items(raw_docs, raw_drive)
         self.stderr.write(self.style.NOTICE(
             f"{len(items)} normalized items "
-            f"({len(raw_docs)} docs, {len(raw_drive)} drive, {len(raw_messages)} messages)"
+            f"({len(raw_docs)} docs, {len(raw_drive)} drive)"
         ))
 
         result = generation.generate_dossier(items)

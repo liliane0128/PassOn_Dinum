@@ -9,7 +9,6 @@ credentials without importing the accounts views.
 # because nothing logs into it yet.
 CREDENTIAL_KEYS = {
     "drive": "drive_session",
-    "messages": "messages_session",
 }
 
 # The identity the login service reported, as returned to the frontend.

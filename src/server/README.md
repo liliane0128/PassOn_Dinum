@@ -121,13 +121,12 @@ rebuilds it. For day-to-day frontend work, run the Vite dev server directly
 
 ### Not done here
 
-- **Docs and Messages are still on their own origins.** The connectors API asks
-  for `X-Docs-Session` / `X-Messages-Session` headers because those services'
-  cookies do not cross ports. Drive no longer needs one — logging in stores its
-  session server-side (`src/backend/accounts/README.md`) — but the same is not
-  yet done for the other two. nginx could alternatively proxy them under this
-  origin, which changes the API's authentication contract, so it has not been
-  done unilaterally.
+- **Docs is still on its own origin.** The connectors API asks for an
+  `X-Docs-Session` header because that service's cookies do not cross ports.
+  Drive no longer needs one — logging in stores its session server-side
+  (`src/backend/accounts/README.md`) — but the same is not yet done for Docs.
+  nginx could alternatively proxy it under this origin, which changes the
+  API's authentication contract, so it has not been done unilaterally.
 - **Django still runs through `runserver`**, the development server. nginx does
   not change that; a real deployment would put gunicorn (or similar) behind it
   and serve collected static files from disk rather than proxying `/static/`.
@@ -255,13 +254,13 @@ rechargement à chaud.
 
 ### Ce qui n'est pas fait ici
 
-- **Docs et Messages restent sur leurs propres origines.** L'API des connecteurs
-  réclame les en-têtes `X-Docs-Session` / `X-Messages-Session` parce que les
-  cookies de ces services ne franchissent pas les ports. Drive n'en a plus
-  besoin — la connexion conserve sa session côté serveur
-  (`src/backend/accounts/README.md`) — mais ce n'est pas encore le cas des deux
-  autres. nginx pourrait aussi les relayer sous cette origine, ce qui modifierait
-  le contrat d'authentification de l'API : cela n'a donc pas été décidé seul.
+- **Docs reste sur sa propre origine.** L'API des connecteurs réclame
+  l'en-tête `X-Docs-Session` parce que les cookies de ce service ne
+  franchissent pas les ports. Drive n'en a plus besoin — la connexion conserve
+  sa session côté serveur (`src/backend/accounts/README.md`) — mais ce n'est
+  pas encore le cas de Docs. nginx pourrait aussi le relayer sous cette
+  origine, ce qui modifierait le contrat d'authentification de l'API : cela
+  n'a donc pas été décidé seul.
 - **Django tourne toujours avec `runserver`**, le serveur de développement. nginx
   n'y change rien ; un vrai déploiement mettrait gunicorn (ou équivalent)
   derrière lui et servirait les fichiers statiques collectés depuis le disque

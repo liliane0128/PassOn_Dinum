@@ -59,7 +59,7 @@ function completeness(handover: Handover | null): number {
 
 /**
  * The wired parts of the card, read from the logged-in person's own documents
- * and mails: the résumé and the points de blocage.
+ * the résumé and the points de blocage.
  *
  * Every section of the card is wired now,
  * which is why the card below is the demo fixture with the real fields
@@ -252,17 +252,13 @@ export function PassationBoard() {
     );
   }
 
-  // The Sources tab lists what was read. Only the documents can be shown for
-  // now: SourceKind is "docs" | "drive", with no category for a mail, and
-  // inventing one would change a model this branch just brought in.
-  const sources: SourceItem[] = items
-    .filter((item) => item.type !== "mail")
-    .map((item) => ({
-      id: item.refId || item.id,
-      kind: "drive" as const,
-      name: item.title,
-      url: item.url || "",
-    }));
+  // The Sources tab lists what was read: the documents, under Drive.
+  const sources: SourceItem[] = items.map((item) => ({
+    id: item.refId || item.id,
+    kind: "drive" as const,
+    name: item.title,
+    url: item.url || "",
+  }));
 
   // A stable id per position: the backend stores an ordered list, with no ids
   // of its own, and the card needs one to edit or remove a line.
@@ -274,7 +270,7 @@ export function PassationBoard() {
     })
   );
 
-  // What was stored, or -- before anything has been stored -- what the mails
+  // What was stored, or -- before anything has been stored -- what the documents
   // say. Deriving on the fly means the section is never empty just because a
   // sheet was generated before contacts were kept.
   const storedContacts = handover?.contacts ?? [];

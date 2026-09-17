@@ -5,7 +5,7 @@
  * blocage and les contacts clés. Documents prioritaires still shows its demo
  * fixture, and wiring it is a later step.
  *
- *   GET   /api/collaborators/<id>/items/     the person's documents and mails
+ *   GET   /api/collaborators/<id>/items/     the person's documents
  *   GET   /api/dossier/                      one model pass over them -> a sheet
  *   GET   /PATCH /api/collaborators/<id>/handover/   the stored sheet
  *
@@ -14,7 +14,7 @@
  * the previous frontend used, and it needs no change to the generation code.
  *
  * Every call is relative and carries the session cookie: that cookie is how
- * the backend finds the Drive and Messages credentials obtained at login.
+ * the backend finds the Drive credential obtained at login.
  */
 
 export interface EvidenceRef {
@@ -71,20 +71,20 @@ export interface Handover {
 }
 
 /**
- * One document or mail, exactly as `passon/item_views.py` serializes it.
+ * One document, exactly as `passon/item_views.py` serializes it.
  *
- * Note the field names: the kind is `type` ("mail" or "doc"), the sender of a
+ * Note the field names: the kind is `type` ("doc"), the author of a
  * mail is `subtitle` and their address is `authorEmail` -- there is no
  * `author` and no `kind` in this payload, whatever the models call them.
  */
 export interface Item {
   id: string;
   refId?: string;
-  type: "mail" | "doc" | string;
+  type: "doc" | string;
   icon?: string;
   title: string;
   subtitle?: string;
-  /** A mail sender's address, when the upstream payload carried one. */
+  /** The author's address, when the backend could resolve one. */
   authorEmail?: string | null;
   preview?: string;
   date?: string | null;
@@ -145,7 +145,7 @@ export async function fetchItems(
 }
 
 /**
- * One pass of the pipeline: read the person's documents and mails, then write
+ * One pass of the pipeline: read the person's documents, then write
  * a sheet from them. Slow by nature -- every item's content is fetched before
  * the model is called -- and rate-limited upstream, which is why nothing here
  * calls it on its own.
@@ -200,10 +200,10 @@ export async function validateHandover(
   );
 }
 
-/** Messages someone can act on, for the codes these endpoints answer with. */
+/** Wording someone can act on, for the codes these endpoints answer with. */
 const ERRORS: Record<string, string> = {
   no_data_to_summarize:
-    "Aucun document ni mail à résumer pour ce compte. Déposez des fichiers dans votre Drive, ou vérifiez que Messages est démarré.",
+    "Aucun document à résumer pour ce compte. Déposez des fichiers dans votre Drive, ou vérifiez qu'il est démarré.",
   llm_not_configured:
     "La clé du modèle n'est pas configurée sur le serveur (GROQ_API_KEY).",
   llm_error:

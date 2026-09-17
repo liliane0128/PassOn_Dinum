@@ -1,7 +1,7 @@
 """Client for the local Drive service.
 
 Drive runs at http://localhost:8071. It authenticates through Keycloak (OIDC
-authorization code flow), same mechanism as Docs and Messages (see
+authorization code flow), the same mechanism as Docs (see
 docs_client.py for the full writeup on the Keycloak login quirk with Secure
 cookies over plain http).
 
@@ -84,7 +84,7 @@ def list_items(session, base_url=BASE_URL):
     The call used to carry `is_creator_me=true`, which kept only what the
     person had created themselves. A document someone shared with them can be
     exactly what their successor needs, and leaving it out made it invisible
-    to the handover unless a mail happened to mention it.
+    to the handover altogether.
 
     The trade is size: on an account in a service that shares everything into
     a common space, this can return far more than the person's own work, and

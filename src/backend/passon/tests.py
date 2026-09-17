@@ -93,7 +93,7 @@ class HandoverTests(TestCase):
         with self.assertRaises(IntegrityError):
             Handover.objects.create(collaborator=self.person)
 
-    def test_it_holds_document_references_from_drive_and_messages(self):
+    def test_it_holds_document_references_from_the_connectors(self):
         """The generated summary cites items by the backend's own id."""
         Handover.objects.create(
             collaborator=self.person,

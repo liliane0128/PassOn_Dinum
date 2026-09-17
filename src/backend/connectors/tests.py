@@ -14,8 +14,8 @@ def upstream(data, status=200):
 
 # The suite tests the code, not the operator's current choice of services:
 # DINUM_ENABLED_SERVICES is read from the environment, and a deployment that
-# has dropped mail would otherwise turn every Messages test red.
-ALL_SERVICES = {"docs", "drive", "messages"}
+# does not run Docs would otherwise turn every Docs test red.
+ALL_SERVICES = {"docs", "drive"}
 
 
 @override_settings(DINUM_USE_MOCK=False, DINUM_ENABLED_SERVICES=ALL_SERVICES)
@@ -25,7 +25,6 @@ class ConnectorAPITests(SimpleTestCase):
         cases = [
             ('docs', 'HTTP_X_DOCS_SESSION', [upstream({'results': [{'title': 'Doc'}]})], [{'title': 'Doc'}], 'documents/'),
             ('drive', 'HTTP_X_DRIVE_SESSION', [upstream({'results': [{'title': 'File'}]})], [{'title': 'File'}], 'items/'),
-            ('messages', 'HTTP_X_MESSAGES_SESSION', [upstream([{'id': 'mailbox-1'}]), upstream({'results': [{'id': 'thread-1'}]}), upstream([{'id': 'msg-1', 'subject': 'Hi'}])], [{'id': 'msg-1', 'subject': 'Hi'}], 'messages/?thread_id=thread-1'),
         ]
         for service, header, responses, data, suffix in cases:
             with self.subTest(service=service):
@@ -40,32 +39,10 @@ class ConnectorAPITests(SimpleTestCase):
                 self.assertEqual(result['Cache-Control'], 'private, no-store')
 
     @patch('requests.sessions.Session.send')
-    def test_messages_fans_out_across_mailboxes(self, send):
-        # A user can have more than one mailbox (personal + shared); an
-        # earlier version only ever looked at mailboxes[0] and silently
-        # dropped everything else. list_items() now walks every mailbox.
-        send.side_effect = [
-            upstream([{'id': 'mailbox-1'}, {'id': 'mailbox-2'}]),
-            upstream({'results': [{'id': 'thread-1'}]}),
-            upstream([{'id': 'msg-1', 'subject': 'From mailbox 1'}]),
-            upstream({'results': [{'id': 'thread-2'}]}),
-            upstream([{'id': 'msg-2', 'subject': 'From mailbox 2'}]),
-        ]
-        result = self.client.get('/api/messages/items/', HTTP_X_MESSAGES_SESSION='session')
-        self.assertEqual(result.status_code, 200)
-        self.assertEqual(
-            result.json(),
-            {'service': 'messages', 'data': [
-                {'id': 'msg-1', 'subject': 'From mailbox 1'},
-                {'id': 'msg-2', 'subject': 'From mailbox 2'},
-            ]},
-        )
-
-    @patch('requests.sessions.Session.send')
     def test_detail_routes_and_aliases(self, send):
         send.return_value = upstream({'id': 'detail'})
         identifier = '12345678-1234-1234-1234-123456789abc'
-        for service, resource, header in [('docs', 'documents', 'HTTP_X_DOCS_SESSION'), ('drive', 'items', 'HTTP_X_DRIVE_SESSION'), ('messages', 'messages', 'HTTP_X_MESSAGES_SESSION')]:
+        for service, resource, header in [('docs', 'documents', 'HTTP_X_DOCS_SESSION'), ('drive', 'items', 'HTTP_X_DRIVE_SESSION')]:
             result = self.client.get(f'/api/{service}/{resource}/{identifier}/', **{header: 'session'})
             self.assertEqual(result.status_code, 200)
             self.assertTrue(send.call_args.args[0].url.endswith(f'/{resource}/{identifier}/'))
@@ -101,14 +78,7 @@ class ConnectorAPITests(SimpleTestCase):
             self.assertEqual(self.client.get('/api/docs/items/', HTTP_X_DOCS_SESSION='session').status_code, status)
 
     @patch('requests.sessions.Session.send')
-    def test_no_mailboxes_and_invalid_json(self, send):
-        # An account with zero mailboxes has zero messages -- that's a
-        # legitimate empty result now that list_items() fans out across
-        # every mailbox instead of requiring at least one to exist.
-        send.return_value = upstream([])
-        result = self.client.get('/api/messages/items/', HTTP_X_MESSAGES_SESSION='session')
-        self.assertEqual(result.status_code, 200)
-        self.assertEqual(result.json(), {'service': 'messages', 'data': []})
+    def test_invalid_json_is_not_passed_through(self, send):
         send.return_value = upstream({})
         self.assertEqual(self.client.get('/api/docs/items/', HTTP_X_DOCS_SESSION='session').status_code, 502)
         send.return_value._content = b'not json'
@@ -128,7 +98,7 @@ class ExtractionViewTests(TestCase):
         self.assertEqual(result.status_code, 400)
 
     def test_rejects_query_parameters(self):
-        result = self.client.get('/api/extraction/items/?page=2', HTTP_X_MESSAGES_SESSION='session')
+        result = self.client.get('/api/extraction/items/?page=2', HTTP_X_DRIVE_SESSION='session')
         self.assertEqual(result.status_code, 400)
 
     @patch('connectors.extraction.normalize_items')
@@ -161,12 +131,12 @@ class ExtractionViewTests(TestCase):
         ])
         self.assertEqual(result.json()['errors'], {})
 
-    @patch('connectors.messages_client.list_items')
+    @patch('connectors.docs_client.list_items')
     def test_records_error_without_failing_whole_request(self, list_items):
         list_items.side_effect = requests.Timeout()
-        result = self.client.get('/api/extraction/items/', HTTP_X_MESSAGES_SESSION='session')
+        result = self.client.get('/api/extraction/items/', HTTP_X_DOCS_SESSION='session')
         self.assertEqual(result.status_code, 200)
-        self.assertEqual(result.json(), {'items': [], 'errors': {'messages': 'upstream_timeout'}})
+        self.assertEqual(result.json(), {'items': [], 'errors': {'docs': 'upstream_timeout'}})
 
 
 @override_settings(DINUM_ENABLED_SERVICES=ALL_SERVICES)
@@ -204,9 +174,9 @@ class DossierFailurePathTests(TestCase):
 class CredentialPrecedenceTests(TestCase):
     @patch('connectors.extraction.normalize_items')
     @patch('connectors.drive_client.list_items')
-    @patch('connectors.messages_client.list_items')
+    @patch('connectors.docs_client.list_items')
     def test_a_logged_in_caller_never_borrows_a_cookie(
-        self, messages_list, drive_list, normalize_items
+        self, docs_list, drive_list, normalize_items
     ):
         """The case the first fix missed.
 
@@ -214,7 +184,7 @@ class CredentialPrecedenceTests(TestCase):
         credential of their own for it -- and the browser's cookie for that
         service belongs to whoever used it last. Falling back to it gave a
         demo profile with an empty Drive a dashboard full of somebody else's
-        mail, stored under their own name.
+        documents, stored under their own name.
         """
         drive_list.return_value = []
         normalize_items.return_value = []
@@ -223,14 +193,14 @@ class CredentialPrecedenceTests(TestCase):
         session[USER_KEY] = {'id': 'whoever', 'email': 'ines@example.test'}
         session['drive_session'] = 'her-own-drive'
         session.save()
-        self.client.cookies['st_messages_sessionid'] = 'someone-else-s-mailbox'
+        self.client.cookies['docs_sessionid'] = 'someone-else-s-documents'
 
         result = self.client.get('/api/extraction/items/')
 
         self.assertEqual(result.status_code, 200)
-        # Her own Drive is read; the mailbox behind that cookie is not.
+        # Her own Drive is read; the account behind that cookie is not.
         drive_list.assert_called_once()
-        messages_list.assert_not_called()
+        docs_list.assert_not_called()
 
     @patch('connectors.extraction.normalize_items')
     @patch('connectors.drive_client.list_items')
@@ -259,20 +229,20 @@ class CredentialPrecedenceTests(TestCase):
         )
 
 
-@override_settings(DINUM_USE_MOCK=False, DINUM_ENABLED_SERVICES={"docs", "drive"})
+@override_settings(DINUM_USE_MOCK=False, DINUM_ENABLED_SERVICES={"drive"})
 class DisabledServiceTests(TestCase):
     """A service this deployment does not read is absent, not broken.
 
-    Dropping mail is meant to be a one-line configuration change that can be
-    undone (settings.DINUM_ENABLED_SERVICES), so what matters here is that
-    nothing asks Messages for anything and nothing fails because of it.
+    Leaving one out is a one-line configuration change
+    (settings.DINUM_ENABLED_SERVICES), so what matters here is that nothing
+    asks it for anything and nothing fails because of it.
     """
 
     @patch('connectors.extraction.normalize_items')
     @patch('connectors.drive_client.list_items')
-    @patch('connectors.messages_client.list_items')
+    @patch('connectors.docs_client.list_items')
     def test_extraction_does_not_read_a_disabled_service(
-        self, messages_list, drive_list, normalize_items
+        self, docs_list, drive_list, normalize_items
     ):
         drive_list.return_value = []
         normalize_items.return_value = []
@@ -280,24 +250,25 @@ class DisabledServiceTests(TestCase):
         session = self.client.session
         session[USER_KEY] = {'id': 'whoever', 'email': 'someone@example.test'}
         session['drive_session'] = 'drive-credential'
-        session['messages_session'] = 'messages-credential'
         session.save()
 
-        result = self.client.get('/api/extraction/items/')
+        result = self.client.get(
+            '/api/extraction/items/', HTTP_X_DOCS_SESSION='docs-credential'
+        )
 
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json()['errors'], {})
         drive_list.assert_called_once()
-        messages_list.assert_not_called()
+        docs_list.assert_not_called()
 
-    @patch('connectors.messages_client.list_items')
-    def test_the_per_service_route_reports_it(self, messages_list):
+    @patch('connectors.docs_client.list_items')
+    def test_the_per_service_route_reports_it(self, docs_list):
         result = self.client.get(
-            '/api/messages/items/', HTTP_X_MESSAGES_SESSION='session'
+            '/api/docs/items/', HTTP_X_DOCS_SESSION='session'
         )
         self.assertEqual(result.status_code, 404)
         self.assertEqual(result.json()['error'], 'service_disabled')
-        messages_list.assert_not_called()
+        docs_list.assert_not_called()
 
     @patch('connectors.drive_client.list_items')
     def test_the_services_still_read_are_untouched(self, drive_list):
@@ -305,68 +276,3 @@ class DisabledServiceTests(TestCase):
         result = self.client.get('/api/drive/items/', HTTP_X_DRIVE_SESSION='session')
         self.assertEqual(result.status_code, 200)
         drive_list.assert_called_once()
-
-
-@override_settings(DINUM_USE_MOCK=False, DINUM_ENABLED_SERVICES=ALL_SERVICES)
-class OwnerAddressTests(TestCase):
-    """A document owner comes back with an address, whatever their domain."""
-
-    def setUp(self):
-        from passon.models import Collaborator
-
-        Collaborator.objects.create(
-            email="camille@collectivite.example", first_name="Camille", last_name="F",
-        )
-        session = self.client.session
-        session[USER_KEY] = {"id": "u-me", "email": "me@elsewhere.example"}
-        session["drive_session"] = "drive-credential"
-        session.save()
-
-    @patch('connectors.drive_client.list_users')
-    @patch('connectors.drive_client.download_item')
-    @patch('connectors.drive_client.list_items')
-    def test_an_owner_in_another_domain_is_resolved(
-        self, list_items, download_item, list_users
-    ):
-        list_items.return_value = [{
-            "id": "f1", "title": "note.md", "type": "file", "mimetype": "text/plain",
-            "creator": {"id": "u-camille", "full_name": "Camille F"},
-        }]
-        download_item.return_value = b""
-        list_users.side_effect = lambda session, domain, base_url=None: (
-            [{"id": "u-camille", "email": "camille@collectivite.example"}]
-            if domain == "collectivite.example"
-            else []
-        )
-
-        result = self.client.get('/api/extraction/items/')
-
-        self.assertEqual(result.status_code, 200)
-        item = result.json()["items"][0]
-        self.assertEqual(item["author"], "Camille F")
-        self.assertEqual(item["author_email"], "camille@collectivite.example")
-        # Her domain is known because she has a collaborator row; the
-        # caller's own is asked for first all the same.
-        asked = [call.args[1] for call in list_users.call_args_list]
-        self.assertEqual(asked[0], "elsewhere.example")
-        self.assertIn("collectivite.example", asked)
-
-    @patch('connectors.drive_client.list_users')
-    @patch('connectors.drive_client.download_item')
-    @patch('connectors.drive_client.list_items')
-    def test_a_failed_search_still_returns_the_items(
-        self, list_items, download_item, list_users
-    ):
-        list_items.return_value = [{
-            "id": "f1", "title": "note.md", "type": "file", "mimetype": "text/plain",
-            "creator": {"id": "u-camille", "full_name": "Camille F"},
-        }]
-        download_item.return_value = b""
-        list_users.side_effect = requests.ConnectionError("boom")
-
-        result = self.client.get('/api/extraction/items/')
-
-        self.assertEqual(result.status_code, 200)
-        item = result.json()["items"][0]
-        self.assertEqual(item["author"], "Camille F")
-        self.assertEqual(item["author_email"], "")

@@ -1,5 +1,5 @@
-# Connectors — reading Docs, Drive and Messages
-# Connecteurs — lire Docs, Drive et Messages
+# Connectors — reading Docs and Drive
+# Connecteurs — lire Docs et Drive
 
 *[English](#english) · [Français](#français)*
 
@@ -10,10 +10,9 @@
 ### About this project
 
 Pass‘on Dinum is an internal "business continuity" tool: given a colleague's
-name, it gathers what they were working on -- their emails, documents, and
-files -- from the different internal apps of the Suite Numérique (Docs,
-Drive, Messages), so someone covering for them doesn't have to go hunting
-across three separate logins. See the [frontend](../../frontend/README.md) for the interface it feeds.
+name, it gathers what they were working on -- their documents and files --
+from the internal apps of the Suite Numérique (Docs, Drive), so someone
+covering for them doesn't have to go hunting across separate logins. See the [frontend](../../frontend/README.md) for the interface it feeds.
 
 This `connectors/` module is the backend piece that makes that possible: it
 talks to each of the three upstream services' own APIs, normalizes their very
@@ -24,7 +23,7 @@ source.
 ### How it fits together
 
 ```
-docs_client.py / drive_client.py / messages_client.py
+docs_client.py / drive_client.py
         |  (login + list_items + get_item, one per service)
         v
    views.py  --  /api/<service>/items/        (raw per-service passthrough)
@@ -42,7 +41,7 @@ docs_client.py / drive_client.py / messages_client.py
    views.py  --  /api/dossier/                  (text + the six sections)
 ```
 
-`mock_clients.py` / `mock_data.py` are drop-in replacements for the three
+`mock_clients.py` / `mock_data.py` are drop-in replacements for the
 `*_client.py` files (same `list_items`/`get_item` signature), used when
 `DINUM_USE_MOCK=true` so you can run and test the whole pipeline above
 without any of the three upstream services actually running.
@@ -70,9 +69,9 @@ cd src/backend
    - To just try the pipeline with fake data, leave `DINUM_USE_MOCK=true` (the
      `.env.example` default) and skip straight to step 5 -- no upstream
      services or credentials needed.
-   - To hit the real Docs/Drive/Messages, set `DINUM_USE_MOCK=false` and point
-     `DOCS_URL`/`DRIVE_URL`/`MESSAGES_URL` at wherever those are running (start
-     those three projects separately -- they are not part of this repo).
+   - To hit the real Docs/Drive, set `DINUM_USE_MOCK=false` and point
+     `DOCS_URL`/`DRIVE_URL` at wherever those are running (start those two
+     projects separately -- they are not part of this repo).
    - For `/api/dossier/`, set `GROQ_API_KEY` (a free key from
      https://console.groq.com/keys works fine for testing).
 
@@ -116,20 +115,17 @@ cd src/backend
 | --- | --- | --- | --- |
 | Docs | `/api/docs/items/` | `/api/docs/items/<uuid>/` | `X-Docs-Session` |
 | Drive | `/api/drive/items/` | `/api/drive/items/<uuid>/` | `X-Drive-Session` |
-| Messages | `/api/messages/items/` | `/api/messages/items/<uuid>/` | `X-Messages-Session` |
 
-Docs also supports `/api/docs/documents/`; Messages supports
-`/api/messages/messages/`, including the corresponding detail routes.
+Docs also supports `/api/docs/documents/`, including its detail route.
 Responses use `{"service": "docs", "data": ...}`. The data is the existing
 connector result, without changing its schema.
 
 Each call uses the caller's upstream session, supplied by the header above or
-its cookie. For Drive and Messages there is a third source: the sessions stored
-when the user logged in through `/api/auth/login/`, which walks each service's
-OIDC flow and keeps the resulting cookies server-side (see
-`../accounts/README.md`). A logged-in caller therefore needs no
-`X-Drive-Session` or `X-Messages-Session` of its own. Docs has no login flow,
-so it still requires one explicitly.
+its cookie. For Drive there is a third source: the session stored when the
+user logged in through `/api/auth/login/`, which walks its OIDC flow and keeps
+the resulting cookie server-side (see `../accounts/README.md`). A logged-in
+caller therefore needs no `X-Drive-Session` of its own. Docs has no login
+flow, so it still requires one explicitly.
 
 The order is header, then session, then cookie, and the last position matters.
 Cookies are not scoped by port: Drive on `localhost:8071` and this app on
@@ -143,12 +139,11 @@ Links leaving these routes are rewritten to the public host before they are
 returned: items carry URLs built from `DRIVE_URL` and friends, which is how
 *this process* reaches the services (`host.docker.internal` inside a
 container), and that name means nothing in a browser. `DINUM_PUBLIC_HOST`
-(default `localhost`) is substituted, ports and paths untouched. Docs uses `docs_sessionid`, Drive uses `drive_sessionid`, Messages
-uses `st_messages_sessionid` (its `SESSION_COOKIE_NAME`; override via
-`MESSAGES_SESSION_COOKIE` if a deployment changes it). No shared account or automatic demo login is used by the Django
-API. Log into each upstream app first. The existing Docs and Messages
-`login()` helpers remain unchanged and available for manual local scripts;
-they are not exposed as web login endpoints.
+(default `localhost`) is substituted, ports and paths untouched. Docs uses
+`docs_sessionid` and Drive uses `drive_sessionid`. No shared account or
+automatic demo login is used by the Django API. Log into each upstream app
+first. The existing Docs `login()` helper remains unchanged and available for
+manual local scripts; it is not exposed as a web login endpoint.
 
 Example after setting DRIVE_SESSION locally to your session value:
 
@@ -156,15 +151,14 @@ Example after setting DRIVE_SESSION locally to your session value:
 curl -H "X-Drive-Session: $DRIVE_SESSION" http://localhost:8000/api/drive/items/
 ```
 
-Note on `.env`'s `DOCS_URL`/`DRIVE_URL`/`MESSAGES_URL` defaults: they point at
+Note on `.env`'s `DOCS_URL`/`DRIVE_URL` defaults: they point at
 `host.docker.internal`, which only resolves from *inside* a Docker container
 (used when running via `docker compose up`). Running `manage.py runserver`
 directly on the host instead, set them to `localhost` (e.g.
 `DOCS_URL=http://localhost:8071`) or requests will fail to connect.
 
-Docs and Drive lists return the first page only. Messages reads every mailbox
-the caller has access to (personal plus any shared mailbox), not just the
-first one. Query parameters are rejected with 400 instead of silently
+Docs and Drive lists return the first page only. Query parameters are
+rejected with 400 instead of silently
 ignored. Pagination, unified login, writes, and frontend integration are not
 implemented here.
 
@@ -176,33 +170,37 @@ private/no-store. Only GET is supported.
 
 ### Which services are read: `DINUM_ENABLED_SERVICES`
 
-A deployment does not have to read all three. `DINUM_ENABLED_SERVICES`
-(default `docs,drive,messages`) lists the ones it does, and everything in this
-module follows it:
+A deployment does not have to read both. `DINUM_ENABLED_SERVICES` (default
+`docs,drive`) lists the ones it does, and everything in this module follows
+it:
 
 | Where | With a service left out |
 | --- | --- |
 | `/api/<service>/items/` | `404 {"error": "service_disabled"}` |
 | `/api/extraction/items/` | its items are absent; no credential is asked for it, and it never appears in `errors` |
-| `/api/dossier/` | the model is given the other services' items only |
+| `/api/dossier/` | the model is given the other service's items only |
 | Mock mode | that service's fixture is left out too, so the demo matches |
-| Login (`accounts/`) | no session is opened there -- one nothing would use |
-| Sending a handover by mail | `409 {"error": "messages_disabled"}` |
 
-This exists so that dropping mail is a configuration change rather than a code
-change. `messages_client.py`, its routes and its tests all stay where they are;
-they are simply not called. Putting `messages` back in the list restores every
-line of the table above at once, which is what makes the decision reversible.
+Docs is what this is for in practice: it is often not deployed, and a
+deployment that only runs Drive should not have to answer for it. Leaving a
+service out is a configuration change rather than a code change -- its client,
+its routes and its tests all stay where they are and are simply not called.
 
 A service left out is not an error and not a failure: it is absent. That is
 the difference from a service that is down, which does land in `errors`, and
 from a caller with no credential for it, which is a fact about the caller
 rather than a decision about the product.
 
+> [!NOTE]
+> A third service, **Messages**, was read here until it was removed in full:
+> `messages_client.py`, the `/api/messages/…` routes, the session login opened
+> there and the mail items they produced are all gone. A handover now rests on
+> documents alone. The history is in git if it ever has to come back.
+
 ### Mock mode
 
 Set `DINUM_USE_MOCK=true` to serve static demo data (`connectors/mock_data.py`)
-instead of calling the upstream services -- useful when Docs/Drive/Messages
+instead of calling the upstream services -- useful when Docs and Drive
 aren't running locally. In mock mode, `/api/<service>/items/` and
 `/api/extraction/items/` don't require a credential. See `mock_clients.py`
 for the swap-in clients (same `list_items`/`get_item` signature as the real
@@ -210,7 +208,7 @@ ones).
 
 ### Normalized extraction API
 
-`GET /api/extraction/items/` merges docs/drive/messages into one list of
+`GET /api/extraction/items/` merges docs and drive into one list of
 LLM-ready items, each with real body content (not just metadata) and a
 `source` block for traceability:
 
@@ -233,7 +231,7 @@ what the model reads (`generation._trimmed()`), while the address is what makes
 a contact reachable; folding one into the other would change the prompt's
 input.
 
-Messages carries a sender's address inline. Drive does not: its item listing
+Docs carries a creator's address when it has one. Drive does not: its item listing
 names a creator, with an id, and no address anywhere. So this route resolves
 them, once per listing, through Drive's own user search
 (`drive_client.list_users`). That search matches on the *address*, which means
@@ -255,21 +253,20 @@ caller and this application already know, it is not a way to walk a directory.
 And the search is best-effort -- if it fails, the items still come back,
 owners and all, just without addresses.
 
-Send one or more of `X-Docs-Session` / `X-Drive-Session` / `X-Messages-Session`
-(or their cookies) -- at least one is required, but not all three: a service
-with no credential is skipped, not treated as an error. A service whose
+Send `X-Docs-Session` and/or `X-Drive-Session` (or their cookies) -- at least
+one is required, but not both: a service with no credential is skipped, not
+treated as an error. A service whose
 credential *was* given but whose upstream call failed gets an entry in
 `errors` (same codes as above) instead of failing the whole request, so a
 partial result still comes back. See `extraction.py`'s module docstring for
 where each source's `content` actually comes from and why `content_url` can
 differ from `resource_url` (or be `null` for a Drive folder). In mock mode
-(`DINUM_USE_MOCK=true`) this returns all three services' mock data with no
+(`DINUM_USE_MOCK=true`) this returns both services' mock data with no
 credential needed, same as the per-service item routes.
 
 This endpoint always fetches real content, which costs one extra upstream
-request per docs/drive item on top of the initial list call (Messages'
-content is already inline, no extra request per item, but still one request
-per mailbox and one per thread) -- fine for local/dev-sized data, not
+request per item on top of the initial list call -- fine for local/dev-sized
+data, not
 something to point at a large account without pagination.
 
 ### Handover dossier (`/api/dossier/`)
@@ -307,10 +304,10 @@ Run `./venv/bin/python manage.py check` and
 ### À propos du projet
 
 Pass'on Dinum est un outil interne de continuité d'activité : à partir du nom
-d'un collègue, il rassemble ce sur quoi il travaillait — ses mails, ses
-documents, ses fichiers — dans les différentes applications internes de La Suite
-numérique (Docs, Drive, Messages), pour que la personne qui le remplace n'ait pas
-à fouiller trois connexions séparées. Voir le [frontend](../../frontend/README.md) pour l'interface qu'il alimente.
+d'un collègue, il rassemble ce sur quoi il travaillait — ses documents, ses
+fichiers — dans les applications internes de La Suite numérique (Docs, Drive),
+pour que la personne qui le remplace n'ait pas à fouiller des connexions
+séparées. Voir le [frontend](../../frontend/README.md) pour l'interface qu'il alimente.
 
 Ce module `connectors/` est la pièce du backend qui rend cela possible : il parle
 aux API propres à chacun des trois services amont, normalise leurs formats de
@@ -321,7 +318,7 @@ chaque source.
 ### Comment les pièces s'assemblent
 
 ```
-docs_client.py / drive_client.py / messages_client.py
+docs_client.py / drive_client.py
         |  (login + list_items + get_item, un par service)
         v
    views.py  --  /api/<service>/items/        (renvoi brut, par service)
@@ -368,10 +365,9 @@ cd src/backend
      `DINUM_USE_MOCK=true` (la valeur par défaut de `.env.example`) et passer
      directement à l'étape 5 : aucun service amont ni identifiant n'est
      nécessaire.
-   - Pour viser les vrais Docs / Drive / Messages, mettre `DINUM_USE_MOCK=false`
-     et pointer `DOCS_URL` / `DRIVE_URL` / `MESSAGES_URL` là où ils tournent
-     (ces trois projets se lancent séparément — ils ne font pas partie de ce
-     dépôt).
+   - Pour viser les vrais Docs / Drive, mettre `DINUM_USE_MOCK=false` et
+     pointer `DOCS_URL` / `DRIVE_URL` là où ils tournent (ces deux projets se
+     lancent séparément — ils ne font pas partie de ce dépôt).
    - Pour `/api/dossier/`, renseigner `GROQ_API_KEY` (une clé gratuite prise sur
      https://console.groq.com/keys suffit pour tester).
 
@@ -417,19 +413,18 @@ cd src/backend
 | --- | --- | --- | --- |
 | Docs | `/api/docs/items/` | `/api/docs/items/<uuid>/` | `X-Docs-Session` |
 | Drive | `/api/drive/items/` | `/api/drive/items/<uuid>/` | `X-Drive-Session` |
-| Messages | `/api/messages/items/` | `/api/messages/items/<uuid>/` | `X-Messages-Session` |
 
-Docs accepte aussi `/api/docs/documents/` ; Messages accepte
-`/api/messages/messages/`, routes de détail comprises. Les réponses ont la forme
+Docs accepte aussi `/api/docs/documents/`, route de détail comprise. Les
+réponses ont la forme
 `{"service": "docs", "data": ...}`, où `data` est le résultat du connecteur, sans
 modification de son schéma.
 
 Chaque appel utilise la session amont de l'appelant, fournie par l'en-tête
-ci-dessus ou par son cookie. Pour Drive et Messages il existe une troisième
+ci-dessus ou par son cookie. Pour Drive il existe une troisième
 source : les sessions conservées lors de la connexion par `/api/auth/login/`, qui
 parcourt le flux OIDC de chaque service et en garde les cookies côté serveur
 (voir `../accounts/README.md`). Un appelant connecté n'a donc pas besoin de son
-propre `X-Drive-Session` ni `X-Messages-Session`. Docs n'a pas de flux de
+propre `X-Drive-Session`. Docs n'a pas de flux de
 connexion : il en exige donc toujours un explicitement.
 
 L'ordre est l'en-tête, puis la session, puis le cookie — et cette dernière
@@ -446,13 +441,12 @@ d'être renvoyés : les éléments portent des URL construites à partir de
 `DRIVE_URL` et consorts, c'est-à-dire la façon dont *ce processus-ci* joint les
 services (`host.docker.internal` dans un conteneur), un nom qui ne veut rien dire
 dans un navigateur. `DINUM_PUBLIC_HOST` (`localhost` par défaut) y est substitué,
-ports et chemins inchangés. Docs utilise `docs_sessionid`, Drive
-`drive_sessionid`, Messages `st_messages_sessionid` (son `SESSION_COOKIE_NAME` ;
-à redéfinir via `MESSAGES_SESSION_COOKIE` si un déploiement le change). L'API Django n'utilise aucun compte partagé ni
-connexion de démonstration automatique : il faut se connecter d'abord à chaque
-application amont. Les fonctions `login()` existantes de Docs et Messages restent
-inchangées et disponibles pour des scripts locaux manuels ; elles ne sont pas
-exposées comme points d'entrée web.
+ports et chemins inchangés. Docs utilise `docs_sessionid` et Drive
+`drive_sessionid`. L'API Django n'utilise aucun compte partagé ni connexion de
+démonstration automatique : il faut se connecter d'abord à chaque application
+amont. La fonction `login()` existante de Docs reste inchangée et disponible
+pour des scripts locaux manuels ; elle n'est pas exposée comme point d'entrée
+web.
 
 Exemple, après avoir placé votre valeur de session dans `DRIVE_SESSION` :
 
@@ -460,7 +454,7 @@ Exemple, après avoir placé votre valeur de session dans `DRIVE_SESSION` :
 curl -H "X-Drive-Session: $DRIVE_SESSION" http://localhost:8000/api/drive/items/
 ```
 
-À noter sur les valeurs par défaut de `DOCS_URL` / `DRIVE_URL` / `MESSAGES_URL`
+À noter sur les valeurs par défaut de `DOCS_URL` / `DRIVE_URL`
 dans `.env` : elles pointent vers `host.docker.internal`, qui ne se résout que
 depuis l'*intérieur* d'un conteneur Docker (le cas quand on lance
 `docker compose up`). En lançant `manage.py runserver` directement sur la
@@ -468,10 +462,8 @@ machine, il faut les mettre sur `localhost` (par exemple
 `DOCS_URL=http://localhost:8071`), faute de quoi les requêtes échoueront à se
 connecter.
 
-Les listes de Docs et de Drive ne renvoient que la première page. Messages lit
-toutes les boîtes auxquelles l'appelant a accès (la sienne et les boîtes
-partagées), pas seulement la première. Les paramètres de requête sont refusés par
-un 400 plutôt qu'ignorés en silence. La pagination, une connexion unifiée, les
+Les listes de Docs et de Drive ne renvoient que la première page. Les
+paramètres de requête sont refusés par un 400 plutôt qu'ignorés en silence. La pagination, une connexion unifiée, les
 écritures et l'intégration au frontend ne sont pas traitées ici.
 
 Les erreurs ont la forme `{"service": "...", "error": "..."}`. Un identifiant
@@ -483,42 +475,46 @@ sont `private` / `no-store`. Seul GET est accepté.
 
 ### Quels services sont lus : `DINUM_ENABLED_SERVICES`
 
-Un déploiement n'est pas tenu de lire les trois services.
-`DINUM_ENABLED_SERVICES` (par défaut `docs,drive,messages`) énumère ceux qu'il
-lit, et tout ce module s'y conforme :
+Un déploiement n'est pas tenu de lire les deux services.
+`DINUM_ENABLED_SERVICES` (par défaut `docs,drive`) énumère ceux qu'il lit, et
+tout ce module s'y conforme :
 
 | Où | Quand un service est retiré |
 | --- | --- |
 | `/api/<service>/items/` | `404 {"error": "service_disabled"}` |
 | `/api/extraction/items/` | ses éléments sont absents ; aucun identifiant ne lui est demandé, et il n'apparaît jamais dans `errors` |
-| `/api/dossier/` | le modèle ne reçoit que les éléments des autres services |
+| `/api/dossier/` | le modèle ne reçoit que les éléments de l'autre service |
 | Mode mock | sa fixture est retirée aussi, pour que la démonstration corresponde |
-| Connexion (`accounts/`) | aucune session n'y est ouverte — elle ne servirait à rien |
-| Envoi d'une passation par mail | `409 {"error": "messages_disabled"}` |
 
-Cela existe pour que renoncer au mail soit un changement de configuration et
-non de code. `messages_client.py`, ses routes et ses tests restent en place :
-ils ne sont simplement plus appelés. Remettre `messages` dans la liste rétablit
-d'un coup toutes les lignes du tableau — c'est ce qui rend la décision
-réversible.
+C'est pour Docs que cela sert en pratique : il n'est souvent pas déployé, et un
+déploiement qui ne fait tourner que Drive n'a pas à répondre de lui. Retirer un
+service est un changement de configuration et non de code : son client, ses
+routes et ses tests restent en place et ne sont simplement plus appelés.
 
 Un service retiré n'est ni une erreur ni une panne : il est absent. C'est la
 différence avec un service en panne, qui figure bien dans `errors`, et avec un
 appelant sans identifiant pour lui, qui est un fait sur l'appelant et non une
 décision sur le produit.
 
+> [!NOTE]
+> Un troisième service, **Messages**, était lu ici jusqu'à son retrait complet :
+> `messages_client.py`, les routes `/api/messages/…`, la session ouverte à la
+> connexion et les mails qu'elles produisaient ont tous disparu. Une passation
+> repose désormais sur les seuls documents. L'historique est dans git s'il
+> fallait un jour revenir en arrière.
+
 ### Mode mock
 
 `DINUM_USE_MOCK=true` sert des données de démonstration statiques
 (`connectors/mock_data.py`) au lieu d'appeler les services amont — pratique quand
-Docs, Drive et Messages ne tournent pas en local. Dans ce mode,
+Docs et Drive ne tournent pas en local. Dans ce mode,
 `/api/<service>/items/` et `/api/extraction/items/` n'exigent aucun identifiant.
 Voir `mock_clients.py` pour les clients de remplacement (mêmes signatures
 `list_items` / `get_item` que les vrais).
 
 ### L'API d'extraction normalisée
 
-`GET /api/extraction/items/` fusionne Docs, Drive et Messages en une seule liste
+`GET /api/extraction/items/` fusionne Docs et Drive en une seule liste
 d'éléments prêts pour le LLM, chacun avec son vrai contenu (pas seulement ses
 métadonnées) et un bloc `source` pour la traçabilité :
 
@@ -541,7 +537,7 @@ parce qu'`author` est ce que lit le modèle (`generation._trimmed()`), tandis qu
 l'adresse est ce qui rend un contact joignable : les confondre modifierait
 l'entrée de l'invite.
 
-Messages fournit l'adresse de l'expéditeur dans sa charge utile. Drive, non :
+Docs fournit l'adresse du créateur quand il en a une. Drive, non :
 sa liste d'éléments nomme un créateur, avec un identifiant, et aucune adresse
 nulle part. Cette route les résout donc, une fois par listing, via la recherche
 d'utilisateurs de Drive (`drive_client.list_users`). Cette recherche porte sur
@@ -566,23 +562,22 @@ déjà, pas de parcourir un annuaire. Et la recherche est au mieux : si elle
 échoue, les éléments reviennent quand même, propriétaires compris, simplement
 sans adresse.
 
-Envoyer un ou plusieurs des en-têtes `X-Docs-Session` / `X-Drive-Session` /
-`X-Messages-Session` (ou leurs cookies) : au moins un est exigé, mais pas les
-trois — un service sans identifiant est ignoré, ce n'est pas une erreur. Un
+Envoyer `X-Docs-Session` et/ou `X-Drive-Session` (ou leurs cookies) : au moins
+un est exigé, mais pas les deux — un service sans identifiant est ignoré, ce
+n'est pas une erreur. Un
 service dont l'identifiant *a* été fourni mais dont l'appel amont a échoué obtient
 une entrée dans `errors` (mêmes codes que ci-dessus) au lieu de faire échouer
 toute la requête, si bien qu'un résultat partiel revient quand même. Voir la
 docstring de module d'`extraction.py` pour savoir d'où vient réellement le
 `content` de chaque source et pourquoi `content_url` peut différer de
 `resource_url` (ou être `null` pour un dossier Drive). En mode mock
-(`DINUM_USE_MOCK=true`), cette route renvoie les données factices des trois
+(`DINUM_USE_MOCK=true`), cette route renvoie les données factices des deux
 services sans aucun identifiant, comme les routes par service.
 
 Cette route récupère toujours le contenu réel, ce qui coûte une requête amont
-supplémentaire par élément Docs ou Drive en plus de l'appel de liste initial (le
-contenu de Messages est déjà en ligne, donc pas de requête par élément, mais tout
-de même une par boîte et une par fil) — acceptable à l'échelle d'un poste de
-développement, à ne pas pointer vers un gros compte sans pagination.
+supplémentaire par élément en plus de l'appel de liste initial — acceptable à
+l'échelle d'un poste de développement, à ne pas pointer vers un gros compte
+sans pagination.
 
 ### La fiche de passation (`/api/dossier/`)
 

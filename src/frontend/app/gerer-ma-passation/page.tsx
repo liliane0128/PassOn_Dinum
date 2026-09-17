@@ -36,8 +36,8 @@ function PassationView() {
           >
             {/* lil's page held a simulated two-line wait before showing a
                 fixture card. The board does the real thing: it reads the
-                stored sheet, generates one from the person's documents and
-                mails when there is none, and saves what comes back -- with
+                stored sheet, generates one from the person's documents when
+                there is none, and saves what comes back -- with
                 its own progress, which is why the `prewarmed` hint is no
                 longer needed to avoid showing a wait twice. */}
             <PassationBoard />

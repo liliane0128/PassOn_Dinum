@@ -1,4 +1,4 @@
-"""Check an email/password against a Suite Numérique service (Drive, Messages).
+"""Check an email/password against a Suite Numérique service (Drive).
 
 These services do not verify passwords themselves: it delegates to Keycloak (OIDC
 authorization code flow). There is no endpoint that takes an email and a
@@ -15,7 +15,7 @@ What comes out is the session cookie that service's own frontend uses, which
 is also exactly the credential connectors/ needs. Logging a user in and being
 able to read their files are therefore the same operation here.
 
-Drive and Messages each run their own Keycloak, with their own user lists, and
+Each service runs its own Keycloak, with its own user list, and
 are reached the same way -- hence one function taking the service name. Docs
 would work identically if it were ever run alongside.
 
@@ -154,7 +154,7 @@ def service_request(session, service, method, url, **kwargs):
     """One request to `service`, addressed so that it can be reached.
 
     Public wrapper over the transport described at the top of this module:
-    sent to DRIVE_URL/MESSAGES_URL's host, presenting the public host. Anything
+    sent to DRIVE_URL's host, presenting the public host. Anything
     talking to these services from inside a container needs it.
     """
     return _request(session, service, method, url, **kwargs)
@@ -172,8 +172,8 @@ def open_session(service, email, password):
     base_url = public_base_url(service)
 
     # The service redirects to its Keycloak, which is how we learn that
-    # Keycloak's address: it is configured there, not here. Drive and
-    # Messages each run their own.
+    # Keycloak's address: it is configured there, not here. Each service
+    # runs its own.
     handoff = _request(session, service, "GET", f"{base_url}/api/v1.0/authenticate/")
     keycloak_url = handoff.headers.get("Location")
     if handoff.status_code not in (301, 302, 303, 307, 308) or not keycloak_url:

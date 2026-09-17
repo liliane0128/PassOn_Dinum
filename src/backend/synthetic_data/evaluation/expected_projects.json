@@ -4,37 +4,12 @@
   "drive-001": "accessibilite-pmr",
   "drive-002": "accessibilite-pmr",
   "drive-003": "accessibilite-pmr",
-  "mail-001": "accessibilite-pmr",
-  "mail-002": "accessibilite-pmr",
-  "mail-003": "accessibilite-pmr",
-  "mail-004": "accessibilite-pmr",
-  "mail-005": "accessibilite-pmr",
-  "mail-006": "accessibilite-pmr",
-
   "doc-003": "pc-rateau",
   "doc-004": "pc-rateau",
   "drive-004": "pc-rateau",
-  "mail-007": "pc-rateau",
-  "mail-008": "pc-rateau",
-  "mail-009": "pc-rateau",
-  "mail-010": "pc-rateau",
-
   "doc-005": "voirie-tilleuls",
   "drive-005": "voirie-tilleuls",
-  "mail-011": "voirie-tilleuls",
-  "mail-012": "voirie-tilleuls",
-  "mail-013": "voirie-tilleuls",
-
   "doc-006": "convention-caue",
   "drive-006": "convention-caue",
-  "mail-014": "convention-caue",
-  "mail-015": "convention-caue",
-  "mail-016": "convention-caue",
-
-  "doc-007": null,
-  "mail-017": null,
-  "mail-018": null,
-  "mail-019": null,
-  "mail-020": null,
-  "mail-021": null
+  "doc-007": null
 }

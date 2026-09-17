@@ -19,45 +19,45 @@
       "decisions": [
         {
           "label": "Le principe des travaux d'accessibilite est valide ; le Cabinet Ramos Architecture est mandate pour le plan previsionnel.",
-          "evidence_ids": ["doc-001", "drive-002", "mail-005"]
+          "evidence_ids": [
+            "doc-001",
+            "drive-002"
+          ]
         }
       ],
       "pending_actions": [
         {
           "label": "Relancer AccessDiag pour obtenir le rapport de diagnostic accessibilite complet.",
-          "evidence_ids": ["mail-002", "drive-003"]
-        },
-        {
-          "label": "Confirmer aupres de la DDT si un delai supplementaire est accorde pour le depot du dossier Ad'AP.",
-          "evidence_ids": ["mail-003", "mail-004"]
+          "evidence_ids": [
+            "drive-003"
+          ]
         }
       ],
-      "deadlines": [
-        {
-          "label": "Date limite de depot du dossier Ad'AP a la prefecture, sous peine de penalite.",
-          "date": "2026-10-15",
-          "evidence_ids": ["mail-004"]
-        }
-      ],
-      "blockers": [
-        {
-          "label": "Le rapport de diagnostic accessibilite complet n'est toujours pas arrive, ce qui bloque le chiffrage definitif des travaux.",
-          "evidence_ids": ["mail-002", "mail-005"]
-        }
-      ],
+      "deadlines": [],
+      "blockers": [],
       "contacts": [
-        {"name": "Elodie Ramos", "role": "Architecte, Cabinet Ramos Architecture -- plan et chiffrage des travaux", "evidence_ids": ["mail-005", "drive-002"]},
-        {"name": "Bruno Chalvin", "role": "AccessDiag -- diagnostic accessibilite en retard", "evidence_ids": ["mail-001", "mail-002"]},
-        {"name": "Helene Mercier", "role": "DDT, service accessibilite -- correspondante pour le delai de depot Ad'AP", "evidence_ids": ["mail-003", "mail-004"]}
+        {
+          "name": "Elodie Ramos",
+          "role": "Architecte, Cabinet Ramos Architecture -- plan et chiffrage des travaux",
+          "evidence_ids": [
+            "drive-002"
+          ]
+        }
       ],
       "key_documents": [
-        {"label": "Diagnostic accessibilite (rapport intermediaire, incomplet)", "evidence_ids": ["drive-003"]},
-        {"label": "Devis et plan previsionnel des travaux", "evidence_ids": ["drive-001", "drive-002"]}
-      ],
-      "notes_for_testers": [
-        "mail-001 (5 juin, delai estime 3 semaines) est perime par mail-002 (28 aout, retard annonce) -- teste le raisonnement temporel.",
-        "mail-004 precise seulement que la DDT 'transmet' la demande, pas qu'un delai est accorde -- le systeme ne doit pas conclure que le delai est obtenu.",
-        "mail-006 est adresse explicitement a la manager (Nathalie Prigent) et resume la situation -- bon test de ce qui doit remonter comme pertinent pour un manager plutot que pour l'agent."
+        {
+          "label": "Diagnostic accessibilite (rapport intermediaire, incomplet)",
+          "evidence_ids": [
+            "drive-003"
+          ]
+        },
+        {
+          "label": "Devis et plan previsionnel des travaux",
+          "evidence_ids": [
+            "drive-001",
+            "drive-002"
+          ]
+        }
       ]
     },
     {
@@ -66,34 +66,27 @@
       "priority": "high",
       "type": "personal",
       "status": "active",
-      "decisions": [
-        {
-          "label": "Verification effectuee suite au signalement du voisin (M. Berthier) : l'implantation respecte les regles de recul, aucune irregularite constatee.",
-          "evidence_ids": ["mail-008", "mail-009"]
-        }
-      ],
+      "decisions": [],
       "pending_actions": [
         {
           "label": "Notifier la decision d'instruction a la famille Rateau avant l'expiration du delai legal.",
-          "evidence_ids": ["mail-010", "doc-004"]
+          "evidence_ids": [
+            "doc-004"
+          ]
         }
       ],
-      "deadlines": [
-        {
-          "label": "Delai legal de notification de la decision (2 mois apres le depot du dossier).",
-          "date": "2026-10-05",
-          "evidence_ids": ["mail-010"]
-        }
-      ],
+      "deadlines": [],
       "blockers": [],
-      "contacts": [
-        {"name": "Famille Rateau", "role": "Demandeurs du permis de construire", "evidence_ids": ["mail-007", "mail-010"]}
-      ],
+      "contacts": [],
       "key_documents": [
-        {"label": "Plan de masse de l'extension", "evidence_ids": ["drive-004"]}
+        {
+          "label": "Plan de masse de l'extension",
+          "evidence_ids": [
+            "drive-004"
+          ]
+        }
       ],
       "notes_for_testers": [
-        "M. Berthier (mail-008) n'est qu'un tiers ayant signale un point deja verifie et clos (mail-009) -- ne doit pas apparaitre comme contact cle ni comme blocage actif, contrairement a la famille Rateau qui est la partie prenante du dossier.",
         "Dossier 'personnel' au sens du tri collectif/personnel : un seul contact reellement partie prenante, peu de services impliques, a comparer avec accessibilite-pmr."
       ]
     },
@@ -103,35 +96,18 @@
       "priority": "medium",
       "type": "collective",
       "status": "active",
-      "decisions": [
-        {
-          "label": "Le devis d'Entreprise Balthazar TP est valide par le service technique.",
-          "evidence_ids": ["mail-011"]
-        }
-      ],
-      "pending_actions": [
-        {
-          "label": "Confirmer a Entreprise Balthazar TP le demarrage des travaux avant fin septembre.",
-          "evidence_ids": ["mail-012", "mail-013"]
-        }
-      ],
-      "deadlines": [
-        {
-          "label": "Confirmation de demarrage a donner avant fin septembre, sans quoi le creneau de debut novembre n'est plus garanti.",
-          "date": "2026-09-30",
-          "evidence_ids": ["mail-013"]
-        }
-      ],
+      "decisions": [],
+      "pending_actions": [],
+      "deadlines": [],
       "blockers": [],
-      "contacts": [
-        {"name": "Marc Ferrand", "role": "Responsable voirie, service technique -- a valide le devis", "evidence_ids": ["mail-011"]},
-        {"name": "Entreprise Balthazar TP", "role": "Prestataire retenu pour les travaux", "evidence_ids": ["mail-012", "mail-013"]}
-      ],
+      "contacts": [],
       "key_documents": [
-        {"label": "Devis Entreprise Balthazar TP", "evidence_ids": ["drive-005"]}
-      ],
-      "notes_for_testers": [
-        "Ce projet a peu de volume de correspondance (3 messages) mais une echeance reelle et proche (30 septembre) -- teste que le systeme ne sous-estime pas un projet juste parce qu'il a peu de messages."
+        {
+          "label": "Devis Entreprise Balthazar TP",
+          "evidence_ids": [
+            "drive-005"
+          ]
+        }
       ]
     },
     {
@@ -143,26 +119,29 @@
       "decisions": [
         {
           "label": "Convention de partenariat signee avec le CAUE, validee en conseil municipal.",
-          "evidence_ids": ["drive-006", "mail-015", "mail-016"]
+          "evidence_ids": [
+            "drive-006"
+          ]
         }
       ],
       "pending_actions": [],
       "deadlines": [],
       "blockers": [],
-      "contacts": [
-        {"name": "Isabelle Norat", "role": "Chargee de mission CAUE (dossier clos, contact a conserver pour accompagnement futur)", "evidence_ids": ["mail-014", "mail-016"]}
-      ],
+      "contacts": [],
       "key_documents": [
-        {"label": "Convention signee", "evidence_ids": ["drive-006"]}
-      ],
-      "notes_for_testers": [
-        "mail-016 declare explicitement le dossier clos ('nous restons a disposition pour tout accompagnement futur') -- le systeme ne doit PAS generer d'action en cours ni de blocage pour ce projet malgre son historique (mai a aout)."
+        {
+          "label": "Convention signee",
+          "evidence_ids": [
+            "drive-006"
+          ]
+        }
       ]
     }
   ],
   "not_projects": {
     "note": "Les items ci-dessous ne doivent PAS ressortir comme des dossiers de passation prioritaires -- ce sont du bruit administratif de routine ou hors-perimetre.",
-    "office_supplies_evidence_ids": ["mail-017", "mail-018"],
-    "general_noise_evidence_ids": ["doc-007", "mail-019", "mail-020", "mail-021"]
+    "general_noise_evidence_ids": [
+      "doc-007"
+    ]
   }
 }

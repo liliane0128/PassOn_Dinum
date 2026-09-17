@@ -64,9 +64,8 @@ section, sans changer la structure des données.
 ## Connexion
 
 Il n'y a pas de compte PassOn : on se connecte avec ses identifiants **Drive**,
-que le backend Django fait vérifier par l'instance Drive locale, puis réessaie
-sur Messages. Rien n'est vérifié côté navigateur et aucun mot de passe n'est
-conservé ici. Le détail du parcours OIDC est dans
+que le backend Django fait vérifier par l'instance Drive locale. Rien n'est
+vérifié côté navigateur et aucun mot de passe n'est conservé ici. Le détail du parcours OIDC est dans
 [`../backend/accounts/README.md`](../backend/accounts/README.md).
 
 | Fichier | Rôle |
@@ -107,19 +106,15 @@ la connexion y échoue avec « Serveur injoignable ».
 
 Le tableau de bord affiche le résumé, les points de blocage, les contacts clés
 et les documents prioritaires de la personne connectée, à partir de ses
-documents (Drive) et, si le déploiement lit le mail, de ses mails (Messages).
-**Le code de génération n'a pas été modifié** : trois routes existantes
-suffisent.
+documents (Drive, Docs). **Le code de génération n'a pas été modifié** : trois
+routes existantes suffisent.
 
-Le mail peut être retiré côté serveur (`DINUM_ENABLED_SERVICES`, voir
-[connectors](../backend/connectors/README.md)). L'interface n'a rien à changer
-pour cela : elle affiche les éléments qu'on lui donne, et sans mail il ne
-reste que des documents — les contacts viennent alors des seuls propriétaires
-de documents, et la rubrique dit « 2 dossiers » là où elle disait
-« 3 échanges ».
+Le produit lisait aussi les mails (Messages) jusqu'au retrait complet de ce
+service. L'interface n'a rien eu à changer pour cela : elle affiche les
+éléments qu'on lui donne, et il ne reste que des documents.
 
 ```
-GET   /api/collaborators/<id>/items/     ses documents et ses mails
+GET   /api/collaborators/<id>/items/     ses documents
 GET   /api/dossier/                      une passe du modèle sur ces éléments
 PATCH /api/collaborators/<id>/handover/  enregistre la fiche
 ```
@@ -135,7 +130,7 @@ découpage que dans l'ancien frontend.
 | `components/passation/ResumeSection.tsx` | l'affichage et l'édition du résumé |
 | `components/passation/PointsAttentionSection.tsx` | l'affichage et l'édition des points de blocage |
 | `components/passation/ContactsSection.tsx` | l'affichage et l'édition des contacts |
-| `lib/contacts-from-items.ts` | déduit les contacts des expéditeurs des mails et des propriétaires des documents |
+| `lib/contacts-from-items.ts` | déduit les contacts des propriétaires des documents |
 | `lib/documents-priority.ts` | classe les documents par urgence |
 | `components/passation/PriorityDocsSection.tsx` | l'affichage des documents prioritaires |
 
@@ -169,23 +164,21 @@ Ce qu'il faut savoir :
   aujourd'hui : la rubrique montre le nom, la date et le propriétaire, comme
   avant.
 - **Les contacts viennent des éléments lus, pas du modèle.** Son invite ne
-  demande pas de contacts : `contactsFromItems()` compte donc les expéditeurs
-  des mails **et les propriétaires des documents**, les plus fréquents d'abord,
-  et une génération les enregistre en même temps que le reste. Tant que rien
-  n'est enregistré, ils sont déduits à l'affichage, si bien que la rubrique
-  n'est jamais vide par accident. Les demander au modèle supposerait de
-  modifier son invite, donc de toucher au code IA.
-- **Les documents comptent autant que les mails.** Un collègue qui a partagé un
-  dossier est quelqu'un que le successeur devra appeler, et comme le mail est
-  appelé à disparaître du produit, cette propriété devient la seule trace de
-  qui travaille sur quoi. Le libellé dit ce qui a été compté — « 3 échanges »,
-  « 2 dossiers », ou les deux séparés par un point médian — plutôt que de faire
-  passer un document pour un échange.
+  demande pas de contacts : `contactsFromItems()` compte donc les
+  **propriétaires des documents**, les plus fréquents d'abord, et une
+  génération les enregistre en même temps que le reste. Tant que rien n'est
+  enregistré, ils sont déduits à l'affichage, si bien que la rubrique n'est
+  jamais vide par accident. Les demander au modèle supposerait de modifier son
+  invite, donc de toucher au code IA.
+- **La propriété d'un document est tout le signal.** Un collègue qui a partagé
+  un dossier est quelqu'un que le successeur devra appeler ; depuis le retrait
+  du mail, c'est la seule trace de qui travaille sur quoi. Le libellé dit ce
+  qui a été compté — « 2 dossiers » — plutôt que de laisser deviner.
 - **Le propriétaire d'un document est joignable.** Drive ne publie que le nom
   de son créateur ; le backend résout l'adresse via sa recherche
   d'utilisateurs, une fois par listing, et la renvoie dans `authorEmail`
   (voir [connectors](../backend/connectors/README.md)). Un contact déduit d'un
-  document a donc une adresse, comme un contact déduit d'un mail. La recherche
+  document a donc une adresse à laquelle écrire. La recherche
   couvre le domaine de la personne connectée et ceux des collaborateurs déjà
   connus de l'application — un propriétaire hors de tous ces domaines reste
   sans adresse, et c'est le nom qui sert alors.
@@ -199,15 +192,14 @@ Ce qu'il faut savoir :
   l'une porte des identifiants de collaborateurs, l'autre des entrées
   {nom, rôle, adresse}.
 - **Attention aux noms de champs des éléments** : `item_views.py` sérialise le
-  type dans `type` (« mail » ou « doc »), le nom de l'expéditeur dans `subtitle`
-  et son adresse dans `authorEmail` — il n'y a ni `kind` ni `author` dans cette
-  charge utile, quels que soient les noms des champs du modèle.
+  type dans `type` (« doc »), le nom du propriétaire dans `subtitle` et son
+  adresse dans `authorEmail` — il n'y a ni `kind` ni `author` dans cette charge
+  utile, quels que soient les noms des champs du modèle.
 - **L'adresse de l'auteur est conservée à part.** `extraction.py` construit
-  `author` comme `sender.name || sender.email` : le nom l'emporte, et l'adresse
-  était perdue, si bien qu'aucun contact n'était joignable. Un champ
-  `author_email` a donc été ajouté à côté (et une colonne dans
-  `CollaboratorItem`, migration `0003`), pour l'expéditeur d'un mail comme pour
-  le créateur d'un document. `author` est inchangé et
+  `author` comme le nom affiché : l'adresse était perdue, si bien qu'aucun
+  contact n'était joignable. Un champ `author_email` a donc été ajouté à côté
+  (et une colonne dans `CollaboratorItem`, migration `0003`). `author` est
+  inchangé et
   `generation._trimmed()` n'envoie au modèle que `id/title/author/date/content`
   : son entrée est identique au caractère près.
 - **Les sources ne sont pas affichées.** Chaque point généré porte pourtant les
@@ -225,7 +217,7 @@ Ce qu'il faut savoir :
 - **Un résumé vide se génère tout seul, une fois.** Arriver sur une fiche vide
   ne mérite pas un clic : la génération part d'elle-même. Elle ne doit en
   revanche jamais devenir une boucle — la chaîne lit le contenu de chaque
-  document et de chaque mail avant d'appeler le modèle, et l'offre gratuite
+  document avant d'appeler le modèle, et l'offre gratuite
   n'autorise qu'une génération par minute environ, si bien qu'un échec qui
   relance au rendu suivant épuiserait le quota en quelques secondes. D'où
   `autoAttempted` : une seule tentative automatique par personne et par

@@ -1,4 +1,4 @@
-"""Mock stand-ins for docs_client/drive_client/messages_client.
+"""Mock stand-ins for docs_client/drive_client.
 
 Same list_items(session, base_url=...) / get_item(session, item_id, base_url=...)
 signature as the real clients, so views.py can swap them in without any
@@ -33,4 +33,3 @@ class _MockService:
 
 docs_mock = _MockService("docs")
 drive_mock = _MockService("drive")
-messages_mock = _MockService("messages")

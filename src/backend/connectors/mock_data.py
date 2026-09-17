@@ -2,15 +2,15 @@
 
 Shaped to match the real field names each upstream service actually returns
 (checked against their serializers), trimmed to what a handover dossier
-needs: title/subject, who created it, and when.
+needs: title, who created it, and when.
 
 Set DINUM_MOCK_DATASET (in .env) to serve synthetic_data/workspace/*.json
 instead of the small fixture below:
-- "synthetic_handover" -- all 34 items, four projects (Camille Faure,
+- "synthetic_handover" -- all 13 items, four projects (Camille Faure,
   mairie de Sainte-Radegonde). /api/dossier/ completes fine on a free Groq
   tier with this dataset's size.
 - "synthetic_handover_pmr" -- only the "accessibilite-pmr" project (the
-  urgent/collective one, 11 items), for a quick spot check on a single
+  urgent/collective one, 5 items), for a quick spot check on a single
   project instead of the full dataset.
 See synthetic_data/README.md for what's in the dataset and why. Falls back
 to this file's fixture if the dataset/mapping can't be read (e.g. deleted),
@@ -48,36 +48,6 @@ MOCK_DOCS = [
         "created_at": "2026-09-08T16:45:00Z",
         "updated_at": "2026-09-12T09:20:00Z",
         "is_favorite": False,
-    },
-]
-
-MOCK_MESSAGES = [
-    {
-        "id": "m1111111-1111-1111-1111-111111111111",
-        "subject": "Code review - authentication module",
-        "sender": {"name": "Amélie Rousseau", "email": "amelie.rousseau@example.local"},
-        "to": [{"name": "Thomas Lefèvre", "email": "thomas.lefevre@example.local"}],
-        "snippet": "I pushed the changes to feature/auth, can you take a look...",
-        "sent_at": "2026-09-13T17:10:00Z",
-        "is_unread": False,
-    },
-    {
-        "id": "m2222222-2222-2222-2222-222222222222",
-        "subject": "Annual review - scheduling",
-        "sender": {"name": "Karim Belhadj", "email": "karim.belhadj@example.local"},
-        "to": [{"name": "Amélie Rousseau", "email": "amelie.rousseau@example.local"}],
-        "snippet": "Please pick a slot in the shared calendar for...",
-        "sent_at": "2026-09-12T11:00:00Z",
-        "is_unread": True,
-    },
-    {
-        "id": "m3333333-3333-3333-3333-333333333333",
-        "subject": "Q3 progress update",
-        "sender": {"name": "Project Management", "email": "pmo@example.local"},
-        "to": [{"name": "Amélie Rousseau", "email": "amelie.rousseau@example.local"}],
-        "snippet": "Can you send your task status before Friday...",
-        "sent_at": "2026-09-14T08:32:00Z",
-        "is_unread": True,
     },
 ]
 
@@ -129,8 +99,6 @@ if _DATASET in ("synthetic_handover", "synthetic_handover_pmr"):
             MOCK_DOCS = json.load(_f)
         with open(_synthetic_dir / "workspace" / "drive.json", encoding="utf-8") as _f:
             MOCK_DRIVE_ITEMS = json.load(_f)
-        with open(_synthetic_dir / "workspace" / "messages.json", encoding="utf-8") as _f:
-            MOCK_MESSAGES = json.load(_f)
 
         if _DATASET == "synthetic_handover_pmr":
             with open(_synthetic_dir / "evaluation" / "expected_projects.json", encoding="utf-8") as _f:
@@ -138,8 +106,7 @@ if _DATASET in ("synthetic_handover", "synthetic_handover_pmr"):
             _keep = {item_id for item_id, project in _project_of.items() if project == "accessibilite-pmr"}
             MOCK_DOCS = [item for item in MOCK_DOCS if item["id"] in _keep]
             MOCK_DRIVE_ITEMS = [item for item in MOCK_DRIVE_ITEMS if item["id"] in _keep]
-            MOCK_MESSAGES = [item for item in MOCK_MESSAGES if item["id"] in _keep]
     except (OSError, ValueError, KeyError):
         pass  # dataset missing or malformed -- keep the fixture above
 
-BY_SERVICE = {"docs": MOCK_DOCS, "drive": MOCK_DRIVE_ITEMS, "messages": MOCK_MESSAGES}
+BY_SERVICE = {"docs": MOCK_DOCS, "drive": MOCK_DRIVE_ITEMS}

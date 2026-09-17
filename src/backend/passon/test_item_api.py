@@ -25,12 +25,12 @@ UPSTREAM_ITEMS = {
             "source": {"type": "drive", "resource_url": "http://localhost:8071/x/"},
         },
         {
-            "id": "messages:def",
-            "title": "Re: dossier",
+            "id": "docs:def",
+            "title": "Compte rendu",
             "author": "Quelqu'un",
             "date": "2026-09-14T09:00:00Z",
             "content": "Bonjour",
-            "source": {"type": "messages", "resource_url": "http://localhost:8901/y/"},
+            "source": {"type": "docs", "resource_url": "http://localhost:8071/y/"},
         },
     ],
     "errors": {},
@@ -89,18 +89,18 @@ class ItemApiTests(TestCase):
             f"/api/collaborators/{self.employee.id}/items/"
         ).json()
 
-        self.assertEqual({item["title"] for item in body["items"]}, {"note.txt", "Re: dossier"})
+        self.assertEqual({item["title"] for item in body["items"]}, {"note.txt", "Compte rendu"})
         self.assertFalse(body["isOwn"])
         # The snapshot's age is reported, so the interface can show it.
         self.assertIsNotNone(body["fetchedAt"])
 
-    def test_mails_and_documents_keep_their_kind_and_their_link(self):
+    def test_an_item_keeps_its_kind_and_its_link(self):
         self.fetch_own(self.employee)
         body = self.client_for(self.manager).get(
             f"/api/collaborators/{self.employee.id}/items/"
         ).json()
         by_title = {item["title"]: item for item in body["items"]}
-        self.assertEqual(by_title["Re: dossier"]["type"], "mail")
+        self.assertEqual(by_title["Compte rendu"]["type"], "doc")
         self.assertEqual(by_title["note.txt"]["type"], "doc")
         self.assertEqual(by_title["note.txt"]["url"], "http://localhost:8071/x/")
         # The reference the generated handover cites is preserved.
@@ -120,9 +120,9 @@ class ItemApiTests(TestCase):
 
         /api/extraction/items/ answers with the services that worked and lists
         the others in `errors`. Treating that as the complete picture deleted
-        everything the failed service had contributed: Messages unreachable for
-        a minute and every mail vanished from the snapshot, leaving a manager
-        reading documents only with nothing to say why.
+        everything the failed service had contributed: Docs unreachable for a
+        minute and everything written there vanished from the snapshot,
+        leaving a manager reading half a handover with nothing to say why.
         """
         self.fetch_own(self.employee)
         self.assertEqual(
@@ -131,16 +131,16 @@ class ItemApiTests(TestCase):
 
         drive_only = {
             "items": [UPSTREAM_ITEMS["items"][0]],
-            "errors": {"messages": "unreachable"},
+            "errors": {"docs": "unreachable"},
         }
         response = self.fetch_own(self.employee, payload=drive_only)
 
         kept = CollaboratorItem.objects.filter(collaborator=self.employee)
         self.assertEqual(
-            sorted(item.source for item in kept), ["drive", "messages"]
+            sorted(item.source for item in kept), ["docs", "drive"]
         )
         # And the caller is told, rather than shown a quietly shortened list.
-        self.assertEqual(response.json()["errors"], {"messages": "unreachable"})
+        self.assertEqual(response.json()["errors"], {"docs": "unreachable"})
 
     def test_a_refresh_replaces_rather_than_duplicates(self):
         self.fetch_own(self.employee)

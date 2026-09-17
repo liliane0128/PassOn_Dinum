@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import avatar_views, handover_views, item_views, send_views, views
+from . import avatar_views, handover_views, item_views, views
 
 urlpatterns = [
     path("", views.team),
@@ -10,5 +10,4 @@ urlpatterns = [
     path("<uuid:collaborator_id>/avatar/", avatar_views.avatar),
     path("<uuid:collaborator_id>/handover/", handover_views.handover),
     path("<uuid:collaborator_id>/handover/validate/", handover_views.validate),
-    path("<uuid:collaborator_id>/handover/send/", send_views.send),
 ]

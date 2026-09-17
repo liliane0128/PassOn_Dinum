@@ -1,7 +1,7 @@
-"""A collaborator's documents and messages, for them and for their manager.
+"""A collaborator's documents, for them and for their manager.
 
-Drive and Messages answer only for the session they are given, and we hold
-exactly one: the person who logged in. So a manager cannot be shown a
+Drive answers only for the session it is given, and we hold exactly one: the
+person who logged in. So a manager cannot be shown a
 collaborator's files live -- there is no credential to ask with.
 
 What happens instead: when someone lists their own items, the result is
@@ -32,7 +32,7 @@ def _as_json(item):
         "type": item.kind,
         "id": item.reference.split(":", 1)[-1],
         "refId": item.reference,
-        "icon": "mail" if item.kind == CollaboratorItem.Kind.MAIL else "description",
+        "icon": "description",
         "title": item.title,
         "subtitle": item.author or item.source,
         "authorEmail": item.author_email or None,
@@ -53,11 +53,11 @@ def _snapshot(collaborator, items, failed_sources=()):
     Except for a service that just failed. `/api/extraction/items/` answers
     partially on purpose -- one service down still returns the others, with
     the failure listed in `errors` -- and taking that answer as the whole
-    truth deleted everything the failed service had contributed. Messages
-    being briefly unreachable would wipe every mail from the snapshot, and
-    the manager would then read a colleague's handover sources as documents
-    only, with nothing saying why. Those rows are kept until that service
-    answers again.
+    truth deleted everything the failed service had contributed. Drive being
+    briefly unreachable would wipe every document from the snapshot, and the
+    manager would then read a colleague's handover as though they had none,
+    with nothing saying why. Those rows are kept until that service answers
+    again.
     """
     stale = CollaboratorItem.objects.filter(collaborator=collaborator)
     if failed_sources:
@@ -68,11 +68,7 @@ def _snapshot(collaborator, items, failed_sources=()):
             CollaboratorItem(
                 collaborator=collaborator,
                 reference=item.get("id") or "",
-                kind=(
-                    CollaboratorItem.Kind.MAIL
-                    if (item.get("source") or {}).get("type") == "messages"
-                    else CollaboratorItem.Kind.DOCUMENT
-                ),
+                kind=CollaboratorItem.Kind.DOCUMENT,
                 source=(item.get("source") or {}).get("type") or "",
                 title=(item.get("title") or "")[:512],
                 author=(item.get("author") or "")[:255],

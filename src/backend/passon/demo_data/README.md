@@ -7,30 +7,26 @@
 ## English
 
 The handover only means something with material to summarize, and that material
-lives in **Drive** and **Messages**, not in our database — so it does not
-survive wiping either of those stacks. This folder holds it, and
-`manage.py seed_demo` puts it back.
+lives in **Drive**, not in our database — so it does not survive wiping that
+stack. This folder holds it, and `manage.py seed_demo` puts it back.
 
 ```sh
 python manage.py seed_demo --email you@example.test --password ...
 ```
 
-Everything is written **as that person**, through the same APIs their own
-client uses: the documents are uploaded to their Drive, the mails delivered to
-their mailbox through Messages' inbound MTA endpoint. The result is
-indistinguishable from files they uploaded and mail they received — same
-parsing, same threading, same indexing.
+Everything is written **as that person**, through the same API their own
+client uses: the documents are uploaded to their Drive. The result is
+indistinguishable from files they uploaded themselves.
 
-Re-running is safe: a document whose title is already in the Drive, and a mail
-whose subject is already in the mailbox, are skipped. `--skip-drive` and
-`--skip-mails` do one side only. On a deployment that does not read
-mail (`DINUM_ENABLED_SERVICES`), the mails are still delivered but never read,
-so `--skip-mails` is the option that matches; the `shared/` documents below
-are written for exactly that case.
+Re-running is safe: a document whose title is already in the Drive is skipped.
 
-The account must already exist in **both** services' Keycloaks with the same
-password, and its email domain must be autojoin-enabled in Messages — see
-[`../../accounts/README.md`](../../accounts/README.md), which covers both.
+This command used to deliver a set of demo mails as well, through Messages'
+inbound MTA endpoint. Messages was removed from the project and the `mails/`
+folder with it; what mail used to bring — outside correspondents, and the
+blockers only they knew about — is now carried by the shared documents below.
+
+The account must already exist in Drive's Keycloak — see
+[`../../accounts/README.md`](../../accounts/README.md).
 
 ### What the data is
 
@@ -45,12 +41,6 @@ requests.
 | `documents/dossier-adap-accessibilite.md` | blockers (ascenseur, DETR refusée), deadline of 31 October |
 | `documents/suivi-demandes-citoyens-septembre.csv` | a table of dated, per-request deadlines |
 | `documents/procedure-instruction-permis.md` | context and pitfalls, few extractable facts by design |
-| `mails/01-abf.eml` | blocker (avis suspendu) + a decision on materials |
-| `mails/02-juridique.eml` | blocker (vice de procédure) + deadline |
-| `mails/03-prefecture.eml` | hard deadline (31 October, no extension) + action |
-| `mails/04-entreprise.eml` | blocker (rupture fournisseur) + action |
-| `mails/05-adjointe.eml` | decisions from an elected official + two deadlines |
-| `mails/06-sofia.eml` | blocker (trésorier) + a pending action |
 
 They are written so each of the six sections of the generated handover has
 something to find — a summary that comes back with empty sections on this data
@@ -88,8 +78,8 @@ Drive and shares them, read-only, with the colleagues named in its
 
 Ownership is what makes them worth having. A document someone else owns gives
 the handover two things it cannot get from a solo account: a **key contact**,
-since `contactsFromItems()` counts document owners as well as mail senders --
-which matters as mail is on its way out of the product -- and more **points de
+since `contactsFromItems()` reads them off document owners -- the only
+evidence left of who works on what -- and more **points de
 blocage**, because these four documents are written around real obstacles
 rather than around a single person's to-do list.
 
@@ -128,31 +118,29 @@ look as though it came from an actual ministry or préfecture.
 ## Français
 
 Une passation n'a de sens que s'il y a matière à résumer, et cette matière vit
-dans **Drive** et **Messages**, pas dans notre base — elle ne survit donc pas à
-l'effacement de l'une ou l'autre de ces piles. Ce dossier la conserve, et
-`manage.py seed_demo` la remet en place.
+dans **Drive**, pas dans notre base — elle ne survit donc pas à l'effacement
+de cette pile. Ce dossier la conserve, et `manage.py seed_demo` la remet en
+place.
 
 ```sh
 python manage.py seed_demo --email vous@example.test --password ...
 ```
 
-Tout est écrit **au nom de cette personne**, via les mêmes API que son propre
-client : les documents sont déposés dans son Drive, les mails livrés dans sa
-boîte par le point d'entrée MTA de Messages. Le résultat est indiscernable de
-fichiers qu'elle aurait déposés et de mails qu'elle aurait reçus — même analyse,
-même mise en fil de discussion, même indexation.
+Tout est écrit **au nom de cette personne**, via la même API que son propre
+client : les documents sont déposés dans son Drive. Le résultat est
+indiscernable de fichiers qu'elle aurait déposés elle-même.
 
-Relancer la commande ne risque rien : un document dont le titre est déjà dans le
-Drive, un mail dont l'objet est déjà dans la boîte, sont ignorés. `--skip-drive`
-et `--skip-mails` ne traitent qu'un côté. Sur un déploiement qui ne lit pas le mail
-(`DINUM_ENABLED_SERVICES`), les mails sont toujours livrés mais jamais lus :
-`--skip-mails` est alors l'option qui correspond, et les documents de
-`shared/` ci-dessous sont écrits précisément pour ce cas.
+Relancer la commande ne risque rien : un document dont le titre est déjà dans
+le Drive est ignoré.
 
-Le compte doit exister dans les Keycloak des **deux** services avec le même mot
-de passe, et le domaine de son adresse doit être « autojoin » côté Messages —
-voir [`../../accounts/README.md`](../../accounts/README.md), qui couvre les deux
-points.
+Cette commande livrait aussi un jeu de mails de démonstration, par le point
+d'entrée MTA de Messages. Messages a été retiré du projet, et le dossier
+`mails/` avec lui ; ce que le mail apportait — des correspondants extérieurs,
+et les blocages qu'eux seuls connaissaient — est désormais porté par les
+documents partagés ci-dessous.
+
+Le compte doit exister dans le Keycloak de Drive — voir
+[`../../accounts/README.md`](../../accounts/README.md).
 
 ### Ce que contiennent les données
 
@@ -167,12 +155,6 @@ pile de demandes citoyennes.
 | `documents/dossier-adap-accessibilite.md` | blocages (ascenseur, DETR refusée), échéance du 31 octobre |
 | `documents/suivi-demandes-citoyens-septembre.csv` | un tableau d'échéances datées, demande par demande |
 | `documents/procedure-instruction-permis.md` | du contexte et des pièges, volontairement peu de faits extractibles |
-| `mails/01-abf.eml` | blocage (avis suspendu) + une décision sur les matériaux |
-| `mails/02-juridique.eml` | blocage (vice de procédure) + échéance |
-| `mails/03-prefecture.eml` | échéance ferme (31 octobre, sans prorogation) + action |
-| `mails/04-entreprise.eml` | blocage (rupture fournisseur) + action |
-| `mails/05-adjointe.eml` | décisions d'une élue + deux échéances |
-| `mails/06-sofia.eml` | blocage (trésorier) + une action en attente |
 
 Ils sont écrits pour que chacune des six rubriques de la passation générée ait de
 quoi se remplir : un résumé qui revient avec des rubriques vides sur ces
@@ -213,8 +195,8 @@ modifier.
 C'est la propriété qui fait leur intérêt. Un document appartenant à quelqu'un
 d'autre apporte à la passation deux choses qu'un compte isolé ne peut pas
 donner : un **contact clé**, puisque `contactsFromItems()` compte les
-propriétaires de documents autant que les expéditeurs de mails — ce qui compte
-d'autant plus que le mail est appelé à quitter le produit — et davantage de
+propriétaires de documents, seule trace restante de qui travaille sur quoi —
+et davantage de
 **points de blocage**, parce que ces quatre documents sont écrits autour
 d'obstacles réels plutôt qu'autour de la liste de tâches d'une seule personne.
 

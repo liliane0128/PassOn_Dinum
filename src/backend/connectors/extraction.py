@@ -2,8 +2,8 @@
 Extraction pipeline: normalize raw connector data, then extract structured
 handover information with an LLM.
 
-Content fetching note: none of the three services put real body content on
-their list/detail payloads --
+Content fetching note: neither service puts real body content on its
+list/detail payloads --
   - Docs: `excerpt` is always null in practice; the actual text lives in a
     separate base64-encoded Yjs CRDT blob at .../content/ (see
     docs_client.get_content()).
@@ -11,10 +11,6 @@ their list/detail payloads --
     the actual bytes live at .../download/ for files (drive_client.
     download_item()) and there is no single-document "content" for a
     folder at all.
-  - Messages: the list-by-thread payload *does* already carry the body
-    inline, just not under `body`/`excerpt`/`preview` -- it's
-    `textBody[0]["content"]` / `htmlBody[0]["content"]` (JMAP-style), so no
-    extra request is needed there, only the right field path.
 Passing `docs_session` / `drive_session` into normalize_items() below opts
 into fetching real content for docs and drive items (one extra request per
 item). Without a session, content falls back to the metadata field, which
@@ -23,10 +19,9 @@ references (e.g. a quick listing) can skip the sessions and the extra
 requests.
 """
 
-from bs4 import BeautifulSoup
 import requests
 
-from connectors import docs_client, drive_client, messages_client
+from connectors import docs_client, drive_client
 
 
 # ---------------------------------------------------------------------------
@@ -50,8 +45,8 @@ def _extract_author_email(user, directory=None):
     interface needs -- to list a document's owner as a contact worth writing
     to, and to tell whether that owner is the person looking at the page.
 
-    Messages carries a sender's address inline, so the first branch is enough
-    for a mail. Drive does not: its item listing gives a creator's name and
+    Docs carries a creator's address when it has one, so the first branch is
+    enough there. Drive does not: its item listing gives a creator's name and
     id and no address at all, which left a document owner matchable only by
     name and reachable not at all. `directory` closes that gap -- a map of
     user id to address that the caller builds from Drive's user search (see
@@ -149,56 +144,6 @@ def _normalize_drive(item, base_url, session=None, directory=None):
     }
 
 
-def _extract_body_text(item):
-    """Pull plain text out of a JMAP-style message's textBody/htmlBody parts."""
-    for key in ("textBody", "htmlBody"):
-        parts = item.get(key) or []
-        if parts and parts[0].get("content"):
-            return BeautifulSoup(parts[0]["content"], "html.parser").get_text(
-                separator=" ", strip=True
-            )
-    return item.get("snippet") or ""
-
-
-def _normalize_message(item, base_url):
-    """Normalize one Messages email."""
-    sender = item.get("sender") or item.get("from") or {}
-    if isinstance(sender, dict):
-        author = sender.get("name") or sender.get("email") or ""
-        # Kept beside `author`, not folded into it: `author` is what reaches
-        # the model, and its prompt is left exactly as it was. The address is
-        # what the interface needs to list who to write to -- with only a
-        # display name, a correspondent cannot be contacted.
-        author_email = sender.get("email") or ""
-    else:
-        author = str(sender)
-        author_email = ""
-
-    resource_id = str(item.get("id", ""))
-    # Unlike Docs/Drive, Messages has no separate content endpoint -- the
-    # message resource itself already carries htmlBody/textBody, so
-    # content_url and resource_url are genuinely the same URL here, not a
-    # stand-in for a missing one.
-    resource_url = f"{base_url.rstrip('/')}/api/v1.0/messages/{resource_id}/"
-    global_id, source = _make_source("messages", resource_id, resource_url, resource_url)
-
-    return {
-        "id": global_id,
-        "title": item.get("subject") or "",
-        "author": author,
-        "author_email": author_email,
-        "date": (
-            item.get("sent_at")
-            or item.get("received_at")
-            or item.get("date")
-            or item.get("created_at")
-            or ""
-        ),
-        "content": _extract_body_text(item),
-        "source": source,
-    }
-
-
 def _as_list(raw):
     """Handle both paginated {'results': [...]} and plain list responses."""
     if isinstance(raw, dict):
@@ -206,10 +151,9 @@ def _as_list(raw):
     return raw or []
 
 
-def normalize_items(raw_docs, raw_drive, raw_messages,
+def normalize_items(raw_docs, raw_drive,
                     docs_base_url=docs_client.BASE_URL,
                     drive_base_url=drive_client.BASE_URL,
-                    messages_base_url=messages_client.BASE_URL,
                     docs_session=None, drive_session=None,
                     drive_directory=None):
     """
@@ -219,35 +163,32 @@ def normalize_items(raw_docs, raw_drive, raw_messages,
         id       – global id, "{source.type}:{source.resource_id}"; unique
                    even across sources, since raw upstream ids from
                    different services are never guaranteed distinct
-        title    – document title or email subject
-        author   – creator full name or sender name
+        title    – the document's title
+        author   – the creator's full name
         author_email
-                 – the author's address: a mail's sender, or a document's
-                   creator. Separate from `author`, which keeps the display
-                   name: generation._trimmed() sends the model
+                 – the creator's address. Separate from `author`, which
+                   keeps the display name: generation._trimmed() sends the model
                    id/title/author/date/content and nothing else, so this
                    field never reaches it. Drive publishes no address on its
                    items, so for those it is filled from `drive_directory`
                    and is empty without one
-        date     – ISO 8601 string (updated_at / sent_at / …)
+        date     – ISO 8601 string (updated_at / created_at)
         content  – body text (see module docstring for how each source is
                    actually fetched)
         source   – provenance block:
-            type         – "docs" | "drive" | "messages" (matches each
-                           connector module's own name, not an abbreviation)
+            type         – "docs" | "drive" (matches each connector
+                           module's own name, not an abbreviation)
             resource_id  – the raw id from the upstream service
             resource_url – where to look this item up in its native system
-            content_url  – where `content` came from; may differ from
-                           resource_url (Docs/Drive's metadata endpoint
-                           can't return the body at all), may equal it
-                           (Messages, whose one endpoint returns both), or
-                           be None (a Drive folder, which has no
+            content_url  – where `content` came from; differs from
+                           resource_url (neither service's metadata
+                           endpoint can return the body at all), or is
+                           None (a Drive folder, which has no
                            single-resource body of its own)
 
     Pass `docs_session` / `drive_session` (authenticated sessions from
     docs_client.login() / drive_client.login()) to fetch real content for
-    docs and drive items -- one extra request per item. Messages content is
-    already in the list payload, no session needed for it.
+    docs and drive items -- one extra request per item.
 
     `drive_directory` maps a Drive user id to an address (see
     `drive_client.list_users`). Without it, Drive items come back with an
@@ -260,6 +201,4 @@ def normalize_items(raw_docs, raw_drive, raw_messages,
         result.append(
             _normalize_drive(raw, drive_base_url, drive_session, drive_directory)
         )
-    for raw in _as_list(raw_messages):
-        result.append(_normalize_message(raw, messages_base_url))
     return result

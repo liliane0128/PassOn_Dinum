@@ -1,25 +1,23 @@
 import type { Item, StoredContact } from "./handover";
 
 /**
- * Key contacts, read off the mails that were summarized.
+ * Key contacts, read off the documents that were summarized.
  *
  * The generator does not produce contacts -- its prompt does not ask for any --
- * so rather than show an invented list, this counts who the person actually
- * corresponded with, most frequent first. Deriving them here keeps the change
+ * so rather than show an invented list, this counts who owns the documents the
+ * person works with, most frequent first. Deriving them here keeps the change
  * out of the generation code entirely.
  *
- * Documents count too, through whoever owns them. A colleague who shared a
- * dossier is someone the successor will have to deal with, and as mail leaves
- * the product that ownership becomes the only evidence left of who works on
- * what. Their own documents are skipped, though: a list of yourself is not a
+ * Ownership is the whole signal now that the product reads documents only: a
+ * colleague who shared a dossier is someone the successor will have to deal
+ * with. Their own documents are skipped, though: a list of yourself is not a
  * list of contacts.
  *
  * Two fields matter, and they are separate on purpose. `subtitle` is the
- * display name (`extraction.py` builds it as `sender.name || sender.email`, so
- * the name wins whenever there is one), and `authorEmail` is the address the
- * same payload carries alongside it. A sender with no address at all is still
- * listed, keyed by name: dropping them would lose a correspondent the person
- * plainly had.
+ * display name, and `authorEmail` is the address the backend resolved for that
+ * owner (see connectors/README.md -- Drive publishes none of its own). An
+ * owner with no address at all is still listed, keyed by name: dropping them
+ * would lose a colleague the person plainly works with.
  */
 export function contactsFromItems(
   items: Item[],
@@ -28,10 +26,7 @@ export function contactsFromItems(
   /** Their name, for the items that carry no address to match on. */
   excludeName?: string
 ): StoredContact[] {
-  const byKey = new Map<
-    string,
-    { name: string; email: string; mails: number; documents: number }
-  >();
+  const byKey = new Map<string, { name: string; email: string; documents: number }>();
   const own = (excludeEmail || "").trim().toLowerCase();
   const ownName = (excludeName || "").trim().toLowerCase();
 
@@ -50,52 +45,31 @@ export function contactsFromItems(
           : "");
     const name = (angled ? angled[1].trim() : sender) || email.split("@")[0];
 
-    // Nothing of your own belongs in your own contacts -- neither a mail you
-    // sent yourself nor a document you created. The name is checked as well
-    // as the address because an upstream payload may carry only one of the
-    // two, and matching on the address alone let people appear as their own
-    // contact through their own documents.
+    // Nothing of your own belongs in your own contacts. The name is checked
+    // as well as the address because an owner may come back with only one of
+    // the two, and matching on the address alone let people appear as their
+    // own contact through their own documents.
     if (own && email === own) continue;
     if (ownName && !email && name.toLowerCase() === ownName) continue;
 
     const key = email || name.toLowerCase();
     const existing = byKey.get(key);
     if (existing) {
-      if (item.type === "mail") existing.mails += 1;
-      else existing.documents += 1;
+      existing.documents += 1;
       if (!existing.email && email) existing.email = email;
     } else {
-      byKey.set(key, {
-        name,
-        email,
-        mails: item.type === "mail" ? 1 : 0,
-        documents: item.type === "mail" ? 0 : 1,
-      });
+      byKey.set(key, { name, email, documents: 1 });
     }
   }
 
   return [...byKey.values()]
-    .sort(
-      (a, b) =>
-        b.mails + b.documents - (a.mails + a.documents) ||
-        a.name.localeCompare(b.name)
-    )
+    .sort((a, b) => b.documents - a.documents || a.name.localeCompare(b.name))
     .slice(0, 6)
     .map((contact) => ({
       name: contact.name,
       email: contact.email,
-      // What the link actually is, rather than one number covering both:
-      // "3 échanges" about a document owner would be a claim the data does
-      // not support.
-      role: describe(contact.mails, contact.documents),
+      // What the link actually is: how many of the dossiers read belong to
+      // them.
+      role: contact.documents > 1 ? `${contact.documents} dossiers` : "1 dossier",
     }));
-}
-
-function describe(mails: number, documents: number): string {
-  const parts: string[] = [];
-  if (mails) parts.push(mails > 1 ? `${mails} échanges` : "1 échange");
-  if (documents) {
-    parts.push(documents > 1 ? `${documents} dossiers` : "1 dossier");
-  }
-  return parts.join(" · ");
 }

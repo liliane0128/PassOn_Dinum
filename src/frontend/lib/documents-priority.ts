@@ -16,7 +16,7 @@ import type { DocumentAssocie } from "./types";
  *   2. a deadline bullet's date is written in the document's own text.
  *
  * The second rule is what ties "dossier-adap-accessibilite.md" to the 31st of
- * October: the model cited the préfecture's mail as the source of that
+ * October: the model cited the préfecture's note as the source of that
  * deadline -- that is where the fact was stated -- while the date itself
  * appears in the document the deadline is about. A date found in a document
  * *without* a matching deadline is deliberately ignored: a meeting date and a
@@ -125,16 +125,7 @@ export function rankDocuments(
   // upstream: Drive no longer filters its listing to items the person created
   // (drive_client.list_items), so a document shared with them can now be
   // picked like any other.
-  //
-  // Mails are left out: the model is free to cite one under "documents", since
-  // the prompt asks for item ids and a mail is an item, but this section is
-  // headed "Dossiers", shows an owner and offers to transfer it, none of which
-  // means anything for a message.
-  const onlyDocuments = (handover?.documents ?? []).filter(
-    (document) => !document.id.startsWith("messages:")
-  );
-
-  const scored: Scored[] = onlyDocuments.map((document, index) => {
+  const scored: Scored[] = (handover?.documents ?? []).map((document, index) => {
     const item = items.find(
       (candidate) => candidate.refId === document.id || candidate.id === document.id
     );

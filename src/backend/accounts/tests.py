@@ -22,13 +22,8 @@ KEYCLOAK_URL = "http://keycloak.test:8083/realms/drive/protocol/openid-connect/a
 LOGIN_FORM = '<html><form id="kc-form-login" action="http://keycloak.test:8083/login-actions/authenticate?code=1" method="post">'
 USER_PAYLOAD = {"id": "u-1", "email": "someone@drive.test", "full_name": "Some One"}
 
-def _logs_in_everywhere(service, email, password):
-    """Stand-in for a user who exists in both services' Keycloaks."""
-    return f"cookie-{service}", USER_PAYLOAD
-
-
 def _drive_only(service, email, password):
-    """The common case: the account exists in Drive but not in Messages."""
+    """Drive is the only service a login opens a session with."""
     if service != "drive":
         raise oidc_login.LoginFailed("invalid_credentials", 401)
     return "cookie-drive", USER_PAYLOAD
@@ -37,7 +32,6 @@ def _drive_only(service, email, password):
 SERVICES = {
     "drive": {"url": DRIVE_URL, "cookie": "drive_sessionid", "header": "X-Drive-Session"},
     "docs": {"url": "http://docs.test", "cookie": "docs_sessionid", "header": "X-Docs-Session"},
-    "messages": {"url": "http://messages.test", "cookie": "sessionid", "header": "X-Messages-Session"},
 }
 
 
@@ -177,21 +171,21 @@ class LoginViewTests(TestCase):
         )
 
     def test_login_stores_the_credential_and_returns_the_user(self):
-        with mock.patch.object(oidc_login, "login", side_effect=_logs_in_everywhere):
+        with mock.patch.object(oidc_login, "login", side_effect=_drive_only):
             response = self.post_login({"email": "someone@drive.test", "password": "pw"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["user"]["email"], "someone@drive.test")
         self.assertEqual(self.client.session[CREDENTIAL_KEYS["drive"]], "cookie-drive")
 
     def test_the_password_is_never_stored_in_the_session(self):
-        with mock.patch.object(oidc_login, "login", side_effect=_logs_in_everywhere):
+        with mock.patch.object(oidc_login, "login", side_effect=_drive_only):
             self.post_login({"email": "someone@drive.test", "password": "hunter2"})
         self.assertNotIn("hunter2", json.dumps(dict(self.client.session)))
 
     def test_the_session_id_changes_on_login(self):
         self.client.get("/api/auth/me/")
         before = self.client.session.session_key
-        with mock.patch.object(oidc_login, "login", side_effect=_logs_in_everywhere):
+        with mock.patch.object(oidc_login, "login", side_effect=_drive_only):
             self.post_login({"email": "someone@drive.test", "password": "pw"})
         self.assertNotEqual(self.client.session.session_key, before)
 
@@ -220,7 +214,7 @@ class LoginViewTests(TestCase):
         self.assertEqual(self.client.get("/api/auth/me/").status_code, 401)
 
     def test_logout_clears_the_stored_credential(self):
-        with mock.patch.object(oidc_login, "login", side_effect=_logs_in_everywhere):
+        with mock.patch.object(oidc_login, "login", side_effect=_drive_only):
             self.post_login({"email": "someone@drive.test", "password": "pw"})
         csrf = self.client.cookies["csrftoken"].value
         response = self.client.post("/api/auth/logout/", HTTP_X_CSRFTOKEN=csrf)
@@ -260,15 +254,17 @@ class MockModeTests(TestCase):
 
 
 # The suite tests the code, not the operator's current choice of services:
-# DINUM_ENABLED_SERVICES is read from the environment, and a deployment that
-# has dropped mail would otherwise turn every Messages test red.
+# DINUM_ENABLED_SERVICES is read from the environment.
 @override_settings(
     DINUM_SERVICES=SERVICES, DINUM_API_TIMEOUT=1, DINUM_PUBLIC_HOST="localhost",
-    DINUM_USE_MOCK=False, DINUM_ENABLED_SERVICES={"docs", "drive", "messages"},
+    DINUM_USE_MOCK=False, DINUM_ENABLED_SERVICES={"docs", "drive"},
 )
-class MessagesLinkTests(TestCase):
-    """Messages runs its own Keycloak with its own users, so the same
-    credentials may work there or not. Neither outcome may break the login."""
+class LoginSessionTests(TestCase):
+    """What a login stores, and what it reports it can read.
+
+    Drive is the only service it opens a session with: Docs has no login
+    flow of its own, so a caller wanting it still passes a header.
+    """
 
     def post_login(self, side_effect):
         client = Client()
@@ -282,34 +278,7 @@ class MessagesLinkTests(TestCase):
             )
         return client, response
 
-    def test_an_account_in_both_services_gets_both_credentials(self):
-        client, response = self.post_login(_logs_in_everywhere)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(client.session[CREDENTIAL_KEYS["drive"]], "cookie-drive")
-        self.assertEqual(client.session[CREDENTIAL_KEYS["messages"]], "cookie-messages")
-        self.assertEqual(response.json()["services"], {"drive": True, "messages": True})
-
-    def test_an_account_missing_from_messages_still_logs_in(self):
-        client, response = self.post_login(_drive_only)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(client.session[CREDENTIAL_KEYS["drive"]], "cookie-drive")
-        self.assertNotIn(CREDENTIAL_KEYS["messages"], client.session)
-        # The interface can then say why the handover has no mail in it.
-        self.assertEqual(response.json()["services"], {"drive": True, "messages": False})
-
-    def test_messages_being_down_does_not_break_the_login(self):
-        def drive_ok_messages_down(service, email, password):
-            if service == "drive":
-                return "cookie-drive", USER_PAYLOAD
-            raise oidc_login.LoginFailed("messages_unreachable", 502)
-
-        client, response = self.post_login(drive_ok_messages_down)
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn(CREDENTIAL_KEYS["messages"], client.session)
-
-    @override_settings(DINUM_ENABLED_SERVICES={"docs", "drive"})
-    def test_no_messages_session_is_opened_when_mail_is_dropped(self):
-        """Logging in there would leave a session nothing could ever use."""
+    def test_a_drive_login_is_the_whole_login(self):
         asked = []
 
         def record(service, email, password):
@@ -319,8 +288,8 @@ class MessagesLinkTests(TestCase):
         client, response = self.post_login(record)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(asked, ["drive"])
-        self.assertNotIn(CREDENTIAL_KEYS["messages"], client.session)
-        self.assertEqual(response.json()["services"], {"drive": True, "messages": False})
+        self.assertEqual(client.session[CREDENTIAL_KEYS["drive"]], "cookie-drive")
+        self.assertEqual(response.json()["services"], {"drive": True})
 
     def test_a_failed_drive_login_stores_nothing_at_all(self):
         def nothing_works(service, email, password):
@@ -329,7 +298,6 @@ class MessagesLinkTests(TestCase):
         client, response = self.post_login(nothing_works)
         self.assertEqual(response.status_code, 401)
         self.assertNotIn(CREDENTIAL_KEYS["drive"], client.session)
-        self.assertNotIn(CREDENTIAL_KEYS["messages"], client.session)
 
 
 @override_settings(

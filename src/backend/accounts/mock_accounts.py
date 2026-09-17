@@ -1,7 +1,7 @@
 """Stand-in for oidc_login.login() when DINUM_USE_MOCK is on.
 
 The rest of the API already has a mock mode so the app can be run and demoed
-without Docs/Drive/Messages (see connectors/mock_clients.py); login needs the
+without Docs or Drive (see connectors/mock_clients.py); login needs the
 same, otherwise `make up` on its own leaves nobody able to get past the login
 screen.
 

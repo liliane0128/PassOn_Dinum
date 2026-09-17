@@ -7,22 +7,21 @@ from django.core.exceptions import ImproperlyConfigured
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from groq import APIError as GroqAPIError
-from . import docs_client, drive_client, messages_client
+from . import docs_client, drive_client
 from . import generation
 from . import extraction
 from . import mock_clients, mock_data
 from accounts.session import CREDENTIAL_KEYS as LOGIN_CREDENTIAL_KEYS
 from accounts.session import USER_KEY
 
-REAL_CLIENTS = {"docs": docs_client, "drive": drive_client, "messages": messages_client}
+REAL_CLIENTS = {"docs": docs_client, "drive": drive_client}
 MOCK_CLIENTS = {
     "docs": mock_clients.docs_mock,
     "drive": mock_clients.drive_mock,
-    "messages": mock_clients.messages_mock,
 }
 # Which normalize_items() kwarg carries each service's base_url / session.
 _NORMALIZE_BASE_URL_KWARG = {
-    "docs": "docs_base_url", "drive": "drive_base_url", "messages": "messages_base_url",
+    "docs": "docs_base_url", "drive": "drive_base_url",
 }
 _NORMALIZE_SESSION_KWARG = {"docs": "docs_session", "drive": "drive_session"}
 
@@ -57,7 +56,7 @@ def _is_valid_credential(credential):
 def _to_public_url(url):
     """Rewrite an upstream URL so the user's browser can actually follow it.
 
-    Items carry links built from DOCS_URL/DRIVE_URL/MESSAGES_URL, which is how
+    Items carry links built from DOCS_URL and DRIVE_URL, which is how
     *this process* reaches those services -- host.docker.internal from inside a
     container. That name means nothing in a browser, so the host is swapped
     back to the public one before the link leaves the API. Ports and paths are
@@ -91,9 +90,9 @@ def _publicize(items):
 def _session_credential(request, service):
     """The credential our own login flow stored, if it covers this service.
 
-    Logging in walks Drive's OIDC flow, and Messages' too when the account
-    exists there (see accounts/oidc_login.py). Docs has no entry, so it keeps
-    requiring an explicit header or cookie.
+    Logging in walks Drive's OIDC flow and keeps the session it produces (see
+    accounts/oidc_login.py). Docs has no entry, so it keeps requiring an
+    explicit header or cookie.
     """
     key = LOGIN_CREDENTIAL_KEYS.get(service)
     return request.session.get(key) if key else None
@@ -109,13 +108,13 @@ def _credential_for(request, service):
     theirs by construction.
 
     The upstream cookie comes last, and only for a caller who is *not* logged
-    in here. Cookies are not scoped by port -- Messages on localhost:8900 and
+    in here. Cookies are not scoped by port -- Drive on localhost:8071 and
     this app on localhost:8090 share one jar for host "localhost" -- so the
     cookie in a browser belongs to whoever used that service last, not to
     whoever is logged in here. The two are the same person often enough for
     it to look harmless, and different exactly when it matters: someone with
     no account on a service has no credential of their own, so the cookie
-    filled the gap with a colleague's mailbox, and the handover generated
+    filled the gap with a colleague's documents, and the handover generated
     from it was stored under their name.
     """
     config = settings.DINUM_SERVICES[service]
@@ -252,9 +251,9 @@ def _drive_directory(request, session, base_url):
 @require_GET
 def extraction_items(request):
     """GET /api/extraction/items/ -- normalized, LLM-ready items merged
-    across whichever of docs/drive/messages the caller supplied a session
-    for. A service with no credential is skipped (not an error) so a
-    caller only logged into some of the three still gets a result; a
+    across whichever of docs/drive the caller supplied a session for. A
+    service with no credential is skipped (not an error) so a caller only
+    logged into one of the two still gets a result; a
     service whose credential was given but whose upstream call failed
     gets an entry in "errors" instead of aborting the whole request. At
     least one credential is required, unless DINUM_USE_MOCK is set, in
@@ -272,7 +271,6 @@ def extraction_items(request):
         items_out = _publicize(extraction.normalize_items(
             mock_data.MOCK_DOCS if _enabled("docs") else [],
             mock_data.MOCK_DRIVE_ITEMS if _enabled("drive") else [],
-            mock_data.MOCK_MESSAGES if _enabled("messages") else [],
         ))
         response = JsonResponse({"items": items_out, "errors": {}})
         response["Cache-Control"] = "private, no-store"
@@ -314,11 +312,11 @@ def extraction_items(request):
                     normalize_kwargs["drive_directory"] = _drive_directory(
                         request, session, config["url"]
                     )
-                raw_by_service = {"docs": [], "drive": [], "messages": []}
+                raw_by_service = {"docs": [], "drive": []}
                 raw_by_service[service] = raw
 
                 normalized = extraction.normalize_items(
-                    raw_by_service["docs"], raw_by_service["drive"], raw_by_service["messages"],
+                    raw_by_service["docs"], raw_by_service["drive"],
                     **normalize_kwargs,
                 )
             items_out.extend(_publicize(normalized))
@@ -336,7 +334,7 @@ def extraction_items(request):
 
     response = JsonResponse({"items": items_out, "errors": errors})
     response["Cache-Control"] = "private, no-store"
-    response["Vary"] = "Cookie, X-Docs-Session, X-Drive-Session, X-Messages-Session"
+    response["Vary"] = "Cookie, X-Docs-Session, X-Drive-Session"
     return response
 
 
@@ -375,18 +373,17 @@ def dossier(request):
 
     Uses whichever services the caller has a credential for -- header, cookie,
     or the session stored at login -- and skips the others, the same rule
-    /api/extraction/items/ follows. Demanding all three would make the
-    endpoint unusable wherever one of them simply is not deployed, which is
-    the normal case for Docs today. At least one is required, unless
+    /api/extraction/items/ follows. Demanding both would make the endpoint
+    unusable wherever one of them simply is not deployed, which is the normal
+    case for Docs today. At least one is required, unless
     DINUM_USE_MOCK is set, in which case static demo data is used instead and
     no credential is needed.
     """
     sessions = {}
     if settings.DINUM_USE_MOCK:
-        raw_docs, raw_drive, raw_messages = (
+        raw_docs, raw_drive = (
             mock_data.MOCK_DOCS if _enabled("docs") else [],
             mock_data.MOCK_DRIVE_ITEMS if _enabled("drive") else [],
-            mock_data.MOCK_MESSAGES if _enabled("messages") else [],
         )
     else:
         raw = {}
@@ -417,7 +414,7 @@ def dossier(request):
         # branch below rather than being told to log in again.
         if not authenticated:
             return failure("dossier", "authentication_required", 401)
-        raw_docs, raw_drive, raw_messages = raw["docs"], raw["drive"], raw["messages"]
+        raw_docs, raw_drive = raw["docs"], raw["drive"]
 
     # The sessions and base URLs have to be passed through: without them
     # normalize_items() returns metadata only, and the model is asked to write
@@ -431,7 +428,7 @@ def dossier(request):
             normalize_kwargs[_NORMALIZE_SESSION_KWARG[service]] = session
     try:
         items_ = _publicize(
-            extraction.normalize_items(raw_docs, raw_drive, raw_messages, **normalize_kwargs)
+            extraction.normalize_items(raw_docs, raw_drive, **normalize_kwargs)
         )
     finally:
         for open_session in sessions.values():

@@ -2,8 +2,8 @@
  * Client for the Django session API (`src/backend/accounts/`).
  *
  * There is no PassOn account: the backend checks the email and password
- * against the local **Drive**, and tries Messages with the same credentials.
- * Nothing is verified here, and no password is ever stored on this side.
+ * against the local **Drive**. Nothing is verified here, and no password is
+ * ever stored on this side.
  *
  * Everything goes through relative URLs, which is why nginx proxies `/api/`
  * on the same origin as this app (:8091). A session cookie and Django's CSRF
@@ -29,7 +29,7 @@ export interface SessionUser {
 export interface Session {
   user: SessionUser;
   /** Which upstream services this session actually holds a credential for. */
-  services: { drive: boolean; messages: boolean };
+  services: { drive: boolean };
   /** The manager's team; empty for an employee. */
   team: SessionUser[];
 }
@@ -51,7 +51,7 @@ function csrfToken(): string {
 
 /**
  * Local-only bypass for running this app without the Django backend (no
- * Docker, no Drive/Messages) -- set `NEXT_PUBLIC_MOCK_AUTH=true` in a
+ * Docker, no Drive) -- set `NEXT_PUBLIC_MOCK_AUTH=true` in a
  * gitignored `.env.local` to turn it on for yourself only. Everyone else,
  * and any real build, keeps talking to the real `/api/auth/` endpoints.
  */
@@ -73,7 +73,7 @@ const MOCK_USER: SessionUser = {
 
 const MOCK_SESSION: Session = {
   user: MOCK_USER,
-  services: { drive: true, messages: true },
+  services: { drive: true },
   team: [],
 };
 

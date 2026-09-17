@@ -15,19 +15,14 @@ whether that combination is right, and if it is, they are logged into our app.
 Nothing about a user is stored here: no account, no password, not even a copy
 of one.
 
-The same credentials are then tried against **Messages**, which runs its own
-Keycloak with its own user list. That attempt is best-effort: it never blocks
-the login. A user who exists only in Drive is logged in all the same and simply
-gets no mail in their handover, and the `services` field in the response says
-which ones answered, so the interface can explain a partial result instead of
-silently showing less.
+Drive is the only service a login opens a session with. The `services` field
+in the response says which upstreams this session can read, so the interface
+can explain a partial result instead of silently showing less.
 
-That second login is skipped entirely when the deployment does not read mail
-(`DINUM_ENABLED_SERVICES`, see
-[connectors](../connectors/README.md#which-services-are-read-dinum_enabled_services)):
-opening a Messages session that nothing will ever read would only cost a second
-OIDC walk on every login. `services.messages` then comes back `false`, exactly
-as it does for an account Messages has never heard of.
+A second login used to run against **Messages**, which had its own Keycloak
+and its own user list, on a best-effort basis. Messages has been removed from
+the project, so that walk is gone and with it the second OIDC round trip every
+login paid for it.
 
 The check is not a yes/no question we can ask these services, because Drive does not
 verify passwords itself — it delegates to **Keycloak** (OIDC), and the Keycloak
@@ -61,13 +56,13 @@ invent.
 
 | Route | Method | Answers |
 | --- | --- | --- |
-| `/api/auth/login/` | POST | `200 {"user": {...}, "services": {"drive": true, "messages": false}}`, or `401 {"error": "invalid_credentials"}` |
+| `/api/auth/login/` | POST | `200 {"user": {...}, "services": {"drive": true}}`, or `401 {"error": "invalid_credentials"}` |
 | `/api/auth/logout/` | POST | `200 {}` — always |
 | `/api/auth/me/` | GET | `200 {"user": {...}, "services": {...}}` or `401 {"error": "not_authenticated"}` |
 
 `services` reports which upstreams this session holds a credential for. Drive
-decides the login; a `false` for Messages means the account does not exist in
-its Keycloak, or Messages is not running.
+decides the login, and is the only entry there: Docs has no login flow, so a
+caller wanting it still passes `X-Docs-Session` itself.
 
 Login also answers `400 invalid_request` for a malformed body, `502
 drive_unreachable` / `unexpected_response` when Drive cannot be reached or does
@@ -128,12 +123,6 @@ DINUM_USE_MOCK=false
 Log in with a user of Drive's Keycloak realm — `drive@drive.world` / `drive`,
 `paige.turner@library.book` / `pass` (see `drive/docker/auth/realm.json`).
 
-**For mail as well**, the same address and password must also exist in
-Messages' own Keycloak (`messages/src/keycloak/realm.json`, seeded with
-`user1@example.local` … `user3@example.local` — no overlap with Drive's). Create
-the account there with the same email and password, and one login covers both;
-otherwise `services.messages` stays `false` and the handover has no mail in it.
-
 Sessions are stored in postgres, so the migrations must have run. The
 container's entrypoint does that on every start, whichever way the project is
 launched (`make up` or `make run` — both select services from the single
@@ -154,8 +143,8 @@ Keycloak a `redirect_uri` of `http://host.docker.internal:8071/...`, which is
 not among the client's registered URIs, and Keycloak answers *"Invalid
 parameter: redirect_uri"*. Every request consequently goes to `DRIVE_URL`'s
 host while presenting `DINUM_PUBLIC_HOST` (default `localhost`) in its `Host`
-header. The same applies to Messages, which is why one function serves both. On a machine where Django runs outside Docker both are `localhost` and
-none of this does anything.
+header. On a machine where Django runs outside Docker the two are the same
+`localhost` and none of this does anything.
 
 **Neither a 200 nor a session cookie means the login worked.** A wrong password
 makes Keycloak answer `200` with the login form rendered again, and Drive sets
@@ -189,19 +178,15 @@ combinaison est bonne, et si oui la personne est connectée à notre application
 Rien n'est stocké ici d'un utilisateur : ni compte, ni mot de passe, ni même une
 copie.
 
-Les mêmes identifiants sont ensuite essayés sur **Messages**, qui fait tourner
-son propre Keycloak avec sa propre liste d'utilisateurs. Cette tentative est au
-mieux : elle ne bloque jamais la connexion. Quelqu'un qui n'existe que dans Drive
-se connecte quand même, et n'a simplement pas ses mails dans sa passation ; le
-champ `services` de la réponse dit lesquels ont répondu, pour que l'interface
-puisse expliquer un résultat partiel au lieu d'en montrer moins sans rien dire.
+Drive est le seul service avec lequel une connexion ouvre une session. Le champ
+`services` de la réponse dit quels services cette session peut lire, pour que
+l'interface puisse expliquer un résultat partiel au lieu d'en montrer moins
+sans rien dire.
 
-Cette seconde connexion est purement et simplement sautée lorsque le
-déploiement ne lit pas le mail (`DINUM_ENABLED_SERVICES`, voir
-[connectors](../connectors/README.md#quels-services-sont-lus--dinum_enabled_services))
-: ouvrir une session Messages que rien n'ira lire ne coûterait qu'un parcours
-OIDC de plus à chaque connexion. `services.messages` revient alors à `false`,
-exactement comme pour un compte que Messages ne connaît pas.
+Une seconde connexion visait autrefois **Messages**, qui avait son propre
+Keycloak et sa propre liste d'utilisateurs, au mieux. Messages a été retiré du
+projet : ce parcours a disparu, et avec lui le second aller-retour OIDC que
+chaque connexion lui payait.
 
 La vérification n'est pas une question oui/non que l'on puisse poser à ces
 services : Drive ne vérifie pas les mots de passe lui-même, il délègue à
@@ -236,13 +221,14 @@ nous inventerions.
 
 | Route | Méthode | Réponses |
 | --- | --- | --- |
-| `/api/auth/login/` | POST | `200 {"user": {...}, "services": {"drive": true, "messages": false}}`, ou `401 {"error": "invalid_credentials"}` |
+| `/api/auth/login/` | POST | `200 {"user": {...}, "services": {"drive": true}}`, ou `401 {"error": "invalid_credentials"}` |
 | `/api/auth/logout/` | POST | `200 {}` — toujours |
 | `/api/auth/me/` | GET | `200 {"user": {...}, "services": {...}}` ou `401 {"error": "not_authenticated"}` |
 
 `services` indique pour quels services la session détient un identifiant. C'est
-Drive qui décide de la connexion ; un `false` pour Messages signifie que le
-compte n'existe pas dans son Keycloak, ou que Messages ne tourne pas.
+Drive qui décide de la connexion, et c'est la seule entrée : Docs n'a pas de
+parcours de connexion, si bien qu'un appelant qui le veut fournit toujours
+`X-Docs-Session` lui-même.
 
 La connexion répond aussi `400 invalid_request` pour un corps malformé,
 `502 drive_unreachable` / `unexpected_response` quand Drive est injoignable ou se
@@ -306,13 +292,6 @@ Se connecter avec un utilisateur du realm Keycloak de Drive —
 `drive@drive.world` / `drive`, `paige.turner@library.book` / `pass` (voir
 `drive/docker/auth/realm.json`).
 
-**Pour avoir aussi les mails**, la même adresse et le même mot de passe doivent
-exister dans le Keycloak de Messages (`messages/src/keycloak/realm.json`,
-initialisé avec `user1@example.local` … `user3@example.local` — aucun recouvrement
-avec ceux de Drive). Créez le compte là-bas avec les mêmes identifiants et une
-seule connexion couvre les deux ; sinon `services.messages` reste `false` et la
-passation ne contient aucun mail.
-
 Les sessions sont stockées dans postgres : les migrations doivent donc avoir été
 appliquées. Le point d'entrée du conteneur s'en charge à chaque démarrage, quelle
 que soit la façon de lancer le projet (`make up` ou `make run` sélectionnent des
@@ -334,10 +313,9 @@ lui fait donc fabriquer un `redirect_uri` en
 `http://host.docker.internal:8071/...`, qui ne figure pas parmi les URI
 enregistrées du client, et Keycloak répond *« Invalid parameter: redirect_uri »*.
 Chaque requête part donc vers l'hôte de `DRIVE_URL` tout en annonçant
-`DINUM_PUBLIC_HOST` (`localhost` par défaut) dans son en-tête `Host`. Il en va de
-même pour Messages, d'où une seule fonction pour les deux. Sur une machine où
-Django tourne hors Docker, les deux sont `localhost` et rien de tout cela n'a
-d'effet.
+`DINUM_PUBLIC_HOST` (`localhost` par défaut) dans son en-tête `Host`. Sur une
+machine où Django tourne hors Docker, les deux sont `localhost` et rien de
+tout cela n'a d'effet.
 
 **Ni un 200 ni un cookie de session ne prouvent que la connexion a réussi.** Un
 mauvais mot de passe fait répondre `200` à Keycloak, avec le formulaire réaffiché,

@@ -146,36 +146,33 @@ MAILERS = {
 # Credentials are supplied per request, never taken from shared demo accounts.
 DINUM_API_TIMEOUT = float(os.getenv("DINUM_API_TIMEOUT", "10"))
 # When true, /api/<service>/items/ returns static demo data instead of calling
-# the upstream service. Useful when Docs/Drive/Messages aren't running locally.
+# the upstream service. Useful when Docs and Drive aren't running locally.
 DINUM_USE_MOCK = os.getenv("DINUM_USE_MOCK", "false").lower() == "true"
 DINUM_SERVICES = {
     "docs": {"url": os.getenv("DOCS_URL", "http://localhost:8071").rstrip("/"), "cookie": "docs_sessionid", "header": "X-Docs-Session"},
     "drive": {"url": os.getenv("DRIVE_URL", "http://localhost:8071").rstrip("/"), "cookie": "drive_sessionid", "header": "X-Drive-Session"},
-    "messages": {"url": os.getenv("MESSAGES_URL", "http://localhost:8901").rstrip("/"), "cookie": os.getenv("MESSAGES_SESSION_COOKIE", "sessionid"), "header": "X-Messages-Session"},
 }
 
 
-# Which of the three upstream services this deployment actually reads.
+# Which upstream services this deployment actually reads.
 #
 # Dropping one is a configuration change, not a code change: everything that
-# talks to a service stays in place and simply goes unused, so a decision to
-# stop reading mail can be tried out and reversed by editing one line. Setting
-# it back to "docs,drive,messages" restores mail everywhere at once -- the
-# item routes, the merged extraction, the generated handover, the login that
-# opens a Messages session, and sending a handover by mail.
+# talks to it stays in place and simply goes unused. Docs is the one this
+# matters for in practice -- it is often not deployed, and a deployment that
+# only has Drive should not have to answer for it.
 #
 # A service left out is not an error anywhere: its items are absent, its
 # per-service routes answer 404, and no credential is asked for it.
 DINUM_ENABLED_SERVICES = {
     name.strip().lower()
-    for name in os.getenv("DINUM_ENABLED_SERVICES", "docs,drive,messages").split(",")
+    for name in os.getenv("DINUM_ENABLED_SERVICES", "docs,drive").split(",")
     if name.strip()
 }
 
 # Host that the services and their Keycloaks know each other by. Login walks
 # each service's OIDC redirect chain (accounts/oidc_login.py), and the URLs in
 # it -- including the redirect_uri Keycloak validates -- are built from the
-# host the caller presents. DOCS_URL/DRIVE_URL/MESSAGES_URL say where to
+# host the caller presents. DOCS_URL/DRIVE_URL say where to
 # *reach* each service (host.docker.internal from a container); this says which
 # host to *claim* while doing so.
 DINUM_PUBLIC_HOST = os.getenv("DINUM_PUBLIC_HOST", "localhost")

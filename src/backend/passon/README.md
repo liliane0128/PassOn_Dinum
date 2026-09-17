@@ -9,7 +9,7 @@
 
 ### What this app is for
 
-Identity lives in **Drive** (and Messages): people log in with those accounts,
+Identity lives in **Drive**: people log in with those accounts,
 and no password is ever stored here — see [`../accounts/README.md`](../accounts/README.md).
 This app stores the two things those services do not know:
 
@@ -60,22 +60,22 @@ the interface does that today.
 **`sections` is JSON.** It holds the six structured lists the interface shows
 (actions, décisions, deadlines, blocages, contacts, documents). They are always
 read and written together, their shape is still moving, and the documents in
-them are references to items that live in Drive and Messages
+them are references to items that live in Drive and Docs
 (`{"id": "drive:<uuid>", "title": ..., "url": ...}`), not rows of ours. Six
 tables would buy integrity we do not need yet and would have to be reshaped
 every time the prompt changes.
 
 ### What is deliberately not here
 
-- **No `Content` table.** Items are fetched live from Drive and Messages by
+- **No `Content` table.** Items are fetched live from Drive and Docs by
   `connectors/` and already carry their real ids and URLs. Storing copies would
   mean owning a cache with no invalidation story — when to re-sync, what to do
   about deleted files. The references a handover actually cites live in
   `sections`.
-- **No record of shares.** Sending a handover by mail goes out through
-  Messages (`…/handover/send/`) and is not recorded here. A small
-  `HandoverShare(handover, recipient, sent_at)` would cover "sent to X on Y"
-  the day that trace is wanted; nothing depends on it today.
+- **No way to send a sheet.** A handover used to be mailable through Messages
+  (`…/handover/send/`); that route went with the Messages connector, and
+  nothing replaced it. Whoever adds a way to hand a sheet on will also want
+  `HandoverShare(handover, recipient, sent_at)`, which never existed either.
 - **No passwords, no `AUTH_USER_MODEL`.** Keycloak owns authentication. The
   default `auth.User` stays as the admin login; this app holds domain data.
 
@@ -90,7 +90,7 @@ every time the prompt changes.
   longer decides anything from mock data.
 - **`/api/collaborators/`** lets a manager search, attach and detach team
   members; **`/api/collaborators/<id>/handover/`** reads, edits and validates a
-  sheet; **`…/handover/send/`** mails it.
+  sheet.
 - **`manage.py set_role <email> manager|employee`** is how a manager account
   comes to exist, since nothing in the interface grants a role.
 
@@ -101,7 +101,7 @@ except the Django admin.
 ### Demo data
 
 The upstream services hold what the handover is generated from, so a wiped
-Drive or Messages leaves the app with nothing to summarize.
+Drive leaves the app with nothing to summarize.
 `manage.py seed_demo` rebuilds that material — see
 [`demo_data/README.md`](demo_data/README.md).
 
@@ -122,7 +122,7 @@ break.
 
 ### À quoi sert cette application Django
 
-L'identité vit dans **Drive** (et Messages) : on se connecte avec ces comptes, et
+L'identité vit dans **Drive** : on se connecte avec ces comptes, et
 aucun mot de passe n'est stocké ici — voir [`../accounts/README.md`](../accounts/README.md).
 Cette application stocke les deux choses que ces services ignorent :
 
@@ -175,23 +175,25 @@ sa passation, mais rien dans l'interface ne le fait aujourd'hui.
 qu'affiche l'interface (actions, décisions, échéances, blocages, contacts,
 documents). Elles sont toujours lues et écrites ensemble, leur forme bouge
 encore, et les documents qu'elles citent sont des références à des éléments qui
-vivent dans Drive et Messages (`{"id": "drive:<uuid>", "title": ..., "url": ...}`),
+vivent dans Drive et Docs (`{"id": "drive:<uuid>", "title": ..., "url": ...}`),
 pas des lignes à nous. Six tables achèteraient une intégrité dont nous n'avons pas
 besoin et qu'il faudrait remodeler à chaque évolution de l'invite.
 
 ### Ce qui n'y est délibérément pas
 
 - **Pas de table `Content`.** Les éléments sont lus en direct dans Drive et
-  Messages par `connectors/` et portent déjà leurs vrais identifiants et URL. En
+  Docs par `connectors/` et portent déjà leurs vrais identifiants et URL. En
   stocker des copies reviendrait à tenir un cache sans stratégie d'invalidation —
   quand resynchroniser, que faire des fichiers supprimés. Les références qu'une
   passation cite vraiment vivent dans `sections`. *(Une exception assumée existe
   depuis : `CollaboratorItem`, la photo qui permet à un manager de voir les
   documents d'un collaborateur ; voir `item_views.py`.)*
-- **Pas de trace des envois.** L'envoi d'une passation par mail passe par
-  Messages (`…/handover/send/`) et n'est pas enregistré ici. Un petit
-  `HandoverShare(handover, recipient, sent_at)` couvrirait « envoyé à X le Y » le
-  jour où cette trace sera voulue ; rien n'en dépend aujourd'hui.
+- **Pas de moyen d'envoyer une fiche.** Une passation pouvait être envoyée par
+  mail via Messages (`…/handover/send/`) ; cette route est partie avec le
+  connecteur Messages, et rien ne l'a remplacée. Qui ajoutera un moyen de
+  transmettre une fiche voudra aussi un petit
+  `HandoverShare(handover, recipient, sent_at)`, qui n'a jamais existé non
+  plus, pour couvrir « envoyé à X le Y ».
 - **Pas de mots de passe, pas d'`AUTH_USER_MODEL`.** Keycloak gère
   l'authentification. Le `auth.User` par défaut reste la connexion à l'admin ;
   cette application porte les données métier.
@@ -207,7 +209,7 @@ besoin et qu'il faudrait remodeler à chaque évolution de l'invite.
   valeurs — elle ne décide plus rien à partir de données mockées.
 - **`/api/collaborators/`** permet à un manager de chercher, rattacher et
   détacher des membres ; **`/api/collaborators/<id>/handover/`** lit, modifie et
-  valide une passation ; **`…/handover/send/`** l'envoie par mail.
+  valide une passation.
 - **`manage.py set_role <email> manager|employee`** est ce qui crée un compte
   manager, puisque rien dans l'interface n'attribue de rôle.
 
@@ -218,7 +220,7 @@ dehors de l'admin Django.
 ### Données de démonstration
 
 Ce sont les services de La Suite qui détiennent la matière à résumer : un Drive
-ou un Messages effacé laisse l'application sans rien à résumer.
+effacé laisse l'application les mains vides.
 `manage.py seed_demo` reconstitue cette matière — voir
 [`demo_data/README.md`](demo_data/README.md).
 

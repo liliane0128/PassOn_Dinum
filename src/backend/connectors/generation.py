@@ -50,12 +50,12 @@ from groq import Groq
 
 SYSTEM_PROMPT = """\
 You are an assistant that writes a handover summary for a colleague who is \
-away, from raw items (documents, files, emails) automatically extracted from \
+away, from raw items (documents, files) automatically extracted from \
 several internal tools.
 
 You are given a JSON list of items, each with the fields: id, title, author, \
-date, content, and source (an object with fields type -- "docs" | "drive" | \
-"messages" --, resource_id, resource_url, content_url).
+date, content, and source (an object with fields type -- "docs" | "drive" \
+--, resource_id, resource_url, content_url).
 
 Respond with a single JSON object with exactly these fields:
 - "text": a short prose paragraph (2-4 sentences) summarizing the overall \
@@ -80,7 +80,7 @@ not include a hypothetical future consequence that hasn't happened (e.g. \
 "the dossier might be incomplete by the deadline" is not a blocker unless \
 an item actually states it is incomplete today).
 - "documents": array of item "id" strings (verbatim, e.g. "docs:b8eb2e3a-...") \
--- the documents, files, or emails that matter most for this handover.
+-- the documents and files that matter most for this handover.
 
 Every "label" must be a short, clear sentence, in French. Only include an \
 item in a category if its content clearly fits there (do not force a \
@@ -105,9 +105,9 @@ surrounding code block, no markdown.
 # Each item's content is capped before it reaches the model. Groq's ceiling
 # counts the prompt *and* the answer against the same per-minute budget, so an
 # oversized prompt either gets refused outright (413) or leaves too little room
-# for the JSON, which then comes back truncated and unparseable. A real mailbox
-# of a dozen items blows past it, so without a cap the endpoint works only on
-# toy data. The beginning of a document is also where its subject, decisions
+# for the JSON, which then comes back truncated and unparseable. A real Drive
+# of a dozen documents blows past it, so without a cap the endpoint works only
+# on toy data. The beginning of a document is also where its subject, decisions
 # and dates almost always are; what gets cut is the tail.
 MAX_CONTENT_CHARS = 320
 TRUNCATION_MARKER = "\n[...] (contenu tronqué)"
@@ -195,7 +195,7 @@ BULLET_FIELDS = ("actions", "decisions", "deadlines", "blockers")
 # trusted `items` generate_dossier() was called with), so it isn't billed
 # against the per-minute token budget -- only served once to the frontend as
 # ordinary JSON. Generous enough that "see the original text" usually means
-# the whole point of a short item (an email, a note), not just its opening.
+# the whole point of a short item (a note, a memo), not just its opening.
 EVIDENCE_PREVIEW_CHARS = 600
 
 

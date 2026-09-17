@@ -6,11 +6,9 @@ check produced, plus the identity Drive reported. connectors/views.py falls
 back to those stored cookies, so a logged-in user's documents can be read
 without the frontend ever handling a session value.
 
-Drive is the service that decides whether the login succeeds. Messages runs a
-separate Keycloak with its own user list, so the same credentials are tried
-there as well but on a best-effort basis: a user who exists only in Drive still
-logs in, and simply gets no mail in their handover. `services` in the response
-says which ones answered, so the interface can explain a partial result rather
+Drive is the service that decides whether the login succeeds, and the only one
+a login opens a session with. `services` in the response says which services
+this session can read, so the interface can explain a partial result rather
 than silently showing less.
 """
 
@@ -79,19 +77,6 @@ def login(request):
     request.session.cycle_key()
     request.session[CREDENTIAL_KEYS["drive"]] = credential
     request.session[USER_KEY] = _public_user(user)
-
-    # Best effort, never fatal: the account may not exist in Messages' own
-    # Keycloak, or Messages may not be running at all -- and this deployment
-    # may not read mail in the first place (DINUM_ENABLED_SERVICES), in which
-    # case logging in there would open a session nothing would ever use.
-    if "messages" in settings.DINUM_ENABLED_SERVICES:
-        try:
-            messages_credential, _ = backend.login("messages", email, password)
-            request.session[CREDENTIAL_KEYS["messages"]] = messages_credential
-        except oidc_login.LoginFailed:
-            request.session.pop(CREDENTIAL_KEYS["messages"], None)
-    else:
-        request.session.pop(CREDENTIAL_KEYS["messages"], None)
 
     user = request.session[USER_KEY]
     return JsonResponse(
