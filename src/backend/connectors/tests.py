@@ -2,7 +2,7 @@ import json, requests
 from unittest import mock
 from unittest.mock import patch
 
-from accounts.session import CREDENTIAL_KEYS
+from accounts.session import CREDENTIAL_KEYS, USER_KEY
 from django.test import Client, TestCase, SimpleTestCase, override_settings
 
 def upstream(data, status=200):
@@ -192,6 +192,36 @@ class DossierFailurePathTests(TestCase):
 
 
 class CredentialPrecedenceTests(TestCase):
+    @patch('connectors.extraction.normalize_items')
+    @patch('connectors.drive_client.list_items')
+    @patch('connectors.messages_client.list_items')
+    def test_a_logged_in_caller_never_borrows_a_cookie(
+        self, messages_list, drive_list, normalize_items
+    ):
+        """The case the first fix missed.
+
+        Someone logged in here who has no account on a service has no
+        credential of their own for it -- and the browser's cookie for that
+        service belongs to whoever used it last. Falling back to it gave a
+        demo profile with an empty Drive a dashboard full of somebody else's
+        mail, stored under their own name.
+        """
+        drive_list.return_value = []
+        normalize_items.return_value = []
+
+        session = self.client.session
+        session[USER_KEY] = {'id': 'whoever', 'email': 'ines@example.test'}
+        session['drive_session'] = 'her-own-drive'
+        session.save()
+        self.client.cookies['st_messages_sessionid'] = 'someone-else-s-mailbox'
+
+        result = self.client.get('/api/extraction/items/')
+
+        self.assertEqual(result.status_code, 200)
+        # Her own Drive is read; the mailbox behind that cookie is not.
+        drive_list.assert_called_once()
+        messages_list.assert_not_called()
+
     @patch('connectors.extraction.normalize_items')
     @patch('connectors.drive_client.list_items')
     def test_the_caller_s_own_session_beats_a_stray_cookie(self, list_items, normalize_items):
