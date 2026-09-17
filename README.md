@@ -15,7 +15,7 @@
   <a href="src/backend/connectors/README.md">Connectors</a> ·
   <a href="src/backend/accounts/README.md">Accounts</a> ·
   <a href="src/backend/passon/README.md">Schema</a> ·
-  <a href="docs/deploiement.md">Deployment</a>
+  <a href="docs/DEPLOYEMENT.md">Deployment</a>
 </p>
 
 # PassOn: Handover Assistant

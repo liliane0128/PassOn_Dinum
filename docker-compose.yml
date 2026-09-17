@@ -13,7 +13,7 @@ services:
   web:
     build: ./src/backend
     container_name: passon_web
-    # No command override: the image's entrypoint migrates, then serves.
+    # The image's entrypoint migrates, then serves.
     # Sessions (used by the login flow) live in the database, so those tables
     # have to exist before the first request.
     # Bound to 127.0.0.1 for `make run`, which serves the API without nginx.
@@ -26,9 +26,7 @@ services:
     # Only the database credentials are set here. Everything else
     # (DOCS_URL, DINUM_USE_MOCK, GROQ_API_KEY...) stays in src/backend/.env,
     # which settings.py loads through the mount above -- compose-level
-    # variables would silently win over that file. These four have no entry
-    # there, so there is nothing to override; they come from the repository
-    # root's .env (see template.env).
+    # variables would silently win over that file. The .env file is located in src/backend/.env.
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
