@@ -1,40 +1,44 @@
 
-##########################
-# PROJECT NAME : PASS'ON #
-##########################
+##################################################################################
+#                             PROJECT NAME : PASS'ON                             #
+##################################################################################
+# The single docker-compose.yml, at the repository root: one database,           #
+# whichever way the project is started.                                          #
+#                                                                                #
+#   make          API only -- Postgres + Django on http://localhost:8000         #
+#   make up       full app -- nginx + frontend + Django on http://localhost:8090 #
+#                                                                                #
+# `make run` boots only postgres and web. `make up` adds nginx, which serves     #
+# the built frontend and forwards /api/ to Django: the interface and the API     #
+# share an origin, so the session cookie survives and login works. Hitting       #
+# Django directly on :8000 does not give you that. See src/server/README.md.     #
+##################################################################################
 
-# A single docker-compose.yml, at the root: a single database, regardless
-# of how the project is launched.
-#
-#   make          (= make run)  API only, Django on http://localhost:8000
-#   make up                     full application on http://localhost:8090
-#
-# `make up` compiles the frontend and serves it behind nginx, which forwards /api/
-# to Django: this is the only way to log in from the interface (same
-# origin, session cookies). See src/server/README.md.
+NAME := Pass'On
 
 all: run
 
-# --- API only (postgres + Django, without nginx or frontend) ---
-run: src/backend/.env
-	@docker compose up -d --build postgres web
-	@firefox http://localhost:8000 &
-build:
-	@docker compose build
-stop: down
-
-# --- Full application: nginx + compiled frontend + Django + postgres ---
-up: src/backend/.env
-	docker compose up -d --build
-	@echo "$(NAME) run on http://localhost:8090"
-down:
-	docker compose down
-logs:
-	docker compose logs -f
-
 # Initialized a default .env file if needed
 src/backend/.env:
-	cp src/backend/.env.example $@
-	@echo "src/backend/.env has been created from the .env.example (mode mock)."
+	@printf "\e[0;33m[?] $@ doesnt exist, using the $@.example file\e[0m\n"
+	@cp src/backend/.env.example $@
 
-.PHONY: all run build stop up down logs
+# --- Full application: NGINX + compiled frontend + Django + Postgres ---
+up: src/backend/.env
+	@printf "\e[0;32m[+] Launching every containers\e[0m\n"
+	@docker compose --env-file src/backend/.env up -d --build
+	@printf "\e[0;32m[+] $(NAME) is now running on http://localhost:8090\e[0m\n"
+down:
+	@printf "\e[0;32m[+] Shutting down every containers\e[0m\n"
+	@docker compose down
+
+# --- API only (postgres + Django, without nginx and frontend) ---
+run: src/backend/.env
+	@printf "\e[0;32m[+] Launching Postgres and Django containers\e[0m\n"
+	@docker compose --env-file src/backend/.env up -d --build postgres web
+build:
+	@printf "\e[0;32m[+] Building containers\e[0m\n"
+	@docker compose src/backend/.env build
+stop: down
+
+.PHONY: all run stop build up down

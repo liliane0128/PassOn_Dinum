@@ -7,7 +7,7 @@
 # Both select services from this file, so either way it is the same postgres
 # and the same data.
 
-name: PASSON
+name: Pass On
 
 services:
   web:
@@ -19,8 +19,8 @@ services:
     # Bound to 127.0.0.1 for `make run`, which serves the API without nginx.
     # With the full stack the browser still goes through http://localhost:8090,
     # where the app and the API share one origin; :8000 is for curl and tests.
-    ports:
-      - "127.0.0.1:8000:8000"
+    #ports:
+    #  - "127.0.0.1:8000:8000"
     volumes:
       - ./src/backend:/app
     # Only the database credentials are set here. Everything else
@@ -39,6 +39,7 @@ services:
       # is an installed app: a model edited without `makemigrations` is picked
       # up here. Set it to 0 to be told about the drift instead.
       DJANGO_AUTO_MIGRATE: ${DJANGO_AUTO_MIGRATE:-1}
+    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -53,10 +54,6 @@ services:
     image: postgres:16-alpine
     container_name: passon_postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-db}
     volumes:
       - passon-db:/var/lib/postgresql/data
     healthcheck:
@@ -65,23 +62,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # The Next.js app (src/passon-frontend) container: the dashboard, the login page, the
+  # team listing and the handover page.
   frontend:
     build:
       context: .
       dockerfile: src/frontend/Dockerfile
     container_name: passon_frontend
+    restart: unless-stopped
     depends_on:
       - web
 
+  # The single entry point for Pass'on: serves the static homepage from disk
+  # and proxies everything else -- /api/ and /admin/ to Django, /dashboard,
+  # /login, /equipe, /gerer-ma-passation, /logo/ and /_next/ to the Next app.
+  # Same origin for all of them, so the frontend calls /api/... with no CORS
+  # setup and no second port.
   nginx:
     build:
       context: .
       dockerfile: src/server/Dockerfile
     container_name: passon_nginx
+    restart: unless-stopped
     ports:
-      # The only published port: the landing page, the application and the API
-      # all answer here. 8091 used to carry a second site while the new
-      # frontend was being built beside the old one; nothing listens there now.
+      # Public port of the app
       - "8090:8090"
     depends_on:
       - web
