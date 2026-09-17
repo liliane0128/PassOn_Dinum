@@ -105,6 +105,11 @@
 
           <div class="feature__panel" aria-hidden="true">
             <div class="mock">
+              <!-- Les quatre étapes que l'application affiche pendant une
+                   génération (src/frontend/app/dashboard/page.tsx, STEPS) :
+                   les deux premières cochées, la troisième en cours, la
+                   dernière en attente — un instantané de ce que l'on voit
+                   vraiment en cliquant sur « Générer ma passation ». -->
               <ul class="mock__menu">
                 <li>
                   <svg
@@ -120,23 +125,7 @@
                       stroke-linejoin="round"
                     />
                   </svg>
-                  Résumer les échanges
-                </li>
-                <li class="mock__menu__item--active">
-                  <svg
-                    viewBox="0 0 24 24"
-                    class="mock__icon"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                  Classer les dossiers prioritaires
-                  <span class="mock__enter">↵</span>
+                  Lecture de vos sources
                 </li>
                 <li>
                   <svg
@@ -147,12 +136,36 @@
                     stroke-width="2"
                   >
                     <path
-                      d="M12 9v5M12 17.5v.5M10.3 3.9L2.8 17a1.5 1.5 0 001.3 2.2h15.8a1.5 1.5 0 001.3-2.2L13.7 3.9a1.5 1.5 0 00-2.6 0z"
+                      d="M5 13l4 4L19 7"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                     />
                   </svg>
-                  Repérer les blocages
+                  Repérage des dossiers actifs
+                </li>
+                <li class="mock__menu__item--active">
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="mock__icon"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <circle cx="12" cy="12" r="9" stroke-dasharray="4 3" />
+                  </svg>
+                  Extraction des informations clés
+                </li>
+                <li>
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="mock__icon"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                  Compilation du dossier de passation
                 </li>
               </ul>
             </div>

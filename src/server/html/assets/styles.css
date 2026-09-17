@@ -312,10 +312,6 @@ body {
   color: var(--c--globals--colors--gray-700);
 }
 
-.mock__enter {
-  margin-left: auto;
-  color: var(--c--globals--colors--gray-500);
-}
 
 /* Licence variant of the mock, for the open-source card. */
 .mock--license {
