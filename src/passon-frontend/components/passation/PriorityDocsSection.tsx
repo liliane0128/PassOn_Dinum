@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, FileText, Plus, UserRoundCog, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, Plus, UserRoundCog, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { DocumentAssocie, Passation } from "@/lib/types";
 import { currentUser, teamMembers } from "@/lib/mock-data";
@@ -112,7 +112,14 @@ export function PriorityDocsSection({
                 {unassignedCount}
               </span>
             </button>
-          ) : null}
+          ) : (
+            <span
+              title="Tous les dossiers ont été réattribués"
+              className="flex h-7 w-7 shrink-0 items-center justify-center text-emerald-500"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+            </span>
+          )}
 
           {unclearOwnerAlertOpen && unassignedCount > 0 && (
             <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4 shadow-card">

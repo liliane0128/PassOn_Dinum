@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FilePlus2, LoaderCircle, Plus, RefreshCw, TriangleAlert } from "lucide-react";
+import { LoaderCircle, TriangleAlert } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   errorMessage,
@@ -224,9 +224,6 @@ export function PassationBoard() {
     );
   }
 
-  const resume = handover?.text.trim() ?? "";
-  const hasResume = resume.length > 0;
-
   // The Sources tab lists what was read. Only the documents can be shown for
   // now: SourceKind is "docs" | "drive", with no category for a mail, and
   // inventing one would change a model this branch just brought in.
@@ -287,68 +284,28 @@ export function PassationBoard() {
 
   return (
     <>
-      <section className="mb-8 flex items-start gap-4">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50">
-          <FilePlus2 className="h-6 w-6 text-brand-600" />
-        </span>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Préparer une passation
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            L&rsquo;agent PassOn lit vos documents et vos mails, et en compose
-            le résumé de votre passation.
-          </p>
+      {/* No header block and no generate button of our own: lil's card owns
+          that control ("Régénérer", top right), and two buttons doing the
+          same thing on one page is one too many. What stays is the reason a
+          pass failed -- the card cannot say that -- and the note while one is
+          running. */}
+      {generating && (
+        <p className="mb-3 flex items-center gap-2 text-sm text-gray-500">
+          <LoaderCircle className="h-4 w-4 animate-spin text-brand-600" />
+          Lecture de vos documents et mails… cela prend une trentaine de
+          secondes.
+        </p>
+      )}
 
-          <button
-            type="button"
-            onClick={() => user?.id && void generate(user.id)}
-            disabled={generating}
-            className="mt-4 flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brand-700 disabled:opacity-70"
-          >
-            {generating ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-            ) : hasResume ? (
-              <RefreshCw className="h-4 w-4" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            {generating
-              ? "Lecture de vos documents et mails…"
-              : hasResume
-                ? "Régénérer le résumé"
-                : "Générer le résumé"}
-          </button>
-
-          {generating && (
-            <p className="mt-2 text-xs text-gray-400">
-              Cela prend une trentaine de secondes : chaque document et chaque
-              mail est lu avant d&rsquo;être résumé.
-            </p>
-          )}
-
-          {error && (
-            <p
-              role="alert"
-              className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800"
-            >
-              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-              {error}
-            </p>
-          )}
-
-          {!hasResume && !generating && error && (
-            <p className="mt-3 text-sm text-gray-500">
-              Le résumé est vide : relancez une génération quand la cause
-              ci-dessus est levée.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <h2 className="mb-4 text-lg font-semibold text-gray-900">
-        Mes passations
-      </h2>
+      {error && (
+        <p
+          role="alert"
+          className="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800"
+        >
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          {error}
+        </p>
+      )}
 
       <PassationCard
         key={handover?.updatedAt ?? "empty"}

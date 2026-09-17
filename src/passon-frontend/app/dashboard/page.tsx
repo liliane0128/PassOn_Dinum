@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { CheckCircle2, Circle, Loader2, Plus, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { RequireSession } from "@/components/RequireSession";
 import { useAuth } from "@/context/AuthContext";
-import { errorMessage, fetchHandover } from "@/lib/handover";
+import { errorMessage } from "@/lib/handover";
 import { runGeneration } from "@/lib/generate-passation";
 import { PASSATION_PATH } from "@/lib/routes";
 
@@ -24,6 +24,11 @@ const STEPS = [
   "Extraction des actions et échéances",
   "Rédaction de la fiche de passation",
 ];
+// lil's own rhythm, kept as drawn: the three first lines tick over at this
+// pace, which is what the cascade is meant to look like. Only the length of
+// the wait is ours -- the fourth line then sits on its spinner until the
+// generation actually returns, around thirty seconds in, rather than the
+// whole thing wrapping up on a 4.4s script.
 const STEP_DURATION_MS = 1100;
 
 // Matches the fade-in on gerer-ma-passation, so the cut between the two
@@ -39,21 +44,12 @@ export default function DashboardPage() {
   const [completedCount, setCompletedCount] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasSheet, setHasSheet] = useState<boolean | null>(null);
+  // Every click runs a fresh pass, so the checklist always plays. That also
+  // means it overwrites the stored sheet, edits and validation included, and
+  // spends one of the free tier's ~one-a-minute generations: chosen
+  // deliberately for a demo where the animation matters more than the
+  // previous contents.
   const running = useRef(false);
-
-  // Whether a sheet already exists decides what the button does: generating
-  // again would spend a rate-limited pass and overwrite whatever was edited.
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    fetchHandover(user.id)
-      .then((sheet) => !cancelled && setHasSheet(sheet.text.trim().length > 0))
-      .catch(() => !cancelled && setHasSheet(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
 
   const leaveFor = useCallback(
     (href: string) => {
@@ -65,10 +61,6 @@ export default function DashboardPage() {
 
   async function handleClick() {
     if (!user?.id || running.current) return;
-    if (hasSheet) {
-      leaveFor(PASSATION_PATH);
-      return;
-    }
 
     running.current = true;
     setError(null);
@@ -84,9 +76,23 @@ export default function DashboardPage() {
 
     try {
       await runGeneration(user.id, user.email);
-      setCompletedCount(STEPS.length);
+      clearInterval(interval);
+      // A generation faster than the checklist would otherwise jump from the
+      // first line to all-done; catch the remaining steps up quickly instead.
+      await new Promise<void>((resolve) => {
+        const catchUp = setInterval(() => {
+          setCompletedCount((count) => {
+            if (count >= STEPS.length) {
+              clearInterval(catchUp);
+              resolve();
+              return count;
+            }
+            return count + 1;
+          });
+        }, 220);
+      });
       // A beat so the last checkmark reads before the page changes.
-      setTimeout(() => leaveFor(`${PASSATION_PATH}?prewarmed=1`), 300);
+      setTimeout(() => leaveFor(PASSATION_PATH), 400);
     } catch (caught) {
       setError(errorMessage(caught));
       setState("idle");
@@ -96,8 +102,6 @@ export default function DashboardPage() {
       running.current = false;
     }
   }
-
-  const label = hasSheet ? "Voir ma passation" : "Générer ma passation";
 
   return (
     <RequireSession>
@@ -138,11 +142,11 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={handleClick}
-                disabled={state === "generating" || hasSheet === null}
+                disabled={state === "generating"}
                 className="mt-5 flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Plus className="h-4 w-4" />
-                {label}
+                Générer ma passation
               </button>
 
               {error && (
