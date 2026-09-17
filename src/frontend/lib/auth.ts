@@ -22,6 +22,8 @@ export interface SessionUser {
   team: string;
   accountRole: "manager" | "employee";
   managerId: string | null;
+  /** Where to fetch this person's picture, or null when they have none. */
+  avatarUrl?: string | null;
 }
 
 export interface Session {

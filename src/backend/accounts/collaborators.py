@@ -64,4 +64,11 @@ def as_json(collaborator):
         "team": collaborator.team,
         "accountRole": collaborator.role,
         "managerId": str(collaborator.manager_id) if collaborator.manager_id else None,
+        # A URL rather than the image: see passon/avatar_views.py. None when
+        # the person has no picture, so the interface falls back to initials.
+        "avatarUrl": (
+            f"/api/collaborators/{collaborator.id}/avatar/"
+            if collaborator.avatar
+            else None
+        ),
     }

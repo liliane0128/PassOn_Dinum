@@ -91,9 +91,19 @@ export function Header() {
         </button>
         <RoleSwitcher />
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
-            {user ? initialsOf(user.full_name, user.email) : "?"}
-          </span>
+          {/* The picture when there is one, initials otherwise -- most people
+              have none, and an empty circle says less than two letters. */}
+          {user?.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt=""
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
+              {user ? initialsOf(user.full_name, user.email) : "?"}
+            </span>
+          )}
           <span className="hidden flex-col items-start leading-tight sm:flex">
             <span className="font-medium text-gray-800">
               {user?.full_name || user?.email || "Non connecté"}

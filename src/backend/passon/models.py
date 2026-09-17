@@ -39,6 +39,13 @@ class Collaborator(models.Model):
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
     job_title = models.CharField(max_length=255, blank=True)
+
+    # The picture itself, not a path: this project configures no media root,
+    # and a handful of small avatars in the row keeps the deployment to the
+    # four containers it already has. Served by its own endpoint rather than
+    # inlined in every user payload, so a session response stays small.
+    avatar = models.BinaryField(null=True, blank=True, editable=False)
+    avatar_type = models.CharField(max_length=64, blank=True)
     team = models.CharField(max_length=255, blank=True)
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.EMPLOYEE)
