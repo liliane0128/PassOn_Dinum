@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, Settings, FolderOpen, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useRole } from "@/context/RoleContext";
-import { DASHBOARD_PATH } from "@/lib/routes";
+import { DASHBOARD_PATH, PASSATION_PATH } from "@/lib/routes";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -15,12 +15,18 @@ export function Sidebar() {
     // DASHBOARD_PATH, not "/": behind nginx "/" is the static homepage, and
     // linking there drops the person out of the application.
     { id: "accueil", label: "Accueil", icon: Home, href: DASHBOARD_PATH },
-    { id: "equipe", label: "Mon équipe", icon: Users, href: "/equipe", managerOnly: true },
     {
-      id: "mes-passations",
-      label: role === "manager" ? "Passations équipe" : "Gérer ma passation",
+      id: "ma-passation",
+      label: "Ma passation",
       icon: FolderOpen,
-      href: "/gerer-ma-passation",
+      href: PASSATION_PATH,
+    },
+    {
+      id: "equipe",
+      label: "Mon équipe",
+      icon: Users,
+      href: "/equipe",
+      managerOnly: true,
     },
   ];
 
