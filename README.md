@@ -130,7 +130,7 @@ PassOn reads real data from **Docs** and **Drive**. Each is an independent Docke
 > Drive's Keycloak occupies **8080**, which is why PassOn serves on 8090.
 
 > [!TIP]
-> **[docs/deploiement.md](docs/deploiement.md)** covers this end to end: start-up
+> **[docs/DEPLOYEMENT.md](docs/DEPLOYEMENT.md)** covers this end to end: start-up
 > order, creating a working account in Drive's Keycloak, and a table mapping each
 > failure message to its cause. Most of it is not guessable.
 

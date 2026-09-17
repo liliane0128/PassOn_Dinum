@@ -13,8 +13,7 @@ Pass‘on Dinum is an internal "business continuity" tool: given a colleague's
 name, it gathers what they were working on -- their emails, documents, and
 files -- from the different internal apps of the Suite Numérique (Docs,
 Drive, Messages), so someone covering for them doesn't have to go hunting
-across three separate logins. See the [frontend's
-PLAN.md](../../../.save/frontend/PLAN.md) for the full product scope.
+across three separate logins. See the [frontend](../../frontend/README.md) for the interface it feeds.
 
 This `connectors/` module is the backend piece that makes that possible: it
 talks to each of the three upstream services' own APIs, normalizes their very
@@ -257,8 +256,7 @@ Pass'on Dinum est un outil interne de continuité d'activité : à partir du nom
 d'un collègue, il rassemble ce sur quoi il travaillait — ses mails, ses
 documents, ses fichiers — dans les différentes applications internes de La Suite
 numérique (Docs, Drive, Messages), pour que la personne qui le remplace n'ait pas
-à fouiller trois connexions séparées. Voir le [PLAN.md du
-frontend](../../../.save/frontend/PLAN.md) pour le périmètre complet du produit.
+à fouiller trois connexions séparées. Voir le [frontend](../../frontend/README.md) pour l'interface qu'il alimente.
 
 Ce module `connectors/` est la pièce du backend qui rend cela possible : il parle
 aux API propres à chacun des trois services amont, normalise leurs formats de
