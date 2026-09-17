@@ -22,9 +22,8 @@ uses. Nothing here is a production configuration.
 
 | Port | Service | Project |
 | --- | --- | --- |
-| **8090** | **Pass'on** — the application (nginx + built frontend + API) | this repository |
-| **8091** | **Pass'on** — homepage of the new frontend, and `/dashboard` into it | this repository |
-| 3001 | The new frontend (Next.js), run on the host with `npm run dev -- -p 3001` | this repository |
+| **8090** | **Pass'on** — everything: landing page, application and API, behind nginx | this repository |
+| 3001 | The frontend (Next.js), inside its own container; reached by nginx, not published | this repository |
 | 8000 | The Pass'on API alone, on 127.0.0.1 (curl, tests) | this repository |
 | 3000 | Drive — interface | `drive` |
 | 8071 | Drive — API | `drive` |
@@ -269,9 +268,8 @@ qu'utilise l'équipe. Rien ici n'est une configuration de production.
 
 | Port | Service | Projet |
 | --- | --- | --- |
-| **8090** | **Pass‘on** — l'application (nginx + frontend compilé + API) | ce dépôt |
-| **8091** | **Pass‘on** — page d'accueil du nouveau frontend, et `/dashboard` qui y mène | ce dépôt |
-| 3001 | Le nouveau frontend (Next.js), lancé sur la machine par `npm run dev -- -p 3001` | ce dépôt |
+| **8090** | **Pass‘on** — tout : page d'accueil, application et API, derrière nginx | ce dépôt |
+| 3001 | Le frontend (Next.js), dans son propre conteneur ; joint par nginx, non publié | ce dépôt |
 | 8000 | API Pass‘on seule, sur 127.0.0.1 (curl, tests) | ce dépôt |
 | 3000 | Drive — interface | `drive` |
 | 8071 | Drive — API | `drive` |

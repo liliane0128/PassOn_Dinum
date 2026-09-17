@@ -96,10 +96,12 @@ Trois points à connaître avant d'y toucher :
   de l'API, la vérification devra remonter côté serveur (middleware Next ou
   composant serveur lisant le cookie).
 
-L'application n'est joignable avec sa session que par **http://localhost:8091**,
-où nginx sert la page d'accueil, relaie `/login` et `/dashboard` vers ce serveur
-Next, et `/api/` vers Django — une seule origine, condition du cookie de session
-et de la vérification CSRF.
+L'application n'est joignable avec sa session que par **http://localhost:8090**,
+où nginx sert la page d'accueil, relaie les routes de l'application vers son
+conteneur (`passon_frontend:3001`) et `/api/` vers Django — une seule origine,
+condition du cookie de session et de la vérification CSRF. Lancé seul par
+`npm run dev`, le serveur Next répond sur :3001, mais sans `/api/` derrière lui :
+la connexion y échoue avec « Serveur injoignable ».
 
 ## Les quatre rubriques de la carte
 

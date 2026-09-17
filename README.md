@@ -48,34 +48,31 @@
 make up
 ```
 
-Builds and starts nginx + Django + Postgres. The full app is on **http://localhost:8090**.
+Builds and starts nginx + the frontend + Django + Postgres. Everything is on
+**http://localhost:8090**.
+
+Everything is on that one port. The landing page is a static file served from
+disk; every other path is proxied, the application to its own container and
+`/api/` to Django, so the app and the API share one origin — which is what the
+session cookie and Django's CSRF check require.
 
 | URL | Served by |
 |-----|-----------|
-| `/`, `/manager`, `/moi` | React frontend |
-| `/api/…` | Django backend |
-| `/admin/`, `/static/` | Django admin |
+| `http://localhost:8090/` | the landing page, a static file |
+| `http://localhost:8090/dashboard` | the application: generate a handover |
+| `http://localhost:8090/gerer-ma-passation` | the handover itself |
+| `http://localhost:8090/equipe` | the manager's team view |
+| `http://localhost:8090/login` | the login page |
+| `http://localhost:8090/api/…` | Django |
 
-A second site is served on **http://localhost:8091**: the homepage of the new
-frontend (`src/passon-frontend`, Next.js), whose button opens the dashboard.
-The migration is going step by step, so :8090 above is untouched by it.
+The landing page's button asks `/api/auth/me/` who is logged in and goes to the
+application or to the login page accordingly; the application redirects to
+`/login` on its own if it is opened without a session.
 
-| URL | Served by |
-|-----|-----------|
-| `http://localhost:8091/` | the homepage, a static page |
-| `http://localhost:8091/login` | the new login page, proxied to the Next app |
-| `http://localhost:8091/dashboard` | the new dashboard, proxied to the Next app |
-| `http://localhost:8091/api/…` | Django, so the app and the API share one origin |
-
-The homepage button asks `/api/auth/me/` who is logged in and goes to the
-dashboard or to the login page accordingly; the dashboard redirects to `/login`
-on its own if it is opened without a session.
-
-The dashboard needs that app running on the host:
-
-```bash
-cd src/passon-frontend && npm install && npm run dev -- -p 3001
-```
+Nothing has to be started by hand: `make up` builds and runs the frontend
+alongside nginx, Django and Postgres. For interface work, `npm run dev` inside
+`src/frontend` still serves it on :3001 — but `/api/` is not proxied there, so
+logging in only works through :8090.
 
 On first run, copy the env templates:
 
@@ -110,11 +107,11 @@ make stop    # stop backend stack
 make build   # rebuild images
 ```
 
-Frontend dev server (hot reload, `/api` proxied to :8090):
+Frontend dev server, for interface work (hot reload):
 
 ```bash
 cd src/frontend && npm install && npm run dev
-# → http://localhost:5173
+# → http://localhost:3001 — no /api there, so logging in needs :8090
 ```
 
 ### Running alongside upstream services 🔌
@@ -197,7 +194,7 @@ Per-area documentation: [connectors](src/backend/connectors/README.md) (upstream
 clients and the LLM pipeline), [accounts](src/backend/accounts/README.md) (login),
 [schema](src/backend/passon/README.md) (collaborators and handovers),
 [server](src/server/README.md) (nginx and the single-origin setup),
-[frontend](src/frontend/DOCUMENTATION.md).
+[frontend](src/frontend/README.md).
 
 Every document here is bilingual: an English half, then a French one. When you
 change one, change the other in the same commit — a translation left behind is
@@ -241,35 +238,31 @@ Pass'on connects to.
 make up
 ```
 
-Construit et démarre nginx + Django + Postgres. L'application complète est sur **http://localhost:8090**.
+Construit et démarre nginx + le frontend + Django + Postgres. Tout est sur
+**http://localhost:8090**.
+
+Tout est sur ce port. La page d'accueil est un fichier statique servi depuis le
+disque ; tout le reste est relayé, l'application vers son propre conteneur et
+`/api/` vers Django, si bien que l'application et l'API partagent une origine —
+condition du cookie de session et de la vérification CSRF de Django.
 
 | URL | Servi par |
 |-----|-----------|
-| `/`, `/manager`, `/moi` | le frontend React |
-| `/api/…` | le backend Django |
-| `/admin/`, `/static/` | l'admin Django |
-
-Un second site est servi sur **http://localhost:8091** : la page d'accueil du
-nouveau frontend (`src/passon-frontend`, en Next.js), dont le bouton ouvre le
-tableau de bord. La migration se fait par étapes, et le :8090 ci-dessus n'en est
-pas affecté.
-
-| URL | Servi par |
-|-----|-----------|
-| `http://localhost:8091/` | la page d'accueil, une page statique |
-| `http://localhost:8091/login` | la nouvelle page de connexion, relayée vers l'application Next |
-| `http://localhost:8091/dashboard` | le nouveau tableau de bord, relayé vers l'application Next |
-| `http://localhost:8091/api/…` | Django, pour que l'application et l'API partagent une origine |
+| `http://localhost:8090/` | la page d'accueil, un fichier statique |
+| `http://localhost:8090/dashboard` | l'application : lancer une passation |
+| `http://localhost:8090/gerer-ma-passation` | la passation elle-même |
+| `http://localhost:8090/equipe` | la vue d'équipe du manager |
+| `http://localhost:8090/login` | la page de connexion |
+| `http://localhost:8090/api/…` | Django |
 
 Le bouton de la page d'accueil demande à `/api/auth/me/` qui est connecté et
-mène au tableau de bord ou à la page de connexion selon la réponse ; le tableau
-de bord renvoie de lui-même vers `/login` s'il est ouvert sans session.
+mène à l'application ou à la page de connexion selon la réponse ; l'application
+renvoie d'elle-même vers `/login` si elle est ouverte sans session.
 
-Le tableau de bord suppose cette application lancée sur la machine :
-
-```bash
-cd src/passon-frontend && npm install && npm run dev -- -p 3001
-```
+Rien n'est à lancer à la main : `make up` construit et démarre le frontend en
+même temps que nginx, Django et Postgres. Pour travailler sur l'interface,
+`npm run dev` dans `src/frontend` le sert toujours sur :3001 — mais `/api/`
+n'y est pas relayé, et la connexion ne fonctionne donc que par :8090.
 
 Au premier lancement, copier les fichiers d'exemple :
 
@@ -304,11 +297,12 @@ make stop    # arrête la pile backend
 make build   # reconstruit les images
 ```
 
-Serveur de développement du frontend (rechargement à chaud, `/api` relayé vers :8090) :
+Serveur de développement du frontend, pour travailler sur l'interface
+(rechargement à chaud) :
 
 ```bash
 cd src/frontend && npm install && npm run dev
-# → http://localhost:5173
+# → http://localhost:3001 — pas d'/api dessus, la connexion passe par :8090
 ```
 
 ### Fonctionner à côté des services de La Suite 🔌
@@ -392,7 +386,7 @@ Documentation par domaine : [connectors](src/backend/connectors/README.md) (les
 clients des services et la chaîne LLM), [accounts](src/backend/accounts/README.md)
 (la connexion), [schéma](src/backend/passon/README.md) (collaborateurs et
 passations), [serveur](src/server/README.md) (nginx et l'origine unique),
-[frontend](src/frontend/DOCUMENTATION.md).
+[frontend](src/frontend/README.md).
 
 Tous les documents de ce dépôt sont bilingues : une moitié en anglais, puis une
 moitié en français. Quand vous modifiez l'une, modifiez l'autre dans le même

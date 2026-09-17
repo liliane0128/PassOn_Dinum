@@ -27,59 +27,38 @@ browser ---> nginx (:8090) ---> /           static files (React build)
                              \> /static/    web:8000  (admin CSS/JS)
 ```
 
-### The second site (:8091) — homepage and new dashboard
+### One site, three kinds of content
 
-The project is migrating to a new frontend (`src/passon-frontend`, Next.js),
-and that migration is happening step by step. So nginx serves a **second,
-independent site** on :8091 rather than taking anything away from :8090: the
-old application keeps working exactly as it did while the new one is built
-beside it.
+The landing page, the application and the API share :8090, which is what lets
+the browser hold a session at all: Django checks the `Origin` header against
+its own host before accepting a POST, so an application served from another
+origin would need CORS *and* an entry in `CSRF_TRUSTED_ORIGINS`, and the cookie
+would still be dropped by a browser blocking third-party cookies.
 
 ```
-browser ---> nginx (:8091) ---> /           the homepage (static, src/server/html)
-                           \--> /dashboard  host:3001  (Next.js, prefix stripped)
-                            \-> /login      host:3001  (same path on both sides)
-                             \> /_next/     host:3001  (its assets and hot reload)
-                              \> /equipe    host:3001
-                               \> /api/     web:8000   (Django, same as :8090)
+browser ---> nginx (:8090) ---> /             the landing page (static, src/server/html)
+                           \--> /dashboard    passon_frontend:3001  (Next.js)
+                            \-> /gerer-ma-passation, /login, /equipe, /_next/, /logo/
+                             \> /api/         web:8000  (Django)
 ```
 
-`/api/` is proxied here as well, and that is not a convenience. The session
-lives in a cookie and Django checks the browser's `Origin` against its own host
-before accepting a POST, so the app and the API have to share an origin. Served
-from another one, the login would need CORS *and* an entry in
-`CSRF_TRUSTED_ORIGINS`, and the cookie would still be dropped by a browser that
-blocks third-party cookies.
+The frontend is a container of its own (`frontend` in `docker-compose.yml`,
+built from `src/frontend/Dockerfile`), so nginx reaches it by service name on
+the compose network. It used to run on the host, reached through
+`host.docker.internal`, and had to be started by hand; `make up` now brings it
+up with everything else.
 
-The homepage is a hand-written page with no build step, laid out like the
-ui-kit's `Hero`, whose single button points at `/dashboard`.
-
-That button is the reason for the proxy, and the path is passed through
-unchanged: the app serves `/dashboard` at `/dashboard`. The prefix used to be
-stripped, which made the app's own `/` the dashboard while `/` here is the
-homepage — one URL with two meanings, and a `<Link href="/">` in the interface
-landed on the landing page instead of the dashboard. The app's other route and
-its assets live at the root, which is why `/login`, `/equipe` and `/_next/` are
-proxied as they are. Run on its own, the app redirects `/` to `/dashboard`, so
-:3001 still works.
-
-The Next app is **not containerised yet**: it runs on the host, and nginx
-reaches it through `host.docker.internal`, which `docker-compose.yml` maps to
-the host gateway. So :8091 serves the homepage on its own, and the button leads
-somewhere only while that dev server is running:
-
-```sh
-cd src/passon-frontend && npm install && npm run dev -- -p 3001
-```
-
-Without it, the homepage still loads and `/dashboard` answers `502`.
+The paths are passed through unchanged — the app serves `/dashboard` at
+`/dashboard`. Stripping the prefix would give one URL two meanings, since `/`
+here is the landing page, and a `<Link href="/">` inside the app would land on
+it instead of the dashboard.
 
 ### Files
 
 | File | Role |
 | --- | --- |
 | `conf.d/default.conf` | the nginx site: what is served, what is proxied |
-| `html/` | the homepage served on :8091 — one HTML file, its CSS and its images |
+| `html/` | the landing page served at `/` — one HTML file, its CSS, fonts and images |
 | `Dockerfile` | two stages — build the React app with Node, then serve it with nginx |
 
 The stack itself is wired up in the repository root: `docker-compose.yml`
@@ -179,60 +158,39 @@ navigateur ---> nginx (:8090) ---> /           fichiers statiques (build React)
                                 \> /static/    web:8000  (CSS/JS de l'admin)
 ```
 
-### Le second site (:8091) — page d'accueil et nouveau tableau de bord
+### Un seul site, trois sortes de contenu
 
-Le projet migre vers un nouveau frontend (`src/passon-frontend`, en Next.js), et
-cette migration se fait par étapes. nginx sert donc un **second site
-indépendant** sur :8091, plutôt que de retirer quoi que ce soit à :8090 :
-l'ancienne application continue de fonctionner à l'identique pendant que la
-nouvelle se construit à côté.
-
-```
-navigateur ---> nginx (:8091) ---> /           la page d'accueil (statique, src/server/html)
-                              \--> /dashboard  host:3001  (Next.js, préfixe retiré)
-                               \-> /login      host:3001  (même chemin des deux côtés)
-                                \> /_next/     host:3001  (ses fichiers et le rechargement à chaud)
-                                 \> /equipe    host:3001
-                                  \> /api/     web:8000   (Django, comme sur :8090)
-```
-
-`/api/` est relayé ici aussi, et ce n'est pas un confort. La session tient dans
-un cookie, et Django compare l'en-tête `Origin` du navigateur à son propre hôte
-avant d'accepter un POST : l'application et l'API doivent donc partager une
-origine. Servie depuis une autre, la connexion demanderait CORS *et* une entrée
-dans `CSRF_TRUSTED_ORIGINS`, et le cookie serait de toute façon écarté par un
+La page d'accueil, l'application et l'API partagent le :8090, et c'est ce qui
+permet au navigateur de tenir une session : Django compare l'en-tête `Origin` à
+son propre hôte avant d'accepter un POST, si bien qu'une application servie
+depuis une autre origine demanderait CORS *et* une entrée dans
+`CSRF_TRUSTED_ORIGINS`, et que le cookie serait de toute façon écarté par un
 navigateur qui bloque les cookies tiers.
 
-La page d'accueil est écrite à la main, sans étape de compilation, sur la
-structure du `Hero` du ui-kit, et son unique bouton pointe vers `/dashboard`.
-
-C'est ce bouton qui justifie le relais, et le chemin est transmis tel quel :
-l'application sert `/dashboard` sur `/dashboard`. Le préfixe était auparavant
-retiré, si bien que le `/` de l'application était le tableau de bord alors que
-le `/` d'ici est la page d'accueil — une même URL pour deux choses, et un
-`<Link href="/">` de l'interface menait à la page d'accueil au lieu du tableau
-de bord. Son autre route et ses fichiers vivent à la racine, d'où le relais de
-`/login`, `/equipe` et `/_next/` tels quels. Lancée seule, l'application redirige
-`/` vers `/dashboard`, et :3001 reste donc utilisable.
-
-L'application Next **n'est pas encore conteneurisée** : elle tourne sur la
-machine, et nginx la joint par `host.docker.internal`, que `docker-compose.yml`
-fait pointer vers la passerelle de l'hôte. Le :8091 sert donc la page d'accueil
-tout seul, mais le bouton ne mène quelque part que si ce serveur de
-développement tourne :
-
-```sh
-cd src/passon-frontend && npm install && npm run dev -- -p 3001
+```
+navigateur ---> nginx (:8090) ---> /             la page d'accueil (statique, src/server/html)
+                              \--> /dashboard    passon_frontend:3001  (Next.js)
+                               \-> /gerer-ma-passation, /login, /equipe, /_next/, /logo/
+                                \> /api/         web:8000  (Django)
 ```
 
-Sans lui, la page d'accueil s'affiche toujours et `/dashboard` répond `502`.
+Le frontend a désormais son propre conteneur (service `frontend` dans
+`docker-compose.yml`, construit depuis `src/frontend/Dockerfile`) : nginx le
+joint par son nom de service sur le réseau Compose. Il tournait auparavant sur
+la machine, joint par `host.docker.internal`, et devait être lancé à la main ;
+`make up` le démarre maintenant avec le reste.
+
+Les chemins sont transmis tels quels — l'application sert `/dashboard` sur
+`/dashboard`. Retirer le préfixe donnerait deux sens à une même URL, puisque le
+`/` d'ici est la page d'accueil, et un `<Link href="/">` dans l'application y
+mènerait au lieu du tableau de bord.
 
 ### Fichiers
 
 | Fichier | Rôle |
 | --- | --- |
 | `conf.d/default.conf` | le site nginx : ce qui est servi, ce qui est relayé |
-| `html/` | la page d'accueil servie sur :8091 — un fichier HTML, son CSS et ses images |
+| `html/` | la page d'accueil servie sur `/` — un fichier HTML, son CSS, ses polices et ses images |
 | `Dockerfile` | deux étapes — compiler l'appli React avec Node, puis la servir avec nginx |
 
 La pile elle-même est décrite à la racine du dépôt : `docker-compose.yml`
