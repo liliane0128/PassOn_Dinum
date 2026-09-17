@@ -18,9 +18,8 @@ RUN npm run build
 FROM nginx:1.25-alpine
 
 COPY src/server/conf.d/default.conf /etc/nginx/conf.d/default.conf
-COPY --from=frontend-build /build/dist /usr/share/nginx/html
 
 # The homepage is a static page with no build step, so it is copied as it is.
 COPY src/server/html /usr/share/nginx/homepage
 
-EXPOSE 8090 8091
+EXPOSE 8090

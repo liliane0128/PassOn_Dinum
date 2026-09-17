@@ -65,6 +65,14 @@ services:
       timeout: 5s
       retries: 10
 
+  frontend:
+    build:
+      context: .
+      dockerfile: src/frontend/Dockerfile
+    container_name: passon_frontend
+    depends_on:
+      - web
+
   nginx:
     build:
       context: .
