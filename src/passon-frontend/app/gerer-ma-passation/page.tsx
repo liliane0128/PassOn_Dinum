@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, RotateCcw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
@@ -77,20 +77,12 @@ export default function GererMaPassationPage() {
                 <p className="mt-3 text-sm text-gray-500">{step}</p>
               </div>
             ) : (
-              <>
-                <div className="mb-4 flex shrink-0 justify-end">
-                  <button
-                    onClick={() => setState("generating")}
-                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Régénérer
-                  </button>
-                </div>
-                <div className="min-h-0 flex-1">
-                  <PassationCard passation={passation} />
-                </div>
-              </>
+              <div className="min-h-0 flex-1">
+                <PassationCard
+                  passation={passation}
+                  onRegenerate={() => setState("generating")}
+                />
+              </div>
             )}
           </div>
         </main>
