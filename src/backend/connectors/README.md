@@ -14,7 +14,7 @@ name, it gathers what they were working on -- their emails, documents, and
 files -- from the different internal apps of the Suite Numérique (Docs,
 Drive, Messages), so someone covering for them doesn't have to go hunting
 across three separate logins. See the [frontend's
-PLAN.md](../../frontend/PLAN.md) for the full product scope.
+PLAN.md](../../../.save/frontend/PLAN.md) for the full product scope.
 
 This `connectors/` module is the backend piece that makes that possible: it
 talks to each of the three upstream services' own APIs, normalizes their very
@@ -252,7 +252,7 @@ d'un collègue, il rassemble ce sur quoi il travaillait — ses mails, ses
 documents, ses fichiers — dans les différentes applications internes de La Suite
 numérique (Docs, Drive, Messages), pour que la personne qui le remplace n'ait pas
 à fouiller trois connexions séparées. Voir le [PLAN.md du
-frontend](../../frontend/PLAN.md) pour le périmètre complet du produit.
+frontend](../../../.save/frontend/PLAN.md) pour le périmètre complet du produit.
 
 Ce module `connectors/` est la pièce du backend qui rend cela possible : il parle
 aux API propres à chacun des trois services amont, normalise leurs formats de
