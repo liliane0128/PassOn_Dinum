@@ -29,12 +29,15 @@ export function PassationCard({
   onResumeCommit,
   onBlockersCommit,
   onContactsCommit,
+  onValidate,
 }: {
   passation: Passation;
   /** Set when the sections are backed by the API; absent for the fixture. */
   onResumeCommit?: (resume: string) => void;
   onBlockersCommit?: (points: AttentionPoint[]) => void;
   onContactsCommit?: (contacts: Contact[]) => void;
+  /** Set when validation is stored server-side; absent for the fixture. */
+  onValidate?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Aperçu");
   const [passation, setPassation] = useState<Passation>(initialPassation);
@@ -62,6 +65,15 @@ export function PassationCard({
   }, [activeTab, scrollTarget]);
 
   function handlePublish() {
+    // When the sheet is backed by the API, validation is stored there and the
+    // shared status is refreshed from the answer -- the manager's "Mon équipe"
+    // reads the same flag, so it must not be a purely local one.
+    if (onValidate) {
+      onValidate();
+      return;
+    }
+
+
     const now = new Date();
     const date = now.toLocaleDateString("fr-FR", {
       day: "numeric",

@@ -181,6 +181,25 @@ export async function saveHandover(
   );
 }
 
+/**
+ * Validate the sheet: "this is my handover, as it now reads".
+ *
+ * Only its owner may do this -- a manager can correct a sheet but not declare
+ * it validated on someone's behalf -- and any later edit puts it back to not
+ * validated, server-side.
+ */
+export async function validateHandover(
+  collaboratorId: string
+): Promise<Handover> {
+  return asJson<Handover>(
+    await fetch(`/api/collaborators/${collaboratorId}/handover/validate/`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-CSRFToken": csrfToken() },
+    })
+  );
+}
+
 /** Messages someone can act on, for the codes these endpoints answer with. */
 const ERRORS: Record<string, string> = {
   no_data_to_summarize:

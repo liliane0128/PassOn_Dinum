@@ -10,6 +10,8 @@ export interface PassationStatus {
 interface PassationStatusContextValue {
   getStatus: (id: string) => PassationStatus;
   setValidated: (id: string, validatedAt: string) => void;
+  /** Set the whole status, including back to not-validated. */
+  setStatus: (id: string, status: PassationStatus) => void;
 }
 
 const DEFAULT_STATUS: PassationStatus = { validated: false };
@@ -37,8 +39,14 @@ export function PassationStatusProvider({ children }: { children: ReactNode }) {
     }));
   }
 
+  // Needed because a sheet can also become *un*-validated: the backend resets
+  // the flag on every edit, so "validated" has to be able to travel back.
+  function setStatus(id: string, status: PassationStatus) {
+    setStatuses((prev) => ({ ...prev, [id]: status }));
+  }
+
   return (
-    <PassationStatusContext.Provider value={{ getStatus, setValidated }}>
+    <PassationStatusContext.Provider value={{ getStatus, setValidated, setStatus }}>
       {children}
     </PassationStatusContext.Provider>
   );

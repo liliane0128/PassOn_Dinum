@@ -9,9 +9,11 @@ import {
   fetchItems,
   generateDossier,
   saveHandover,
+  validateHandover,
   type Handover,
   type Item,
 } from "@/lib/handover";
+import { usePassationStatus } from "@/components/PassationStatusProvider";
 import { contactsFromItems } from "@/lib/contacts-from-items";
 import { MAX_PRIORITY_DOCUMENTS, rankDocuments } from "@/lib/documents-priority";
 import { passation as demoPassation } from "@/lib/mock-data";
@@ -76,6 +78,7 @@ function completeness(handover: Handover | null): number {
 export function PassationBoard() {
   const { session } = useAuth();
   const user = session?.user;
+  const { setStatus } = usePassationStatus();
 
   const [handover, setHandover] = useState<Handover | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -145,6 +148,21 @@ export function PassationBoard() {
     void generate(user.id);
   }, [loading, user?.id, handover, generate]);
 
+  /**
+   * Validation, stored server-side.
+   *
+   * Only the owner may validate, and any later edit resets the flag, so the
+   * answer is what the shared status is refreshed from -- never the click.
+   */
+  async function handleValidate() {
+    if (!user?.id) return;
+    try {
+      setHandover(await validateHandover(user.id));
+    } catch {
+      setError("La validation n'a pas pu être enregistrée.");
+    }
+  }
+
   /** Called when the résumé's editor is closed, so an edit is not lost. */
   async function handleResumeCommit(text: string) {
     if (!user?.id) return;
@@ -154,6 +172,19 @@ export function PassationBoard() {
       setError("Votre modification du résumé n'a pas pu être enregistrée.");
     }
   }
+
+  useEffect(() => {
+    if (!user?.id || !handover) return;
+    setStatus(user.id, {
+      validated: handover.validated,
+      validatedAt: handover.validated
+        ? frenchDateTime(handover.updatedAt)
+        : undefined,
+    });
+    // setStatus comes from a provider that rebuilds it on each render; only
+    // the sheet's own state should re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, handover?.validated, handover?.updatedAt]);
 
   /** Same, for the contacts. */
   async function handleContactsCommit(contacts: Contact[]) {
@@ -246,8 +277,11 @@ export function PassationBoard() {
   // section's header and its "voir tous" line still say how many there are.
   const documents = rankedDocuments.slice(0, MAX_PRIORITY_DOCUMENTS);
 
+  const passationId = user?.id ?? demoPassation.id;
+
   const passation: Passation = {
     ...demoPassation,
+    id: passationId,
     attentionPoints,
     contacts,
     contactsTotal: contacts.length,
@@ -331,6 +365,7 @@ export function PassationBoard() {
         onResumeCommit={handleResumeCommit}
         onBlockersCommit={handleBlockersCommit}
         onContactsCommit={handleContactsCommit}
+        onValidate={handleValidate}
       />
     </>
   );

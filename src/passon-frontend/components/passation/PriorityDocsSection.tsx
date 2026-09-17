@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileText, Plus, UserRoundCog, X } from "lucide-react";
+import { AlertTriangle, FileText, Plus, UserRoundCog, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { DocumentAssocie, Passation } from "@/lib/types";
 import { currentUser, teamMembers } from "@/lib/mock-data";
@@ -98,8 +98,13 @@ export function PriorityDocsSection({
       tone="info"
       variant={variant}
     >
-      <div className="relative mb-3 flex justify-end">
-        {unassignedCount > 0 ? (
+      {/* Only rendered when something needs attention: the green "all
+          reassigned" tick used to sit here permanently, pushing the list down
+          for no information. */}
+      <div
+        className={`relative flex justify-end${unassignedCount > 0 ? " mb-3" : ""}`}
+      >
+        {unassignedCount > 0 && (
           <button
             type="button"
             onClick={() => setUnclearOwnerAlertOpen((v) => !v)}
@@ -112,13 +117,6 @@ export function PriorityDocsSection({
               {unassignedCount}
             </span>
           </button>
-        ) : (
-          <span
-            title="Tous les dossiers ont été réattribués"
-            className="flex h-7 w-7 shrink-0 items-center justify-center text-emerald-500"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-          </span>
         )}
 
         {unclearOwnerAlertOpen && unassignedCount > 0 && (

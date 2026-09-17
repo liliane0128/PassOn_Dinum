@@ -213,3 +213,11 @@ Ce qu'il faut savoir :
 - **Toute la fiche générée est enregistrée**, pas seulement le texte : une
   génération coûte un créneau d'un quota limité, et les rubriques non affichées
   attendent simplement l'étape qui les branchera.
+- **La validation est enregistrée côté serveur.** Le bouton « Valider » appelle
+  `…/handover/validate/`, et l'état partagé (`PassationStatusProvider`) est
+  ensuite rafraîchi depuis la réponse, jamais depuis le clic : la ligne de la
+  personne sous « Mon équipe » lit le même drapeau et affiche donc « Validée »
+  au chargement suivant. Seule la personne concernée peut valider — un manager
+  peut corriger une fiche, pas déclarer à sa place qu'elle est validée — et
+  toute modification ultérieure remet le drapeau à faux côté serveur, ce que
+  l'interface suit dans les deux sens.
