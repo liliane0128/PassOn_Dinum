@@ -16,7 +16,7 @@
 
 NAME := Pass'On
 
-all: run
+all: up
 
 # Initialized a default .env file if needed
 src/backend/.env:
@@ -34,7 +34,7 @@ down:
 
 # --- API only (postgres + Django, without nginx and frontend) ---
 run: src/backend/.env
-	@printf "\e[0;32m[+] Launching Postgres and Django containers\e[0m\n"
+	@printf "\e[0;32m[+] Launching Postgres and Django only\e[0m\n"
 	@docker compose --env-file src/backend/.env up -d --build postgres web
 build:
 	@printf "\e[0;32m[+] Building containers\e[0m\n"

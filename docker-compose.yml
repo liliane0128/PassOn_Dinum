@@ -1,11 +1,13 @@
 
-# The project's only compose file, so there is only ever one database.
-#
-#   make up    postgres + web + nginx -> the whole app on http://localhost:8090
-#   make run   postgres + web         -> the API alone on http://localhost:8000
-#
-# Both select services from this file, so either way it is the same postgres
-# and the same data.
+#################################################################################
+# The project's only compose file, so there is only ever one database.          #
+#                                                                               #
+#   make up    postgres + web + nginx -> the whole app on http://localhost:8090 #
+#   make run   postgres + web         -> the API alone on http://localhost:8000 #
+#                                                                               #
+# Both select services from this file, so either way it is the same postgres    #
+# and the same data.                                                            #
+#################################################################################
 
 name: Pass On
 
