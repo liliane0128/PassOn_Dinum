@@ -279,43 +279,16 @@ body {
   padding: var(--c--globals--spacings--sm);
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 10px 30px rgb(37 37 47 / 18%);
-}
-
-.mock__prompt {
-  display: flex;
-  align-items: center;
-  gap: var(--c--globals--spacings--xs);
-  padding: 0 0 var(--c--globals--spacings--sm);
-  font-size: 0.875rem;
-  color: var(--c--globals--colors--gray-500);
-}
-
-.mock__prompt__mark {
-  width: 20px;
-  height: 20px;
-  flex: none;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, #fff 28%, transparent 29%),
-    conic-gradient(
-      var(--c--globals--colors--brand-500) 0 25%,
-      var(--c--globals--colors--brand-650) 25% 50%,
-      var(--c--globals--colors--brand-500) 50% 75%,
-      var(--c--globals--colors--brand-650) 75%
-    );
-}
-
-.mock__prompt__text {
-  border-left: 1px solid var(--c--globals--colors--gray-200);
-  padding-left: var(--c--globals--spacings--xs);
+  /* Negative spread so the blur does not bleed above the card: on the solid
+     panel behind it, a 30px halo read as a grey band sitting on top of the
+     box rather than as a shadow under it. */
+  box-shadow: 0 12px 24px -10px rgb(37 37 47 / 30%);
 }
 
 .mock__menu {
   margin: 0;
-  padding: var(--c--globals--spacings--xs) 0 0;
+  padding: 0;
   list-style: none;
-  border-top: 1px solid var(--page-border);
   font-size: 0.875rem;
   color: var(--page-content);
 }
