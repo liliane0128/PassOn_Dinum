@@ -6,9 +6,9 @@ import { Sidebar } from "@/components/Sidebar";
 import { RequireSession } from "@/components/RequireSession";
 import { PassationBoard } from "@/components/passation/PassationBoard";
 
-// Matches the entry page's fade-out, so arriving here (from that page, faded
-// out) fades back in at the same pace rather than as a hard cut.
-const PAGE_TRANSITION_MS = 250;
+// Matches the entry page's fade/scale-out, so arriving here (from that
+// page, faded out) fades back in at the same pace rather than as a hard cut.
+const PAGE_TRANSITION_MS = 280;
 
 function PassationView() {
   const [visible, setVisible] = useState(false);
@@ -29,8 +29,8 @@ function PassationView() {
 
         <main className="flex flex-1 flex-col overflow-hidden bg-[#f5f6f8] px-8 py-8">
           <div
-            className={`mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col transition-opacity ease-out ${
-              visible ? "opacity-100" : "opacity-0"
+            className={`mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col transition-all ease-out ${
+              visible ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
             }`}
             style={{ transitionDuration: `${PAGE_TRANSITION_MS}ms` }}
           >

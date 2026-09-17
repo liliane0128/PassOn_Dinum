@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Circle, Loader2, Plus, TriangleAlert } from "lucide-react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Check, Plus, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
@@ -19,16 +19,98 @@ type GenerationState = "idle" | "generating";
 // thirty seconds -- every document and mail is read before the model is
 // called -- so a fixed 4.4s script would finish long before the work does.
 const STEPS = [
-  "Analyse de vos Docs",
-  "Lecture de vos Fichiers",
-  "Extraction des actions et échéances",
-  "Rédaction de la fiche de passation",
+  "Lecture de vos sources",
+  "Repérage des dossiers actifs",
+  "Extraction des informations clés",
+  "Compilation du dossier de passation",
 ];
 const STEP_DURATION_MS = 1100;
 
-// Matches the fade-in on gerer-ma-passation, so the cut between the two
-// happens at the same fully-faded point rather than as a jump.
-const PAGE_TRANSITION_MS = 250;
+// Matches the fade/scale-in on gerer-ma-passation, so the cut between the
+// two happens at the same (fully faded) point rather than as a jump.
+const PAGE_TRANSITION_MS = 280;
+
+function StepDot({
+  index,
+  label,
+  isActive,
+  isDone,
+  visible,
+}: {
+  index: number;
+  label: string;
+  isActive: boolean;
+  isDone: boolean;
+  visible: boolean;
+}) {
+  return (
+    <div
+      style={{ transitionDelay: visible ? `${index * 120}ms` : "0ms" }}
+      className={`flex w-[112px] shrink-0 flex-col items-center gap-2.5 text-center transition-all duration-500 ease-out ${
+        visible ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
+      }`}
+    >
+      <span
+        className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors duration-300 ease-out ${
+          isDone
+            ? "border-emerald-500 bg-emerald-500"
+            : isActive
+              ? "border-transparent bg-white"
+              : "border-gray-300 bg-white"
+        }`}
+      >
+        {/* Pending: a faint step number, present until this step is reached. */}
+        <span
+          className={`absolute text-xs font-medium text-gray-400 transition-all duration-200 ease-out ${
+            isActive || isDone ? "scale-50 opacity-0" : "scale-100 opacity-100"
+          }`}
+        >
+          {index + 1}
+        </span>
+
+        {/* Active: a hollow dashed ring that spins, rather than a filled
+            circle -- reads as a classic, unobtrusive loading spinner. A
+            slowed-down spin (default animate-spin is 1s/turn, too frantic
+            for a ring that's supposed to read as calm background progress). */}
+        <span
+          style={{ animationDuration: "2.2s" }}
+          className={`absolute inset-0 rounded-full border-2 border-dashed border-gray-300 transition-opacity duration-200 ease-out ${
+            isActive ? "animate-spin opacity-100" : "opacity-0"
+          }`}
+        />
+
+        {/* Done: a checkmark that pops in with a slight spring overshoot,
+            rather than just cross-fading in flatly. */}
+        <Check
+          className={`absolute h-4 w-4 text-white ${isDone ? "step-check-pop" : "scale-0 opacity-0"}`}
+        />
+      </span>
+
+      <span
+        className={`text-sm leading-tight transition-colors duration-300 ease-out ${
+          isActive ? "font-semibold text-gray-900" : "text-gray-400"
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function StepLine({ filled, visible }: { filled: boolean; visible: boolean }) {
+  return (
+    <div
+      className={`mt-[18px] h-px flex-1 self-start overflow-hidden bg-gray-200 transition-opacity duration-300 ease-out ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <div
+        className={`h-full w-full bg-emerald-500 ${filled ? "step-line-fill" : "scale-x-0"}`}
+        style={filled ? { animationDuration: `${STEP_DURATION_MS}ms` } : undefined}
+      />
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -97,7 +179,7 @@ export default function DashboardPage() {
     }
   }
 
-  const label = hasSheet ? "Voir ma passation" : "Générer ma passation";
+  const buttonLabel = hasSheet ? "Voir ma passation" : "Générer ma passation";
 
   return (
     <RequireSession>
@@ -107,14 +189,9 @@ export default function DashboardPage() {
           <Sidebar />
 
           <main className="flex-1 overflow-y-auto bg-[#f5f6f8]">
-            {/* pb-16 (rather than plain centering) so the taller block --
-                checklist included -- still centers as a whole a bit above
-                dead-center, not pushed down by its own added height. Fades
-                out just before navigating to gerer-ma-passation, which fades
-                in the same way on arrival. */}
             <div
-              className={`flex h-full flex-col items-center justify-center px-8 pb-16 text-center transition-opacity ease-out ${
-                leaving ? "opacity-0" : "opacity-100"
+              className={`flex h-full flex-col items-center justify-center px-8 text-center transition-all ease-[cubic-bezier(0.4,0,1,1)] ${
+                leaving ? "scale-[0.97] opacity-0" : "scale-100 opacity-100"
               }`}
               style={{ transitionDuration: `${PAGE_TRANSITION_MS}ms` }}
             >
@@ -128,21 +205,24 @@ export default function DashboardPage() {
               </div>
 
               <h1 className="mt-4 max-w-md text-3xl font-bold text-gray-900">
-                Sur le départ&nbsp;? Préparez votre passation.
+                Sur le départ&nbsp;?
+                <br />
+                Passez le relais en un clic.
               </h1>
-              <p className="mt-2 max-w-sm text-sm text-gray-500">
-                L&rsquo;agent PassOn lit vos Docs et vos Fichiers pour composer
-                une fiche de passation structurée, prête à relire.
+              <p className="mt-2 max-w-lg text-sm text-gray-500">
+                Vos Docs et vos Fichiers seront lus et analysés pour générer
+                automatiquement une fiche de passation structurée, prête à
+                relire.
               </p>
 
               <button
                 type="button"
                 onClick={handleClick}
                 disabled={state === "generating" || hasSheet === null}
-                className="mt-5 flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="mt-6 flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-base font-semibold text-white shadow-card transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <Plus className="h-4 w-4" />
-                {label}
+                <Plus className="h-5 w-5" />
+                {buttonLabel}
               </button>
 
               {error && (
@@ -155,49 +235,42 @@ export default function DashboardPage() {
                 </p>
               )}
 
-              {/* Space for the checklist is reserved even at rest (no
+              {/* Space for the progress bar is reserved even at rest (no
                   conditional render), just invisible -- so revealing it
-                  doesn't grow the block and shift the rest of the page. Each
-                  line fades/slides in on its own, a beat after the previous
-                  one, for a soft cascade rather than all four at once. */}
-              <ul
-                className="mt-5 flex flex-col gap-2"
+                  doesn't grow the block and shift the rest of the page.
+
+                  The dots and the lines between them are siblings in one
+                  flat row (not lines nested inside each dot's own wrapper),
+                  so every dot lines up on an even grid and every gap is the
+                  same width. Each line segment fills in sync with the dot
+                  right before it, over that step's own duration, so
+                  progress reads as one continuous wave moving left to right
+                  rather than the line snapping green only once its dot is
+                  already done. */}
+              <div
+                className="mt-14 flex w-full max-w-xl items-start"
                 aria-hidden={state !== "generating"}
               >
                 {STEPS.map((label, index) => {
                   const isDone = state === "generating" && index < completedCount;
                   const isActive = state === "generating" && index === completedCount;
+                  const lineFilled = state === "generating" && index <= completedCount;
+                  const visible = state === "generating";
+
                   return (
-                    <li
-                      key={label}
-                      style={{
-                        transitionDelay:
-                          state === "generating" ? `${index * 150}ms` : "0ms",
-                      }}
-                      className={`flex items-center gap-2 text-left text-sm transition-all duration-500 ease-out ${
-                        state === "generating"
-                          ? "translate-y-0 opacity-100"
-                          : "-translate-y-1 opacity-0"
-                      } ${
-                        isDone
-                          ? "text-gray-900"
-                          : isActive
-                            ? "text-brand-700"
-                            : "text-gray-400"
-                      }`}
-                    >
-                      {isDone ? (
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                      ) : isActive ? (
-                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand-600" />
-                      ) : (
-                        <Circle className="h-4 w-4 shrink-0" />
-                      )}
-                      {label}
-                    </li>
+                    <Fragment key={label}>
+                      {index > 0 && <StepLine filled={lineFilled} visible={visible} />}
+                      <StepDot
+                        index={index}
+                        label={label}
+                        isActive={isActive}
+                        isDone={isDone}
+                        visible={visible}
+                      />
+                    </Fragment>
                   );
                 })}
-              </ul>
+              </div>
             </div>
           </main>
         </div>
