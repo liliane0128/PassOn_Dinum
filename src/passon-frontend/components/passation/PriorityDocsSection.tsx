@@ -97,73 +97,69 @@ export function PriorityDocsSection({
       title={`Dossiers propritaires (${passation.documentsTotal})`}
       tone="info"
       variant={variant}
+      headerExtra={
+        <div className="relative">
+          {unassignedCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setUnclearOwnerAlertOpen((v) => !v)}
+              aria-label={`${unassignedCount} dossier${unassignedCount > 1 ? "s" : ""} sans propriétaire clair`}
+              title="Dossiers sans propriétaire clair"
+              className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-500 hover:bg-amber-50"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
+                {unassignedCount}
+              </span>
+            </button>
+          ) : null}
+
+          {unclearOwnerAlertOpen && unassignedCount > 0 && (
+            <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4 shadow-card">
+              <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {unassignedCount} dossier{unassignedCount > 1 ? "s" : ""} n’
+                {unassignedCount > 1 ? "ont" : "a"} plus de propriétaire clair
+              </div>
+              <div className="relative mt-3">
+                <button
+                  type="button"
+                  onClick={() => setUnclearOwnerPickerOpen((v) => !v)}
+                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white shadow-card hover:bg-brand-700"
+                >
+                  Transférer la propriété
+                </button>
+                {unclearOwnerPickerOpen && (
+                  <div className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-card">
+                    {teamMembers
+                      .filter((member) => member.name !== currentUser.name)
+                      .map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => handleReassignAllUnclearOwners(member.name)}
+                          className="flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {member.name}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      }
     >
-      {/* Only rendered when something needs attention: the green "all
-          reassigned" tick used to sit here permanently, pushing the list down
-          for no information. */}
-      <div
-        className={`relative flex justify-end${unassignedCount > 0 ? " mb-3" : ""}`}
-      >
-        {unassignedCount > 0 && (
-          <button
-            type="button"
-            onClick={() => setUnclearOwnerAlertOpen((v) => !v)}
-            aria-label={`${unassignedCount} dossier${unassignedCount > 1 ? "s" : ""} sans propriétaire clair`}
-            title="Dossiers sans propriétaire clair"
-            className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-500 hover:bg-amber-50"
-          >
-            <AlertTriangle className="h-4 w-4" />
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
-              {unassignedCount}
-            </span>
-          </button>
-        )}
-
-        {unclearOwnerAlertOpen && unassignedCount > 0 && (
-          <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4 shadow-card">
-            <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              {unassignedCount} dossier{unassignedCount > 1 ? "s" : ""} n’
-              {unassignedCount > 1 ? "ont" : "a"} plus de propriétaire clair
-            </div>
-            <div className="relative mt-3">
-              <button
-                type="button"
-                onClick={() => setUnclearOwnerPickerOpen((v) => !v)}
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white shadow-card hover:bg-brand-700"
-              >
-                Transférer la propriété
-              </button>
-              {unclearOwnerPickerOpen && (
-                <div className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-card">
-                  {teamMembers
-                    .filter((member) => member.name !== currentUser.name)
-                    .map((member) => (
-                      <button
-                        key={member.id}
-                        type="button"
-                        onClick={() => handleReassignAllUnclearOwners(member.name)}
-                        className="flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        {member.name}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
       <ul className="flex flex-col divide-y divide-gray-100">
         {passation.documents.map((doc) => (
           <li
             key={doc.id}
             className="relative flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0"
           >
-            {/* min-w-0 + truncate: real file names ("compte-rendu-comite-
-                technique-2026-09-10.md") are far longer than the demo ones and
-                wrapped mid-word, breaking the row apart. */}
+            {/* min-w-0 + truncate: real file names
+                ("compte-rendu-comite-technique-2026-09-10.md") are far longer
+                than the demo ones and wrap mid-word without this. */}
             <span className="flex min-w-0 flex-1 items-center gap-2 text-gray-800">
               <FileText className="h-4 w-4 shrink-0 text-gray-400" />
               <span className="truncate" title={doc.name}>
@@ -173,10 +169,6 @@ export function PriorityDocsSection({
 
             <span className="flex shrink-0 items-center gap-3">
               <span className="whitespace-nowrap text-gray-500">{doc.date}</span>
-              <span className="whitespace-nowrap text-gray-500">
-                Propriétaire :{" "}
-                <span className="font-medium text-gray-700">{owners[doc.id]}</span>
-              </span>
               <button
                 type="button"
                 onClick={() => setOpenFor(openFor === doc.id ? null : doc.id)}

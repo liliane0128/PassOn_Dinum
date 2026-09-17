@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, ExternalLink, Folder, MoreVertical, Send, SquarePen } from "lucide-react";
+import { CheckCircle2, ExternalLink, Folder, RotateCcw, Send, SquarePen } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { AttentionPoint, Contact, DocumentAssocie, Passation } from "@/lib/types";
 import { usePassationStatus } from "@/components/PassationStatusProvider";
@@ -26,17 +26,19 @@ const secondaryLinkClass =
 
 export function PassationCard({
   passation: initialPassation,
+  onRegenerate,
   onResumeCommit,
   onBlockersCommit,
   onContactsCommit,
   onValidate,
 }: {
   passation: Passation;
+  onRegenerate?: () => void;
   /** Set when the sections are backed by the API; absent for the fixture. */
   onResumeCommit?: (resume: string) => void;
   onBlockersCommit?: (points: AttentionPoint[]) => void;
   onContactsCommit?: (contacts: Contact[]) => void;
-  /** Set when validation is stored server-side; absent for the fixture. */
+  /** Set when validation is stored server-side. */
   onValidate?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Aperçu");
@@ -65,14 +67,13 @@ export function PassationCard({
   }, [activeTab, scrollTarget]);
 
   function handlePublish() {
-    // When the sheet is backed by the API, validation is stored there and the
-    // shared status is refreshed from the answer -- the manager's "Mon équipe"
-    // reads the same flag, so it must not be a purely local one.
+    // Backed by the API: validation is stored there and the shared status is
+    // refreshed from the answer, since the manager's "Mon équipe" reads the
+    // same flag.
     if (onValidate) {
       onValidate();
       return;
     }
-
 
     const now = new Date();
     const date = now.toLocaleDateString("fr-FR", {
@@ -186,9 +187,18 @@ export function PassationCard({
           </div>
         </div>
 
-        <button aria-label="Plus d'options" className="self-start text-gray-400 hover:text-gray-600 sm:self-center">
-          <MoreVertical className="h-[18px] w-[18px]" />
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          {onRegenerate && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Régénérer
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center justify-between px-5">
@@ -209,10 +219,7 @@ export function PassationCard({
           ))}
         </nav>
 
-        {/* No bottom margin: the row is centred against the tabs by the
-            parent's items-center, and mb-3 pulled it 12px above that line.
-            py-2 keeps it off the tab underline. */}
-        <div className="flex items-center gap-2 py-2">
+        <div className="my-3 flex items-center gap-2">
           {activeTab === "Fichier de passation" && (
             <>
               {role === "agent" ? (
@@ -233,7 +240,9 @@ export function PassationCard({
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                    {status.validated ? `Publiée dans Docs · ${status.validatedAt}` : "Valider"}
+                    {status.validated
+                      ? `Publiée dans Docs · ${status.validatedAt}`
+                      : "Valider et publier"}
                   </button>
                   {status.validated && (
                     <>
@@ -259,17 +268,17 @@ export function PassationCard({
                   )}
                 </>
               ) : (
-                <>
-                  {status.validated ? (
-                    <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">
-                      Validée le {status.validatedAt}
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700">
-                      En attente de validation par l’agent
-                    </span>
-                  )}
-                  {status.validated && (
+                status.validated && (
+                  <>
+                    <a
+                      href={DOCS_PLACEHOLDER_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={secondaryLinkClass}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Voir dans Docs
+                    </a>
                     <a
                       href={DOCS_PLACEHOLDER_URL}
                       target="_blank"
@@ -279,8 +288,8 @@ export function PassationCard({
                       <SquarePen className="h-3.5 w-3.5" />
                       Modifier dans Docs
                     </a>
-                  )}
-                </>
+                  </>
+                )
               )}
             </>
           )}

@@ -37,6 +37,11 @@ interface SectionCardProps {
   // card (Résumé) meant to read as the lead item rather than an equal
   // fourth of the grid.
   highlight?: boolean;
+  // Extra content on the header row's right side, next to the edit button
+  // (or alone, when there isn't one) -- e.g. PriorityDocsSection's "some
+  // documents have no clear owner" alert, which belongs next to the title
+  // rather than as its own row below it.
+  headerExtra?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -52,6 +57,7 @@ export function SectionCard({
   variant = "card",
   id,
   highlight = false,
+  headerExtra,
   children,
 }: SectionCardProps) {
   const accent = accentConfig[tone];
@@ -81,7 +87,10 @@ export function SectionCard({
             <Icon className={cn("h-[18px] w-[18px]", accent.icon, iconClassName)} />
             <h3 className="text-base font-semibold text-gray-900">{title}</h3>
           </div>
-          {editButton}
+          <div className="flex items-center gap-1">
+            {headerExtra}
+            {editButton}
+          </div>
         </div>
         {children}
       </section>
@@ -110,7 +119,10 @@ export function SectionCard({
             </span>
             <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
           </div>
-          {editButton}
+          <div className="flex items-center gap-1">
+            {headerExtra}
+            {editButton}
+          </div>
         </div>
         {children}
       </div>

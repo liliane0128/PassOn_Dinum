@@ -7,7 +7,6 @@ import {
   errorMessage,
   fetchHandover,
   fetchItems,
-  generateDossier,
   saveHandover,
   validateHandover,
   type Handover,
@@ -15,6 +14,7 @@ import {
 } from "@/lib/handover";
 import { usePassationStatus } from "@/components/PassationStatusProvider";
 import { contactsFromItems } from "@/lib/contacts-from-items";
+import { runGeneration } from "@/lib/generate-passation";
 import { MAX_PRIORITY_DOCUMENTS, rankDocuments } from "@/lib/documents-priority";
 import { passation as demoPassation } from "@/lib/mock-data";
 import type { AttentionPoint, Contact, Passation, SourceItem } from "@/lib/types";
@@ -121,16 +121,7 @@ export function PassationBoard() {
     setGenerating(true);
     setError(null);
     try {
-      const generated = await generateDossier();
-      // The model is not asked for contacts, so they are computed here from
-      // the mails and saved in the same call: one write, and the section is
-      // filled at the same moment as the rest.
-      setHandover(
-        await saveHandover(collaboratorId, {
-          ...generated,
-          contacts: contactsFromItems(itemsRef.current, user?.email),
-        })
-      );
+      setHandover(await runGeneration(collaboratorId, user?.email));
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -366,6 +357,7 @@ export function PassationBoard() {
         onBlockersCommit={handleBlockersCommit}
         onContactsCommit={handleContactsCommit}
         onValidate={handleValidate}
+        onRegenerate={() => user?.id && void generate(user.id)}
       />
     </>
   );
