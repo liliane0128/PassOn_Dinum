@@ -388,8 +388,13 @@ export function PassationCard({
       </div>
 
       {showPublishConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 px-4">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-card">
+        // No scrim: the page stays as it was and only the dialog appears over
+        // it. The layer still covers the viewport so a click outside lands
+        // here rather than on the sheet behind, it just does not dim it --
+        // hence the ring and the deeper shadow, which is what separates the
+        // dialog from the page now that the darkening is gone.
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl ring-1 ring-gray-900/10">
             <h3 className="text-base font-semibold text-gray-900">
               Publier ce dossier dans Docs ?
             </h3>
