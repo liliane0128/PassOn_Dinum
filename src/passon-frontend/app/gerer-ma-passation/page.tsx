@@ -20,10 +20,10 @@ const FIRST_STEP_DURATION_MS = 1300;
 const SECOND_STEP_DURATION_MS = 900;
 const GENERATION_DELAY_MS = FIRST_STEP_DURATION_MS + SECOND_STEP_DURATION_MS;
 
-// Matches the homepage's fade-out duration (see app/page.tsx's
+// Matches the homepage's fade/scale-out duration (see app/page.tsx's
 // PAGE_TRANSITION_MS), so arriving here (from that page, faded out) fades
 // back in at the same pace rather than a hard cut.
-const PAGE_TRANSITION_MS = 250;
+const PAGE_TRANSITION_MS = 280;
 
 export default function GererMaPassationPage() {
   // Set by the homepage once its own checklist has already played out the
@@ -66,8 +66,8 @@ export default function GererMaPassationPage() {
 
         <main className="flex flex-1 flex-col overflow-hidden bg-[#f5f6f8] px-8 py-8">
           <div
-            className={`mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col transition-opacity ease-out ${
-              visible ? "opacity-100" : "opacity-0"
+            className={`mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col transition-all ease-out ${
+              visible ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
             }`}
             style={{ transitionDuration: `${PAGE_TRANSITION_MS}ms` }}
           >

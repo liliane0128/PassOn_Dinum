@@ -14,3 +14,47 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Homepage generation-progress steps (app/page.tsx). Each animation is
+   triggered once, the first time its class is applied to an
+   already-mounted node -- not by remounting/keying -- so it plays exactly
+   once per run. linear timing on the line ties its motion to real elapsed
+   time (it *is* a timer), while the checkmark's pop uses a slight spring
+   overshoot so the state change reads as alive rather than a plain snap. */
+@keyframes step-line-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes step-check-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.step-line-fill {
+  animation-name: step-line-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  transform-origin: left;
+}
+
+.step-check-pop {
+  animation-name: step-check-pop;
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-fill-mode: forwards;
+}

@@ -12,12 +12,18 @@ export function Sidebar() {
 
   const navItems = [
     { id: "accueil", label: "Accueil", icon: Home, href: "/" },
-    { id: "equipe", label: "Mon équipe", icon: Users, href: "/equipe", managerOnly: true },
     {
-      id: "mes-passations",
-      label: role === "manager" ? "Passations équipe" : "Gérer ma passation",
+      id: "ma-passation",
+      label: "Ma passation",
       icon: FolderOpen,
       href: "/gerer-ma-passation",
+    },
+    {
+      id: "equipe",
+      label: "Mon équipe",
+      icon: Users,
+      href: "/equipe",
+      managerOnly: true,
     },
   ];
 
