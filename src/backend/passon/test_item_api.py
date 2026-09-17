@@ -115,6 +115,33 @@ class ItemApiTests(TestCase):
         titles = [item.title for item in CollaboratorItem.objects.filter(collaborator=self.employee)]
         self.assertEqual(titles, ["note.txt"])
 
+    def test_a_service_that_fails_keeps_what_it_had_captured(self):
+        """A partial answer is not the whole truth.
+
+        /api/extraction/items/ answers with the services that worked and lists
+        the others in `errors`. Treating that as the complete picture deleted
+        everything the failed service had contributed: Messages unreachable for
+        a minute and every mail vanished from the snapshot, leaving a manager
+        reading documents only with nothing to say why.
+        """
+        self.fetch_own(self.employee)
+        self.assertEqual(
+            CollaboratorItem.objects.filter(collaborator=self.employee).count(), 2
+        )
+
+        drive_only = {
+            "items": [UPSTREAM_ITEMS["items"][0]],
+            "errors": {"messages": "unreachable"},
+        }
+        response = self.fetch_own(self.employee, payload=drive_only)
+
+        kept = CollaboratorItem.objects.filter(collaborator=self.employee)
+        self.assertEqual(
+            sorted(item.source for item in kept), ["drive", "messages"]
+        )
+        # And the caller is told, rather than shown a quietly shortened list.
+        self.assertEqual(response.json()["errors"], {"messages": "unreachable"})
+
     def test_a_refresh_replaces_rather_than_duplicates(self):
         self.fetch_own(self.employee)
         self.fetch_own(self.employee)

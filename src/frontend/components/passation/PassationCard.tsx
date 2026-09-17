@@ -43,6 +43,16 @@ export function PassationCard({
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Aperçu");
   const [passation, setPassation] = useState<Passation>(initialPassation);
+
+  // Re-seed when the stored sheet changes -- a save, a validation, a new
+  // generation -- keyed on its timestamp rather than on the object, which the
+  // board rebuilds on every render. The card used to be remounted for this,
+  // which also reset the active tab: closing an editor in "Fichier de
+  // passation" threw the reader back to "Aperçu" mid-edit.
+  useEffect(() => {
+    setPassation(initialPassation);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPassation.lastUpdated, initialPassation.id]);
   const { getStatus, setValidated } = usePassationStatus();
   const status = getStatus(passation.id);
   const { role } = useRole();

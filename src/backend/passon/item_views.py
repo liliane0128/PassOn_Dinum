@@ -43,14 +43,26 @@ def _as_json(item):
 
 
 @transaction.atomic
-def _snapshot(collaborator, items):
+def _snapshot(collaborator, items, failed_sources=()):
     """Replace this collaborator's snapshot with what the services just said.
 
-    Replaced wholesale rather than merged: an item that has disappeared
-    upstream must disappear here too, otherwise a manager keeps seeing files
-    that no longer exist.
+    Replaced rather than merged: an item that has disappeared upstream must
+    disappear here too, otherwise a manager keeps seeing files that no longer
+    exist.
+
+    Except for a service that just failed. `/api/extraction/items/` answers
+    partially on purpose -- one service down still returns the others, with
+    the failure listed in `errors` -- and taking that answer as the whole
+    truth deleted everything the failed service had contributed. Messages
+    being briefly unreachable would wipe every mail from the snapshot, and
+    the manager would then read a colleague's handover sources as documents
+    only, with nothing saying why. Those rows are kept until that service
+    answers again.
     """
-    CollaboratorItem.objects.filter(collaborator=collaborator).delete()
+    stale = CollaboratorItem.objects.filter(collaborator=collaborator)
+    if failed_sources:
+        stale = stale.exclude(source__in=list(failed_sources))
+    stale.delete()
     CollaboratorItem.objects.bulk_create(
         [
             CollaboratorItem(
@@ -98,8 +110,8 @@ def items(request, collaborator_id):
         if response.status_code != 200:
             return response
         payload = json.loads(response.content)
-        _snapshot(subject, payload.get("items", []))
         errors = payload.get("errors", {})
+        _snapshot(subject, payload.get("items", []), failed_sources=errors.keys())
     else:
         errors = {}
 

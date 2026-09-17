@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { LOGIN_PATH } from "@/lib/routes";
@@ -19,6 +19,14 @@ import { LOGIN_PATH } from "@/lib/routes";
 export function RequireSession({ children }: { children: ReactNode }) {
   const { session, restoring } = useAuth();
 
+  // `replace`, so a bounced visit leaves no entry to go "back" to. From an
+  // effect rather than from render: React may render a component twice before
+  // committing it, and a navigation started during render would fire twice --
+  // and fire at all during a render React then throws away.
+  useEffect(() => {
+    if (!restoring && !session) window.location.replace(LOGIN_PATH);
+  }, [restoring, session]);
+
   if (restoring) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#f5f6f8]">
@@ -29,8 +37,6 @@ export function RequireSession({ children }: { children: ReactNode }) {
   }
 
   if (!session) {
-    // `replace`, so a bounced visit leaves no entry to go "back" to.
-    if (typeof window !== "undefined") window.location.replace(LOGIN_PATH);
     return (
       <div className="flex h-screen items-center justify-center bg-[#f5f6f8]">
         <p className="text-sm text-gray-500">Redirection vers la connexion…</p>

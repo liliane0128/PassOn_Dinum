@@ -119,6 +119,14 @@ export function PassationBoard() {
   const itemsRef = useRef<Item[]>([]);
   itemsRef.current = items;
 
+  // Read through a ref rather than closed over: `generate` is deliberately
+  // built once (the auto-generation effect depends on its identity), so a
+  // captured `user` would stay whatever it was on the first render -- and
+  // that address is what keeps the logged-in person out of their own
+  // contacts list.
+  const emailRef = useRef<string | undefined>(undefined);
+  emailRef.current = user?.email;
+
   const generatingRef = useRef(false);
   const autoAttempted = useRef<Set<string>>(new Set());
 
@@ -130,7 +138,7 @@ export function PassationBoard() {
     setGenerating(true);
     setError(null);
     try {
-      setHandover(await runGeneration(collaboratorId, user?.email));
+      setHandover(await runGeneration(collaboratorId, emailRef.current));
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -318,7 +326,6 @@ export function PassationBoard() {
       )}
 
       <PassationCard
-        key={handover?.updatedAt ?? "empty"}
         passation={passation}
         onResumeCommit={handleResumeCommit}
         onBlockersCommit={handleBlockersCommit}
