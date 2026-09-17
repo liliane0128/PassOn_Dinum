@@ -97,66 +97,67 @@ export function PriorityDocsSection({
       title={`Dossiers propritaires (${passation.documentsTotal})`}
       tone="info"
       variant={variant}
-    >
-      <div className="relative mb-3 flex justify-end">
-        {unassignedCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => setUnclearOwnerAlertOpen((v) => !v)}
-            aria-label={`${unassignedCount} dossier${unassignedCount > 1 ? "s" : ""} sans propriétaire clair`}
-            title="Dossiers sans propriétaire clair"
-            className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-500 hover:bg-amber-50"
-          >
-            <AlertTriangle className="h-4 w-4" />
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
-              {unassignedCount}
+      headerExtra={
+        <div className="relative">
+          {unassignedCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setUnclearOwnerAlertOpen((v) => !v)}
+              aria-label={`${unassignedCount} dossier${unassignedCount > 1 ? "s" : ""} sans propriétaire clair`}
+              title="Dossiers sans propriétaire clair"
+              className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-500 hover:bg-amber-50"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
+                {unassignedCount}
+              </span>
+            </button>
+          ) : (
+            <span
+              title="Tous les dossiers ont été réattribués"
+              className="flex h-7 w-7 shrink-0 items-center justify-center text-emerald-500"
+            >
+              <CheckCircle2 className="h-4 w-4" />
             </span>
-          </button>
-        ) : (
-          <span
-            title="Tous les dossiers ont été réattribués"
-            className="flex h-7 w-7 shrink-0 items-center justify-center text-emerald-500"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-          </span>
-        )}
+          )}
 
-        {unclearOwnerAlertOpen && unassignedCount > 0 && (
-          <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4 shadow-card">
-            <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              {unassignedCount} dossier{unassignedCount > 1 ? "s" : ""} n’
-              {unassignedCount > 1 ? "ont" : "a"} plus de propriétaire clair
+          {unclearOwnerAlertOpen && unassignedCount > 0 && (
+            <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4 shadow-card">
+              <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {unassignedCount} dossier{unassignedCount > 1 ? "s" : ""} n’
+                {unassignedCount > 1 ? "ont" : "a"} plus de propriétaire clair
+              </div>
+              <div className="relative mt-3">
+                <button
+                  type="button"
+                  onClick={() => setUnclearOwnerPickerOpen((v) => !v)}
+                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white shadow-card hover:bg-brand-700"
+                >
+                  Transférer la propriété
+                </button>
+                {unclearOwnerPickerOpen && (
+                  <div className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-card">
+                    {teamMembers
+                      .filter((member) => member.name !== currentUser.name)
+                      .map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          onClick={() => handleReassignAllUnclearOwners(member.name)}
+                          className="flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {member.name}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="relative mt-3">
-              <button
-                type="button"
-                onClick={() => setUnclearOwnerPickerOpen((v) => !v)}
-                className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white shadow-card hover:bg-brand-700"
-              >
-                Transférer la propriété
-              </button>
-              {unclearOwnerPickerOpen && (
-                <div className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-card">
-                  {teamMembers
-                    .filter((member) => member.name !== currentUser.name)
-                    .map((member) => (
-                      <button
-                        key={member.id}
-                        type="button"
-                        onClick={() => handleReassignAllUnclearOwners(member.name)}
-                        className="flex w-full items-center px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        {member.name}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
+          )}
+        </div>
+      }
+    >
       <ul className="flex flex-col divide-y divide-gray-100">
         {passation.documents.map((doc) => (
           <li
@@ -170,10 +171,6 @@ export function PriorityDocsSection({
 
             <span className="flex shrink-0 items-center gap-3">
               <span className="whitespace-nowrap text-gray-500">{doc.date}</span>
-              <span className="whitespace-nowrap text-gray-500">
-                Propriétaire :{" "}
-                <span className="font-medium text-gray-700">{owners[doc.id]}</span>
-              </span>
               <button
                 type="button"
                 onClick={() => setOpenFor(openFor === doc.id ? null : doc.id)}

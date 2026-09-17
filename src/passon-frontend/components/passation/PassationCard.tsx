@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, ExternalLink, Folder, MoreVertical, Send, SquarePen } from "lucide-react";
+import { CheckCircle2, ExternalLink, Folder, RotateCcw, Send, SquarePen } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Contact, DocumentAssocie, Passation } from "@/lib/types";
 import { usePassationStatus } from "@/components/PassationStatusProvider";
@@ -26,8 +26,10 @@ const secondaryLinkClass =
 
 export function PassationCard({
   passation: initialPassation,
+  onRegenerate,
 }: {
   passation: Passation;
+  onRegenerate?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Aperçu");
   const [passation, setPassation] = useState<Passation>(initialPassation);
@@ -167,9 +169,18 @@ export function PassationCard({
           </div>
         </div>
 
-        <button aria-label="Plus d'options" className="self-start text-gray-400 hover:text-gray-600 sm:self-center">
-          <MoreVertical className="h-[18px] w-[18px]" />
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          {onRegenerate && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Régénérer
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center justify-between px-5">
@@ -190,7 +201,7 @@ export function PassationCard({
           ))}
         </nav>
 
-        <div className="mb-3 flex items-center gap-2">
+        <div className="my-3 flex items-center gap-2">
           {activeTab === "Fichier de passation" && (
             <>
               {role === "agent" ? (
@@ -211,7 +222,9 @@ export function PassationCard({
                     ) : (
                       <Send className="h-4 w-4" />
                     )}
-                    {status.validated ? `Publiée dans Docs · ${status.validatedAt}` : "Valider"}
+                    {status.validated
+                      ? `Publiée dans Docs · ${status.validatedAt}`
+                      : "Valider et publier"}
                   </button>
                   {status.validated && (
                     <>
@@ -237,17 +250,17 @@ export function PassationCard({
                   )}
                 </>
               ) : (
-                <>
-                  {status.validated ? (
-                    <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">
-                      Validée le {status.validatedAt}
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700">
-                      En attente de validation par l’agent
-                    </span>
-                  )}
-                  {status.validated && (
+                status.validated && (
+                  <>
+                    <a
+                      href={DOCS_PLACEHOLDER_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={secondaryLinkClass}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Voir dans Docs
+                    </a>
                     <a
                       href={DOCS_PLACEHOLDER_URL}
                       target="_blank"
@@ -257,8 +270,8 @@ export function PassationCard({
                       <SquarePen className="h-3.5 w-3.5" />
                       Modifier dans Docs
                     </a>
-                  )}
-                </>
+                  </>
+                )
               )}
             </>
           )}
