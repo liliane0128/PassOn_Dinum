@@ -79,13 +79,10 @@ services:
       dockerfile: src/server/Dockerfile
     container_name: passon_nginx
     ports:
+      # The only published port: the landing page, the application and the API
+      # all answer here. 8091 used to carry a second site while the new
+      # frontend was being built beside the old one; nothing listens there now.
       - "8090:8090"
-      # The homepage of the new frontend, plus its /dashboard entry point.
-      - "8091:8091"
-    # /dashboard is proxied to the Next app (src/passon-frontend), which runs
-    # on the host rather than in Compose for now.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       - web
 
