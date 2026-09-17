@@ -18,7 +18,7 @@ class ConnectorAPITests(SimpleTestCase):
     def test_all_connectors(self, send):
         cases = [
             ('docs', 'HTTP_X_DOCS_SESSION', [upstream({'results': [{'title': 'Doc'}]})], [{'title': 'Doc'}], 'documents/'),
-            ('drive', 'HTTP_X_DRIVE_SESSION', [upstream({'results': [{'title': 'File'}]})], [{'title': 'File'}], 'items/?is_creator_me=true'),
+            ('drive', 'HTTP_X_DRIVE_SESSION', [upstream({'results': [{'title': 'File'}]})], [{'title': 'File'}], 'items/'),
             ('messages', 'HTTP_X_MESSAGES_SESSION', [upstream([{'id': 'mailbox-1'}]), upstream({'results': [{'id': 'thread-1'}]}), upstream([{'id': 'msg-1', 'subject': 'Hi'}])], [{'id': 'msg-1', 'subject': 'Hi'}], 'messages/?thread_id=thread-1'),
         ]
         for service, header, responses, data, suffix in cases:

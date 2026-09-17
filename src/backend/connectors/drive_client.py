@@ -9,8 +9,8 @@ The Keycloak realm for Drive is "drive" (not "impress"), served at
 http://localhost:8083/realms/drive/...
 
 Endpoints:
-- GET /api/v1.0/items/                    -> paginated list of items
-- GET /api/v1.0/items/?is_creator_me=true -> only items created by the user
+- GET /api/v1.0/items/                    -> paginated list of every item the
+                                             user can see, theirs and shared
 - GET /api/v1.0/items/{id}/              -> single item's metadata
 - GET /api/v1.0/items/{id}/download/     -> file content (type == "file" only)
 - GET /api/v1.0/items/{id}/export/       -> zip of a folder's contents
@@ -79,11 +79,20 @@ def login(base_url=BASE_URL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWOR
 
 
 def list_items(session, base_url=BASE_URL):
-    """Return the list of items created by the logged-in user."""
-    response = session.get(
-        f"{base_url.rstrip('/')}/api/v1.0/items/",
-        params={"is_creator_me": "true"},
-    )
+    """Return every item the logged-in user can see, shared ones included.
+
+    The call used to carry `is_creator_me=true`, which kept only what the
+    person had created themselves. A document someone shared with them can be
+    exactly what their successor needs, and leaving it out made it invisible
+    to the handover unless a mail happened to mention it.
+
+    The trade is size: on an account in a service that shares everything into
+    a common space, this can return far more than the person's own work, and
+    the model's budget is finite (see generation.MAX_CONTENT_CHARS). If that
+    becomes a problem, cap the list here rather than filtering by creator --
+    the most recently updated items are the ones worth keeping.
+    """
+    response = session.get(f"{base_url.rstrip('/')}/api/v1.0/items/")
     response.raise_for_status()
     return response.json()["results"]
 
