@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LoaderCircle, TriangleAlert } from "lucide-react";
+import { Loader2, TriangleAlert } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   errorMessage,
@@ -75,10 +75,19 @@ function completeness(handover: Handover | null): number {
  * automatic attempt per person per page load, successful or not, after which
  * only the button generates.
  */
+// lil's wait, kept word for word: two lines, the first held a beat longer,
+// reading like a glimpse of a longer status loop. Theirs cut to the card
+// after 2.2s; here the second line simply stays until the generation
+// actually returns.
+const FIRST_STEP = "Analyse de vos Docs…";
+const SECOND_STEP = "Rédaction de la fiche de passation…";
+const FIRST_STEP_DURATION_MS = 1300;
+
 export function PassationBoard() {
   const { session } = useAuth();
   const user = session?.user;
   const { setStatus } = usePassationStatus();
+  const [step, setStep] = useState(FIRST_STEP);
 
   const [handover, setHandover] = useState<Handover | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -138,6 +147,13 @@ export function PassationBoard() {
     autoAttempted.current.add(user.id);
     void generate(user.id);
   }, [loading, user?.id, handover, generate]);
+
+  useEffect(() => {
+    if (!loading && !generating) return;
+    setStep(FIRST_STEP);
+    const toSecond = setTimeout(() => setStep(SECOND_STEP), FIRST_STEP_DURATION_MS);
+    return () => clearTimeout(toSecond);
+  }, [loading, generating]);
 
   /**
    * Validation, stored server-side.
@@ -215,11 +231,13 @@ export function PassationBoard() {
     }
   }
 
-  if (loading) {
+  // The same centred wait for both cases, so arriving here and regenerating
+  // look alike -- and like lil's page, which this is taken from.
+  if (loading || generating) {
     return (
-      <div className="flex items-center gap-3 text-sm text-gray-500">
-        <LoaderCircle className="h-4 w-4 animate-spin text-brand-600" />
-        Chargement de votre passation…
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <Loader2 className="h-7 w-7 animate-spin text-brand-600" />
+        <p className="mt-3 text-sm text-gray-500">{step}</p>
       </div>
     );
   }
@@ -289,14 +307,6 @@ export function PassationBoard() {
           same thing on one page is one too many. What stays is the reason a
           pass failed -- the card cannot say that -- and the note while one is
           running. */}
-      {generating && (
-        <p className="mb-3 flex items-center gap-2 text-sm text-gray-500">
-          <LoaderCircle className="h-4 w-4 animate-spin text-brand-600" />
-          Lecture de vos documents et mails… cela prend une trentaine de
-          secondes.
-        </p>
-      )}
-
       {error && (
         <p
           role="alert"
