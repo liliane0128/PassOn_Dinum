@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileText, Plus, UserRoundCog, X } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { DocumentAssocie, Passation } from "@/lib/types";
-import { currentUser, teamMembers } from "@/lib/mock-data";
+import { teamMembers } from "@/lib/mock-data";
+import { useAuth } from "@/context/AuthContext";
 
 export function PriorityDocsSection({
   passation,
@@ -33,11 +34,22 @@ export function PriorityDocsSection({
   const [unclearOwnerAlertOpen, setUnclearOwnerAlertOpen] = useState(false);
   const [unclearOwnerPickerOpen, setUnclearOwnerPickerOpen] = useState(false);
 
-  // A document still owned by the departing agent (currentUser) doesn't have
-  // a clear owner going forward -- that's what the banner above the list
-  // tracks and lets the user clear in one batch action.
+  // Documents that belong to someone else: shared with the logged-in person
+  // rather than created by them. Drive lists both since the creator filter
+  // was dropped (drive_client.list_items), and the difference matters for a
+  // handover -- a shared dossier is somebody else's to hand over, and
+  // whoever takes over here may not keep access to it.
+  //
+  // The owner comes from the session, not from mock-data's fictional
+  // currentUser: the comparison has to be against whoever is actually logged
+  // in, or it flags the wrong rows.
+  const { session } = useAuth();
+  const me = session?.user?.full_name || session?.user?.email || "";
   const unassignedDocIds = passation.documents
-    .filter((doc) => (owners[doc.id] ?? doc.proprietaire) === currentUser.name)
+    .filter((doc) => {
+      const owner = owners[doc.id] ?? doc.proprietaire;
+      return Boolean(owner) && Boolean(me) && owner !== me;
+    })
     .map((doc) => doc.id);
   const unassignedCount = unassignedDocIds.length;
 
@@ -63,7 +75,7 @@ export function PriorityDocsSection({
     onAddDocument({
       name: draftName.trim(),
       date: draftDate.trim(),
-      proprietaire: currentUser.name,
+      proprietaire: me,
     });
     setDraftName("");
     setDraftDate("");
@@ -103,8 +115,8 @@ export function PriorityDocsSection({
             <button
               type="button"
               onClick={() => setUnclearOwnerAlertOpen((v) => !v)}
-              aria-label={`${unassignedCount} dossier${unassignedCount > 1 ? "s" : ""} sans propriétaire clair`}
-              title="Dossiers sans propriétaire clair"
+              aria-label={`${unassignedCount} dossier${unassignedCount > 1 ? "s" : ""} partagé${unassignedCount > 1 ? "s" : ""} avec vous`}
+              title="Dossiers partagés avec vous"
               className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-amber-500 hover:bg-amber-50"
             >
               <AlertTriangle className="h-4 w-4" />
@@ -114,7 +126,7 @@ export function PriorityDocsSection({
             </button>
           ) : (
             <span
-              title="Tous les dossiers ont été réattribués"
+              title="Tous les dossiers vous appartiennent"
               className="flex h-7 w-7 shrink-0 items-center justify-center text-emerald-500"
             >
               <CheckCircle2 className="h-4 w-4" />
@@ -125,8 +137,9 @@ export function PriorityDocsSection({
             <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4 shadow-card">
               <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                {unassignedCount} dossier{unassignedCount > 1 ? "s" : ""} n’
-                {unassignedCount > 1 ? "ont" : "a"} plus de propriétaire clair
+                {unassignedCount} dossier{unassignedCount > 1 ? "s" : ""} partagé
+                {unassignedCount > 1 ? "s" : ""} avec vous, appartenant à
+                quelqu’un d’autre
               </div>
               <div className="relative mt-3">
                 <button
@@ -139,7 +152,7 @@ export function PriorityDocsSection({
                 {unclearOwnerPickerOpen && (
                   <div className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-card">
                     {teamMembers
-                      .filter((member) => member.name !== currentUser.name)
+                      .filter((member) => member.name !== me)
                       .map((member) => (
                         <button
                           key={member.id}

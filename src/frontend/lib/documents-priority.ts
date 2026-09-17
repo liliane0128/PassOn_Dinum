@@ -111,19 +111,30 @@ export function rankDocuments(
   ownerFallback: string,
   today: Date = new Date()
 ): DocumentAssocie[] {
-  if (!handover?.documents?.length) return [];
-
-  const deadlines = handover.deadlines ?? [];
-  const blockers = handover.blockers ?? [];
-  const actions = handover.actions ?? [];
-  const decisions = handover.decisions ?? [];
+  const deadlines = handover?.deadlines ?? [];
+  const blockers = handover?.blockers ?? [];
+  const actions = handover?.actions ?? [];
+  const decisions = handover?.decisions ?? [];
   const startOfToday = new Date(
     today.getFullYear(),
     today.getMonth(),
     today.getDate()
   ).getTime();
 
-  const scored: Scored[] = handover.documents.map((document, index) => {
+  // The section lists what the sheet retained, as before. What changed is
+  // upstream: Drive no longer filters its listing to items the person created
+  // (drive_client.list_items), so a document shared with them can now be
+  // picked like any other.
+  //
+  // Mails are left out: the model is free to cite one under "documents", since
+  // the prompt asks for item ids and a mail is an item, but this section is
+  // headed "Dossiers", shows an owner and offers to transfer it, none of which
+  // means anything for a message.
+  const onlyDocuments = (handover?.documents ?? []).filter(
+    (document) => !document.id.startsWith("messages:")
+  );
+
+  const scored: Scored[] = onlyDocuments.map((document, index) => {
     const item = items.find(
       (candidate) => candidate.refId === document.id || candidate.id === document.id
     );
