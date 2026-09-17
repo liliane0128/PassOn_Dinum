@@ -22,7 +22,7 @@
 
 **PassOn reads a colleague's Docs and Drive to generate a structured handover sheet — powered by an LLM.**
 
-<img src="/docs/assets/PassOn_screenshot.png" width="100%" align="center"/>
+<img src="docs/assets/passon-dashboard.png" alt="PassOn — a generated handover sheet" width="100%" align="center"/>
 
 > [!IMPORTANT]
 > PassOn is an independent project built **on top of** La Suite numérique. It is
