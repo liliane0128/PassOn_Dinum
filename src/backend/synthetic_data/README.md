@@ -6,11 +6,21 @@
 
 ## English
 
-Synthetic workspace for Sophie Vasseur (instructrice, service affaires
-générales, mairie de Verneuil-sur-Aveyron, leaves her post in three weeks),
-built to evaluate the handover pipeline (`connectors/extraction.py` +
-`connectors/generation.py`) against a **known ground truth**, without using
-any real employee data.
+Synthetic workspace for Camille Faure (instructrice urbanisme, mairie de
+Sainte-Radegonde, leaves her post in two weeks; her manager is Nathalie
+Prigent, cheffe du service urbanisme), built to evaluate the handover
+pipeline (`connectors/extraction.py` + `connectors/generation.py`) against a
+**known ground truth**, without using any real employee data.
+
+Rewritten (2026-09) to match a product pivot agreed with the sponsor: fewer,
+denser work streams (4 instead of 6), each project now carries a `priority`
+level and a `type` (`"personal"` vs `"collective"`) to test dossier
+prioritization/classification, `contacts` is meant to be shown to the
+manager specifically, and one project (`pc-rateau`) is deliberately
+low-contact/single-stakeholder to contrast against the others' cross-service
+`"collective"` footprint. The previous scenario (Sophie Vasseur, mairie de
+Verneuil-sur-Aveyron, catastrophe naturelle) is still in git history if
+needed.
 
 This is a separate, purpose-built evaluation dataset -- it does not replace
 or modify `connectors/mock_data.py` (the small fixture used for local UI
@@ -65,9 +75,23 @@ synthetic_data/
   -- the pipeline should recognize a closed project as closed and not
   surface routine noise as a handover priority.
 
+### Known gap (as of this rewrite)
+
+A real run against this dataset (`results/full_run.json`) shows
+`generation.py`'s current prompt does **not** reliably exclude the noise
+items: the coffee-machine-outage and badge-renewal reminders (`mail-020`,
+`mail-021`) showed up as `deadlines` and in the summary `text`. The
+project-level facts (decisions/actions/blockers/deadlines, the closed
+project, the personal-vs-collective split) all came out correctly -- only
+the routine-noise exclusion is weak. `SYSTEM_PROMPT` has no explicit
+instruction to drop routine administrative noise; it only asks the model to
+avoid inventing facts, which these items don't do (they're real, just not
+handover-relevant). Left as-is on purpose so it stays a live test the
+prompt can be checked against, rather than quietly cherry-picking a run that
+happened to look clean.
+
 ### Running it
 
-Once all six work streams are in place:
 ```sh
 python manage.py run_synthetic_dossier
 ```
@@ -78,11 +102,22 @@ python manage.py run_synthetic_dossier
 
 ## Français
 
-Espace de travail synthétique pour Sophie Vasseur (instructrice, service affaires
-générales, mairie de Verneuil-sur-Aveyron, qui quitte son poste dans trois
-semaines), construit pour évaluer la chaîne de passation
-(`connectors/extraction.py` + `connectors/generation.py`) face à une **vérité
-terrain connue**, sans utiliser la moindre donnée réelle d'un agent.
+Espace de travail synthétique pour Camille Faure (instructrice urbanisme,
+mairie de Sainte-Radegonde, qui quitte son poste dans deux semaines ; sa
+manager est Nathalie Prigent, cheffe du service urbanisme), construit pour
+évaluer la chaîne de passation (`connectors/extraction.py` +
+`connectors/generation.py`) face à une **vérité terrain connue**, sans
+utiliser la moindre donnée réelle d'un agent.
+
+Réécrit (09/2026) suite à un pivot produit validé avec le commanditaire :
+moins de chantiers mais plus denses (4 au lieu de 6), chaque projet porte
+désormais une `priority` et un `type` (`"personal"` vs `"collective"`) pour
+tester la priorisation/classification des dossiers, `contacts` est pensé
+pour être montré surtout au manager, et un projet (`pc-rateau`) est
+volontairement peu collectif (un seul contact) pour contraster avec le
+profil transversal des autres. L'ancien scénario (Sophie Vasseur, mairie de
+Verneuil-sur-Aveyron, catastrophe naturelle) reste consultable dans
+l'historique git si besoin.
 
 C'est un jeu d'évaluation à part, construit pour cet usage : il ne remplace ni ne
 modifie `connectors/mock_data.py` (le petit jeu utilisé pour les démonstrations
@@ -139,9 +174,23 @@ synthetic_data/
   chaîne doit reconnaître qu'un projet clos l'est, et ne pas remonter la routine
   comme une priorité de passation.
 
+### Lacune connue (au moment de cette réécriture)
+
+Une exécution réelle sur ce jeu de données (`results/full_run.json`) montre
+que le prompt actuel de `generation.py` **n'exclut pas fiablement** le bruit :
+le rappel de panne de machine à café et celui de renouvellement de badge
+(`mail-020`, `mail-021`) sont ressortis en tant que `deadlines` et dans le
+`text` du résumé. Les faits au niveau des projets (décisions/actions/
+blocages/échéances, le projet clos, la répartition personnel/collectif) sont
+en revanche tous sortis correctement -- seule l'exclusion du bruit de routine
+est faible. `SYSTEM_PROMPT` n'a aucune consigne explicite d'écarter le bruit
+administratif de routine ; il demande seulement de ne pas inventer de faits,
+ce que ces éléments ne font pas (ils sont réels, juste hors-sujet pour la
+passation). Laissé tel quel volontairement, pour que ça reste un vrai test
+du prompt plutôt qu'un run choisi parce qu'il avait l'air propre.
+
 ### Lancer l'évaluation
 
-Une fois les six chantiers en place :
 ```sh
 python manage.py run_synthetic_dossier
 ```

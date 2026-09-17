@@ -1,90 +1,58 @@
 [
   {
     "id": "doc-001",
-    "title": "Dossier communal - Demande de reconnaissance catastrophe naturelle - Verneuil-sur-Aveyron",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-08-22T09:00:00Z",
-    "updated_at": "2026-09-10T11:30:00Z",
-    "excerpt": "Suite aux inondations du 18 aout 2026, dossier de demande de reconnaissance de l'etat de catastrophe naturelle pour la commune de Verneuil-sur-Aveyron. Inclut le cas de la boulangerie Au Bon Levain (Thierry Lemaire) : atelier en sous-sol inonde, fours et stock de farine detruits. Situation validee comme remplissant les criteres d'inclusion. Version en cours de finalisation avant transmission complete a la commission interministerielle."
+    "title": "Note technique - mise en accessibilite PMR de la mairie",
+    "creator": "Camille Faure",
+    "created_at": "2026-05-05T09:00:00Z",
+    "updated_at": "2026-05-05T09:00:00Z",
+    "excerpt": "Note technique justifiant la mise en accessibilite PMR du batiment de la mairie, dans le cadre de l'obligation reglementaire Ad'AP (Agenda d'Accessibilite Programmee). Principe des travaux valide, un cabinet d'architecture doit etre mandate pour etablir un plan previsionnel et un diagnostic accessibilite doit etre realise prealablement au chiffrage definitif."
   },
   {
     "id": "doc-002",
-    "title": "Note de suivi - passation dossier catastrophe naturelle",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-09-14T16:00:00Z",
-    "updated_at": "2026-09-15T08:45:00Z",
-    "excerpt": "Note a l'attention de mon successeur (je quitte le poste dans trois semaines, le 6 octobre). Dossier catastrophe naturelle en cours suite aux inondations d'aout. En attente du rapport d'expertise des degats de la boulangerie Au Bon Levain, l'artisan qui devait l'envoyer a pris du retard. A faire : relancer la prefecture pour confirmer que le dossier communal complet a bien ete transmis a la commission interministerielle, qui se reunit le 22 octobre -- si le dossier n'est pas complet avant cette date, il faudra attendre la session suivante."
+    "title": "Note de passation - dossier accessibilite PMR",
+    "creator": "Camille Faure",
+    "created_at": "2026-09-15T14:00:00Z",
+    "updated_at": "2026-09-15T14:00:00Z",
+    "excerpt": "Note a l'attention de mon successeur (je quitte le poste dans deux semaines, le 3 octobre). Dossier accessibilite PMR de la mairie : le diagnostic accessibilite complet n'est toujours pas arrive (AccessDiag a pris du retard), ce qui bloque le chiffrage definitif des travaux avec le Cabinet Ramos Architecture. Le dossier Ad'AP doit imperativement etre depose a la prefecture avant le 15 octobre sous peine de penalite -- j'ai demande a la DDT si un delai supplementaire etait possible, reponse en attente. A suivre de tres pres."
   },
   {
     "id": "doc-003",
-    "title": "Compte-rendu reunion cellule de crise inondations - 20 aout",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-08-20T17:00:00Z",
-    "updated_at": "2026-08-20T17:00:00Z",
-    "excerpt": "Reunion de la cellule de crise suite aux inondations du 18 aout. Recensement initial des commerces et habitations touches, dont la boulangerie Au Bon Levain (sous-sol inonde). Un expert doit etre mandate pour chaque dossier avant constitution du dossier de reconnaissance. Point a reevaluer la semaine prochaine selon l'avancement des constats."
+    "title": "Dossier de permis de construire - extension maison Rateau, 14 rue des Peupliers",
+    "creator": "Camille Faure",
+    "created_at": "2026-08-01T10:00:00Z",
+    "updated_at": "2026-08-01T10:00:00Z",
+    "excerpt": "Dossier de demande de permis de construire pour une extension de maison individuelle, famille Rateau, 14 rue des Peupliers. Instruction en cours."
   },
   {
     "id": "doc-004",
-    "title": "Modele - Formulaire de declaration de degats pour les sinistres",
-    "creator": "Service affaires generales",
-    "created_at": "2026-01-15T10:00:00Z",
-    "updated_at": "2026-01-15T10:00:00Z",
-    "excerpt": "Formulaire type utilise par la commune pour la declaration de degats materiels dans le cadre d'une demande de reconnaissance de catastrophe naturelle, a remplir par chaque sinistre concerne."
+    "title": "Note de passation - dossier PC Rateau",
+    "creator": "Camille Faure",
+    "created_at": "2026-09-15T14:30:00Z",
+    "updated_at": "2026-09-15T14:30:00Z",
+    "excerpt": "Note a l'attention de mon successeur. Permis de construire famille Rateau : instruction en cours, aucun motif de refus identifie (le signalement d'un voisin sur l'implantation a ete verifie et ecarte). Il reste a notifier la decision avant l'expiration du delai legal de 2 mois, soit avant le 5 octobre."
   },
   {
     "id": "doc-005",
-    "title": "Note technique - remplacement chaudiere ecole primaire Jean Moulin",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-07-10T09:00:00Z",
-    "updated_at": "2026-07-10T09:00:00Z",
-    "excerpt": "Note technique justifiant le remplacement de la chaudiere de l'ecole primaire Jean Moulin, en fin de vie. Propose un calendrier de travaux durant les vacances de la Toussaint, avec un debut de chantier envisage le 26 octobre pour ne pas perturber la rentree."
+    "title": "Note - refection voirie rue des Tilleuls",
+    "creator": "Camille Faure",
+    "created_at": "2026-06-15T09:30:00Z",
+    "updated_at": "2026-06-15T09:30:00Z",
+    "excerpt": "Note justifiant la refection de la voirie rue des Tilleuls (revetement degrade). Demande de devis en cours aupres d'entreprises de travaux publics."
   },
   {
     "id": "doc-006",
-    "title": "Compte-rendu reunion - travaux chaudiere ecole",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-08-05T14:00:00Z",
-    "updated_at": "2026-08-05T14:00:00Z",
-    "excerpt": "Reunion de validation du prestataire pour le remplacement de la chaudiere de l'ecole Jean Moulin. L'entreprise ThermoPlus est retenue. Bon de commande a signer. Debut des travaux prevu le 26 octobre, pendant les vacances scolaires."
+    "title": "Projet de convention de partenariat - CAUE",
+    "creator": "Camille Faure",
+    "created_at": "2026-05-10T11:00:00Z",
+    "updated_at": "2026-05-10T11:00:00Z",
+    "excerpt": "Projet de convention de partenariat avec le CAUE (Conseil d'Architecture, d'Urbanisme et de l'Environnement) pour l'accompagnement architectural des projets communaux."
   },
   {
     "id": "doc-007",
-    "title": "Note - renouvellement parc informatique mairie",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-06-01T10:00:00Z",
-    "updated_at": "2026-06-01T10:00:00Z",
-    "excerpt": "Note justifiant le renouvellement de 14 postes informatiques obsoletes a la mairie (services administratifs et accueil). Demande de devis en cours aupres du prestataire habituel."
-  },
-  {
-    "id": "doc-008",
-    "title": "Programme fete d'automne - version finale",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-09-10T10:00:00Z",
-    "updated_at": "2026-09-10T10:00:00Z",
-    "excerpt": "Programme finalise de la fete d'automne communale : stands associatifs, concert, restauration. Organisation quasiment terminee. Reste a confirmer l'autorisation d'occupation du domaine public, envoyer le planning definitif au prestataire son, et recuperer l'attestation d'assurance d'une association participante."
-  },
-  {
-    "id": "doc-009",
-    "title": "Projet de convention de mise a disposition de salle - Les Amis du Patrimoine",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-06-20T11:00:00Z",
-    "updated_at": "2026-06-20T11:00:00Z",
-    "excerpt": "Projet de convention pour la mise a disposition reguliere d'une salle municipale a l'association Les Amis du Patrimoine. Version soumise a relecture par l'association."
-  },
-  {
-    "id": "doc-010",
-    "title": "Convention mise a disposition salle - version signee - Les Amis du Patrimoine",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-09-03T10:00:00Z",
-    "updated_at": "2026-09-03T10:00:00Z",
-    "excerpt": "Convention de mise a disposition de salle municipale a l'association Les Amis du Patrimoine, signee par les deux parties le 3 septembre 2026. Dossier clos, aucune action restante."
-  },
-  {
-    "id": "doc-011",
-    "title": "Demande de conges - Sophie Vasseur",
-    "creator": "Sophie Vasseur",
-    "created_at": "2026-08-15T09:00:00Z",
-    "updated_at": "2026-08-15T09:00:00Z",
-    "excerpt": "Demande de conges poses du 24 au 28 aout 2026."
+    "title": "Newsletter interne mairie - septembre 2026",
+    "creator": "Direction generale",
+    "created_at": "2026-09-01T08:00:00Z",
+    "updated_at": "2026-09-01T08:00:00Z",
+    "excerpt": "Newsletter interne mensuelle : evenements du personnel, rappel des horaires d'ete, felicitations aux nouveaux arrivants."
   }
 ]
