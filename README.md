@@ -1,4 +1,8 @@
 <p align="center">
+  <em>Built for the DINUM × 42 hackathon · Projet réalisé dans le cadre du hackathon DINUM × 42</em>
+</p>
+
+<p align="center">
   <a href="https://github.com/liliane0128/PassOn_Dinum/stargazers/">
     <img src="https://img.shields.io/github/stars/liliane0128/PassOn_Dinum" alt="Stars" />
   </a>
@@ -18,27 +22,27 @@
   <a href="docs/deploiement.md">Deployment</a>
 </p>
 
-# Pass'on: Handover Assistant
+# PassOn: Handover Assistant
 
 ---
 
 ## English
 
-**Pass'on reads a colleague's Docs, Drive and Messages to generate a structured handover sheet — powered by an LLM.**
+**PassOn reads a colleague's Docs and Drive to generate a structured handover sheet — powered by an LLM.**
 
 > [!IMPORTANT]
-> Pass'on is an independent project built **on top of** La Suite numérique. It is
+> PassOn is an independent project built **on top of** La Suite numérique. It is
 > not affiliated with, endorsed by, or an official product of DINUM or La Suite
 > numérique. The La Suite logo appears in the application to mark that
 > integration; it belongs to La Suite numérique, not to this project.
 
-### Why use Pass'on ❓
+### Why use PassOn ❓
 
-* 📋 Pulls documents, files and emails from the three La Suite services automatically
-* 🤖 Extracts six structured handover sections via LLM (needs `GROQ_API_KEY`)
+* 📋 Pulls documents and files from Docs and Drive automatically
+* 🤖 Extracts structured handover sections via LLM
 * 🔑 Login with your existing Drive account — no separate account needed
-* 🛡️ Runs on mock data without any upstream service for quick local testing
-* 🗄️ Stores collaborators and handover sheets in a local Postgres database
+* 🗂️ Résumé lives in a shared Docs file — the agent validates it, the manager can still correct it
+
 
 ### Getting started 🔧
 
@@ -70,9 +74,9 @@ application or to the login page accordingly; the application redirects to
 `/login` on its own if it is opened without a session.
 
 Nothing has to be started by hand: `make up` builds and runs the frontend
-alongside nginx, Django and Postgres. For interface work, `npm run dev` inside
-`src/frontend` still serves it on :3001 — but `/api/` is not proxied there, so
-logging in only works through :8090.
+alongside nginx, Django and Postgres. For interface work, `npm run dev -- -p
+3001` inside `src/frontend` serves it on :3001 — but `/api/` is not proxied
+there, so logging in only works through :8090.
 
 On first run, copy the env templates:
 
@@ -81,17 +85,16 @@ cp template.env .env
 cp src/backend/.env.example src/backend/.env
 ```
 
-By default `DINUM_USE_MOCK=true` — the app runs on demo data without Docs, Drive or Messages.
+By default `DINUM_USE_MOCK=true` — the app runs on demo data without Docs or Drive.
 
 ### Login
 
-Pass'on has no accounts of its own. Log in with your **Drive** credentials:
+PassOn has no accounts of its own. Log in with your **Drive** credentials:
 
 ```
 POST /api/auth/login/   {"email": "...", "password": "..."}
 ```
 
-The same credentials are then tried against Messages, so one login can cover both.
 Roles are ours rather than Drive's: `manage.py set_role <email> manager` is how a
 manager account comes to exist.
 
@@ -110,35 +113,32 @@ make build   # rebuild images
 Frontend dev server, for interface work (hot reload):
 
 ```bash
-cd src/frontend && npm install && npm run dev
+cd src/frontend && npm install && npm run dev -- -p 3001
 # → http://localhost:3001 — no /api there, so logging in needs :8090
 ```
 
 ### Running alongside upstream services 🔌
 
-Pass'on reads real data from **Docs**, **Drive** and **Messages**. Each is an independent Docker Compose stack. These are each project's own defaults, as published by their compose files:
+PassOn reads real data from **Docs** and **Drive**. Each is an independent Docker Compose stack. These are each project's own defaults, as published by their compose files:
 
 | Service | API | Frontend | Keycloak |
 |---------|-----|----------|----------|
 | Drive | http://localhost:8071 | http://localhost:3000 | localhost:8083 (8080 direct) |
-| Messages | http://localhost:8901 | http://localhost:8900 | localhost:8902 |
 | Docs | http://localhost:8071 | http://localhost:3000 | — |
 
 > [!WARNING]
 > **Docs and Drive both default to 8071**, and both serve a frontend on 3000.
 > Running the two together means moving one of them and setting `DOCS_URL` or
 > `DRIVE_URL` accordingly — otherwise calls meant for one land on the other.
-> Only Drive and Messages are needed for login and for generating a handover.
+> Only Drive is needed for login and for generating a handover.
 
 > [!NOTE]
-> Drive's Keycloak occupies **8080**, which is why Pass'on serves on 8090.
+> Drive's Keycloak occupies **8080**, which is why PassOn serves on 8090.
 
 > [!TIP]
 > **[docs/deploiement.md](docs/deploiement.md)** covers this end to end: start-up
-> order, creating an account that works in both Keycloaks (Messages disables
-> registration and refuses to create a user whose email domain is not
-> "autojoin"), and a table mapping each failure message to its cause. Most of it
-> is not guessable.
+> order, creating a working account in Drive's Keycloak, and a table mapping each
+> failure message to its cause. Most of it is not guessable.
 
 ```bash
 # Docs
@@ -146,12 +146,6 @@ cd /path/to/docs && make bootstrap FLUSH_ARGS='--no-input' && make run
 
 # Drive
 cd /path/to/drive && make bootstrap && make demo && make run
-
-# Messages
-cd /path/to/messages && make bootstrap
-# then seed demo mail:
-docker compose exec -e DJANGO_CONFIGURATION=E2E backend-dev-light \
-    python manage.py e2e_demo
 ```
 
 Default credentials, and the session cookie each service issues:
@@ -160,7 +154,6 @@ Default credentials, and the session cookie each service issues:
 |---------|----------|----------|--------|
 | Docs | `impress` | `impress` | `docs_sessionid` |
 | Drive | `drive` | `drive` | `drive_sessionid` |
-| Messages | `user1@example.local` | `user1` | `st_messages_sessionid` |
 
 > [!WARNING]
 > Set `DINUM_USE_MOCK=false` and `DRIVE_URL` in `src/backend/.env` before connecting to a real Drive instance.
@@ -174,17 +167,17 @@ One Postgres instance, shared by both stacks (`make up` and `make run`).
 |-------|------|
 | `Collaborator` | One row per person — role, team, reporting line |
 | `Handover` | Handover sheet: free text + six structured sections, validated or not |
-| `CollaboratorItem` | Snapshot of someone's documents and mail, so their manager can read them |
+| `CollaboratorItem` | Snapshot of someone's documents and files, so their manager can read them |
 
-To seed demo data in Drive and Messages:
+To seed demo data in Drive:
 
 ```bash
 docker compose exec web python manage.py seed_demo --email ... --password ...
 ```
 
-It uploads five documents to that person's Drive and delivers six mails to their
-mailbox, written so every section of the generated handover has something to find.
-See [demo_data](src/backend/passon/demo_data/README.md).
+It uploads five documents to that person's Drive, written so every section of
+the generated handover has something to find. See
+[demo_data](src/backend/passon/demo_data/README.md).
 
 ### Contributing 🙌
 
@@ -207,16 +200,16 @@ Released under the [MIT License](LICENSE).
 The MIT licence covers this project's own code. It does not extend to the La
 Suite numérique name or logo, nor to any French State emblem, which remain the
 property of their holders and are used here only to identify the services
-Pass'on connects to.
+PassOn connects to.
 
 ---
 
 ## Français
 
-**Pass'on lit les Docs, le Drive et les Messages d'un collègue pour générer une fiche de passation structurée, à l'aide d'un LLM.**
+**PassOn lit les Docs et le Drive d'un collègue pour générer une fiche de passation structurée, à l'aide d'un LLM.**
 
 > [!IMPORTANT]
-> Pass'on est un projet indépendant, construit **par-dessus** La Suite numérique.
+> PassOn est un projet indépendant, construit **par-dessus** La Suite numérique.
 > Il n'est ni affilié à la DINUM ou à La Suite numérique, ni approuvé par elles,
 > ni un produit officiel. Le logo de La Suite apparaît dans l'application pour
 > signaler cette intégration ; il appartient à La Suite numérique, pas à ce
@@ -224,11 +217,10 @@ Pass'on connects to.
 
 ### À quoi ça sert ❓
 
-* 📋 Récupère automatiquement documents, fichiers et mails des trois services de La Suite
-* 🤖 En extrait six rubriques de passation via un LLM (nécessite `GROQ_API_KEY`)
+* 📋 Récupère automatiquement documents et fichiers depuis Docs et Drive
+* 🤖 En extrait des rubriques de passation structurées via un LLM
 * 🔑 Connexion avec le compte Drive existant — aucun compte supplémentaire
-* 🛡️ Fonctionne sur des données de démonstration, sans aucun service externe
-* 🗄️ Stocke collaborateurs et passations dans une base Postgres locale
+* 🗂️ Le résumé vit dans un Docs partagé — l'agent le valide, le manager peut encore le corriger
 
 ### Démarrer 🔧
 
@@ -261,7 +253,7 @@ renvoie d'elle-même vers `/login` si elle est ouverte sans session.
 
 Rien n'est à lancer à la main : `make up` construit et démarre le frontend en
 même temps que nginx, Django et Postgres. Pour travailler sur l'interface,
-`npm run dev` dans `src/frontend` le sert toujours sur :3001 — mais `/api/`
+`npm run dev -- -p 3001` dans `src/frontend` le sert sur :3001 — mais `/api/`
 n'y est pas relayé, et la connexion ne fonctionne donc que par :8090.
 
 Au premier lancement, copier les fichiers d'exemple :
@@ -271,18 +263,17 @@ cp template.env .env
 cp src/backend/.env.example src/backend/.env
 ```
 
-Par défaut `DINUM_USE_MOCK=true` : l'application tourne sur des données de démonstration, sans Docs, Drive ni Messages.
+Par défaut `DINUM_USE_MOCK=true` : l'application tourne sur des données de démonstration, sans Docs ni Drive.
 
 ### Connexion
 
-Pass'on n'a pas de comptes à lui. On se connecte avec ses identifiants **Drive** :
+PassOn n'a pas de comptes à lui. On se connecte avec ses identifiants **Drive** :
 
 ```
 POST /api/auth/login/   {"email": "...", "password": "..."}
 ```
 
-Les mêmes identifiants sont ensuite essayés sur Messages, pour qu'une seule
-connexion couvre les deux. Les rôles, eux, sont les nôtres et non ceux de Drive :
+Les rôles, eux, sont les nôtres et non ceux de Drive :
 `manage.py set_role <email> manager` est ce qui crée un compte manager.
 
 ### Commandes utiles
@@ -301,36 +292,34 @@ Serveur de développement du frontend, pour travailler sur l'interface
 (rechargement à chaud) :
 
 ```bash
-cd src/frontend && npm install && npm run dev
+cd src/frontend && npm install && npm run dev -- -p 3001
 # → http://localhost:3001 — pas d'/api dessus, la connexion passe par :8090
 ```
 
 ### Fonctionner à côté des services de La Suite 🔌
 
-Pass'on lit de vraies données dans **Docs**, **Drive** et **Messages**. Chacun est une pile Docker Compose indépendante. Voici les ports par défaut de chaque projet, tels que publiés par leurs fichiers compose :
+PassOn lit de vraies données dans **Docs** et **Drive**. Chacun est une pile Docker Compose indépendante. Voici les ports par défaut de chaque projet, tels que publiés par leurs fichiers compose :
 
 | Service | API | Interface | Keycloak |
 |---------|-----|-----------|----------|
 | Drive | http://localhost:8071 | http://localhost:3000 | localhost:8083 (8080 en direct) |
-| Messages | http://localhost:8901 | http://localhost:8900 | localhost:8902 |
 | Docs | http://localhost:8071 | http://localhost:3000 | — |
 
 > [!WARNING]
 > **Docs et Drive utilisent tous deux 8071** par défaut, et servent tous deux une
 > interface sur 3000. Les faire tourner ensemble suppose d'en déplacer un et
 > d'ajuster `DOCS_URL` ou `DRIVE_URL` — sinon les appels destinés à l'un
-> arrivent sur l'autre. Seuls Drive et Messages sont nécessaires pour se
-> connecter et générer une passation.
+> arrivent sur l'autre. Seul Drive est nécessaire pour se connecter et générer
+> une passation.
 
 > [!NOTE]
-> Le Keycloak de Drive occupe **8080** : c'est pourquoi Pass'on est servi sur 8090.
+> Le Keycloak de Drive occupe **8080** : c'est pourquoi PassOn est servi sur 8090.
 
 > [!TIP]
 > **[docs/deploiement.md](docs/deploiement.md)** détaille tout cela : ordre de
-> démarrage, création d'un compte qui fonctionne dans les deux Keycloak
-> (Messages désactive l'inscription et refuse de créer un utilisateur dont le
-> domaine d'adresse n'est pas « autojoin »), et un tableau reliant chaque message
-> d'erreur à sa cause. L'essentiel ne se devine pas.
+> démarrage, création d'un compte qui fonctionne dans le Keycloak de Drive, et un
+> tableau reliant chaque message d'erreur à sa cause. L'essentiel ne se devine
+> pas.
 
 ```bash
 # Docs
@@ -338,12 +327,6 @@ cd /chemin/vers/docs && make bootstrap FLUSH_ARGS='--no-input' && make run
 
 # Drive
 cd /chemin/vers/drive && make bootstrap && make demo && make run
-
-# Messages
-cd /chemin/vers/messages && make bootstrap
-# puis charger les mails de démonstration :
-docker compose exec -e DJANGO_CONFIGURATION=E2E backend-dev-light \
-    python manage.py e2e_demo
 ```
 
 Identifiants par défaut, et cookie de session posé par chaque service :
@@ -352,7 +335,6 @@ Identifiants par défaut, et cookie de session posé par chaque service :
 |---------|-------------|--------------|--------|
 | Docs | `impress` | `impress` | `docs_sessionid` |
 | Drive | `drive` | `drive` | `drive_sessionid` |
-| Messages | `user1@example.local` | `user1` | `st_messages_sessionid` |
 
 > [!WARNING]
 > Mettre `DINUM_USE_MOCK=false` et renseigner `DRIVE_URL` dans `src/backend/.env` avant de se connecter à une vraie instance Drive.
@@ -366,17 +348,17 @@ Une seule instance Postgres, partagée par les deux façons de lancer le projet 
 |-------|---------|
 | `Collaborator` | une ligne par personne — rôle, équipe, rattachement hiérarchique |
 | `Handover` | la passation : texte libre + six rubriques structurées, validée ou non |
-| `CollaboratorItem` | photo des documents et mails d'une personne, pour que son manager les lise |
+| `CollaboratorItem` | photo des documents et fichiers d'une personne, pour que son manager les lise |
 
-Pour déposer les données de démonstration dans Drive et Messages :
+Pour déposer les données de démonstration dans Drive :
 
 ```bash
 docker compose exec web python manage.py seed_demo --email ... --password ...
 ```
 
-La commande dépose cinq documents dans le Drive de la personne et six mails dans
-sa boîte, écrits pour que chaque rubrique de la passation générée ait de quoi se
-remplir. Voir [demo_data](src/backend/passon/demo_data/README.md).
+La commande dépose cinq documents dans le Drive de la personne, écrits pour que
+chaque rubrique de la passation générée ait de quoi se remplir. Voir
+[demo_data](src/backend/passon/demo_data/README.md).
 
 ### Contribuer 🙌
 
@@ -400,12 +382,12 @@ Publié sous [licence MIT](LICENSE).
 La licence MIT couvre le code de ce projet. Elle ne s'étend ni au nom ni au logo
 de La Suite numérique, ni à aucun emblème de l'État français : ils restent la
 propriété de leurs titulaires et ne sont utilisés ici que pour désigner les
-services auxquels Pass'on se connecte.
+services auxquels PassOn se connecte.
 
 ---
 
 ## Gov ❤️ open source
 
-Pass'on is part of the **La Suite Numérique** ecosystem, a joint initiative led by [DINUM](https://www.numerique.gouv.fr/dinum/).
+PassOn is part of the **La Suite Numérique** ecosystem, a joint initiative led by [DINUM](https://www.numerique.gouv.fr/dinum/).
 
-Pass'on s'inscrit dans l'écosystème de **La Suite Numérique**, initiative portée par la [DINUM](https://www.numerique.gouv.fr/dinum/).
+PassOn s'inscrit dans l'écosystème de **La Suite Numérique**, initiative portée par la [DINUM](https://www.numerique.gouv.fr/dinum/).
