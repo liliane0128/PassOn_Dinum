@@ -59,6 +59,26 @@ export function PassationCard({
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
+  // The manager's own action on someone else's sheet: separate from
+  // `status.validated` above (the agent validating their own sheet) on
+  // purpose -- a manager reviewing and transferring a dossier is a different
+  // event from the agent having signed off on it, and conflating the two
+  // would make "Validée par l'agent" in the header lie the moment a manager
+  // clicked their own button. Local to this card, like the rest of this
+  // component's edits when there is no onXCommit to persist them.
+  const [transferred, setTransferred] = useState(false);
+  const [transferredAt, setTransferredAt] = useState<string | null>(null);
+  const [showTransferConfirm, setShowTransferConfirm] = useState(false);
+
+  function confirmTransfer() {
+    const now = new Date();
+    const date = now.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+    const time = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    setTransferred(true);
+    setTransferredAt(`${date} à ${time}`);
+    setShowTransferConfirm(false);
+  }
+
   // Aperçu no longer edits inline (see ResumeSection/PointsAttentionSection/
   // ContactsSection's onRequestEdit): its pencil jumps here instead, to the
   // matching section, so there is only one place these fields are actually
@@ -198,7 +218,9 @@ export function PassationCard({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-center">
-          {onRegenerate && (
+          {/* A manager reviewing someone else's sheet does not get to
+              regenerate it -- that action belongs to the agent it's about. */}
+          {onRegenerate && role !== "manager" && (
             <button
               type="button"
               onClick={onRegenerate}
@@ -278,28 +300,45 @@ export function PassationCard({
                   )}
                 </>
               ) : (
-                status.validated && (
-                  <>
-                    <a
-                      href={DOCS_PLACEHOLDER_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={secondaryLinkClass}
+                <>
+                  {transferred ? (
+                    <span className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-1.5 text-sm font-semibold text-emerald-700">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Transférée · {transferredAt}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowTransferConfirm(true)}
+                      className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brand-700"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Voir dans Docs
-                    </a>
-                    <a
-                      href={DOCS_PLACEHOLDER_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={secondaryLinkClass}
-                    >
-                      <SquarePen className="h-3.5 w-3.5" />
-                      Modifier dans Docs
-                    </a>
-                  </>
-                )
+                      <Send className="h-4 w-4" />
+                      Valider et transférer
+                    </button>
+                  )}
+                  {status.validated && (
+                    <>
+                      <a
+                        href={DOCS_PLACEHOLDER_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={secondaryLinkClass}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Voir dans Docs
+                      </a>
+                      <a
+                        href={DOCS_PLACEHOLDER_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={secondaryLinkClass}
+                      >
+                        <SquarePen className="h-3.5 w-3.5" />
+                        Modifier dans Docs
+                      </a>
+                    </>
+                  )}
+                </>
               )}
             </>
           )}
@@ -413,6 +452,36 @@ export function PassationCard({
               <button
                 type="button"
                 onClick={confirmPublish}
+                className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTransferConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl ring-1 ring-gray-900/10">
+            <h3 className="text-base font-semibold text-gray-900">
+              Valider et transférer ce dossier ?
+            </h3>
+            <p className="mt-2 text-sm text-gray-500">
+              En confirmant, vous validez cette fiche de passation en tant que manager et la
+              transférez officiellement à l'équipe. Elle restera consultable ensuite.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowTransferConfirm(false)}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmTransfer}
                 className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
               >
                 Confirmer

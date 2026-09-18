@@ -17,7 +17,7 @@ from . import oidc_login
 
 # email -> (password, Drive-shaped user payload)
 ACCOUNTS = {
-    "drive@drive.world": ("drive", {"id": "mock-drive", "email": "drive@drive.world", "full_name": "Drive Demo"}),
+    "drive@drive.world": ("drive", {"id": "mock-drive", "email": "drive@drive.world", "full_name": "Marie Lambert"}),
     "paige.turner@library.book": ("pass", {"id": "mock-paige", "email": "paige.turner@library.book", "full_name": "Paige Turner"}),
     "miles.ahead@roadmap.fwd": ("pass", {"id": "mock-miles", "email": "miles.ahead@roadmap.fwd", "full_name": "Miles Ahead"}),
     "archie.vist@vaulted.docs": ("pass", {"id": "mock-archie", "email": "archie.vist@vaulted.docs", "full_name": "Archie Vist"}),

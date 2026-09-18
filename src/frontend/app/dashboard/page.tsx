@@ -10,21 +10,24 @@ import { useAuth } from "@/context/AuthContext";
 import { errorMessage } from "@/lib/handover";
 import { runGeneration } from "@/lib/generate-passation";
 import { PASSATION_PATH } from "@/lib/routes";
+import { DEMO_MODE, buildDemoHandover } from "@/lib/demo-data";
+import { withMinDuration, MIN_GENERATION_DURATION_MS } from "@/lib/with-min-duration";
 
 type GenerationState = "idle" | "generating";
 
 // lil's four-step checklist, played against the real call rather than a
 // timer: the steps advance on their own but stop one short, and the last one
-// only completes when the generation actually returns. A pass takes around
-// thirty seconds -- every document and mail is read before the model is
-// called -- so a fixed 4.4s script would finish long before the work does.
+// only completes when the generation actually returns. Sized off the shared
+// floor (lib/with-min-duration.ts) rather than a constant of its own, so the
+// four steps split it evenly instead of the first three flashing by and the
+// last one carrying whatever time is left over.
 const STEPS = [
   "Lecture de vos sources",
   "Repérage des dossiers actifs",
   "Extraction des informations clés",
   "Compilation du dossier de passation",
 ];
-const STEP_DURATION_MS = 1100;
+const STEP_DURATION_MS = MIN_GENERATION_DURATION_MS / STEPS.length;
 
 // Matches the fade/scale-in on gerer-ma-passation, so the cut between the
 // two happens at the same (fully faded) point rather than as a jump.
@@ -152,7 +155,16 @@ export default function DashboardPage() {
     );
 
     try {
-      await runGeneration(user.id, user.email, user.full_name);
+      // Demo mode: no fetch, no PATCH, no dependency on Django or Groq --
+      // just the checklist above, held open for MIN_GENERATION_DURATION_MS
+      // (see lib/with-min-duration.ts) so it reads as a real pass rather than
+      // a jump-cut. gerer-ma-passation picks the fixture back up on its own
+      // once this redirects there (lib/demo-data.ts), so nothing from this
+      // call needs to be kept.
+      const pass = DEMO_MODE
+        ? Promise.resolve(buildDemoHandover(user.id))
+        : runGeneration(user.id, user.email, user.full_name);
+      await withMinDuration(pass, MIN_GENERATION_DURATION_MS);
       setCompletedCount(STEPS.length);
       // A beat so the last checkmark reads before the page changes.
       setTimeout(() => leaveFor(PASSATION_PATH), 300);

@@ -48,12 +48,26 @@ services:
 
   # The one database: users, their relations, and the sessions the login flow
   # depends on. Stored in a named volume, so `make down` keeps the data and
-  # `docker compose down -v` is what wipes it. No published port -- nothing
-  # outside the compose network needs to reach it.
+  # `docker compose down -v` is what wipes it.
   postgres:
     image: postgres:16-alpine
     container_name: passon_postgres
     restart: unless-stopped
+    # Needed on this container's own environment, not just `web`'s: the
+    # postgres image's entrypoint uses these to initialize the database on a
+    # fresh volume, and the healthcheck below reads them too. A pre-existing
+    # data volume masks a missing POSTGRES_PASSWORD (init only runs once, on
+    # an empty volume), which is how this went unnoticed until a fresh one.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-db}
+    # Published to localhost only, for a `manage.py runserver` run directly on
+    # the host (no Docker for that process) with POSTGRES_HOST=localhost in
+    # src/backend/.env. The Dockerized `web` service never uses this -- it
+    # still reaches this container over the compose network as "postgres".
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - passon-db:/var/lib/postgresql/data
     healthcheck:
@@ -70,6 +84,14 @@ services:
       dockerfile: src/frontend/Dockerfile
     container_name: passon_frontend
     restart: unless-stopped
+    environment:
+      # "true" makes the passation card run entirely off a hardcoded fixture --
+      # no fetch, no PATCH, no dependency on Django or Groq being reachable.
+      # Login is untouched, only the generated card is swapped. `next dev`
+      # (this service's CMD) reads it at startup, so a container restart picks
+      # up a change -- no image rebuild needed. Set it in src/backend/.env,
+      # which `make up` already passes as this stack's --env-file.
+      NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
     depends_on:
       - web
 

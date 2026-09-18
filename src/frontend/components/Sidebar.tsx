@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, Settings, FolderOpen, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useRole } from "@/context/RoleContext";
-import { DASHBOARD_PATH, PASSATION_PATH } from "@/lib/routes";
+import { DASHBOARD_PATH, EQUIPE_PATH, PASSATION_PATH } from "@/lib/routes";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -25,19 +25,26 @@ export function Sidebar() {
       id: "equipe",
       label: "Mon équipe",
       icon: Users,
-      href: "/equipe",
+      href: EQUIPE_PATH,
       managerOnly: true,
     },
   ];
 
   const visibleItems = navItems.filter((item) => !item.managerOnly || role === "manager");
 
+  // A manager landing on /gerer-ma-passation came from "Mon équipe"
+  // (equipe/page.tsx's "Voir la passation"), not from "Ma passation" -- they
+  // are reviewing someone else's sheet, not their own -- so the active item
+  // stays "Mon équipe" instead of jumping to whichever nav item happens to
+  // share that URL.
+  const viewingViaTeam = pathname === PASSATION_PATH && role === "manager";
+
   return (
     <aside className="flex h-full w-56 shrink-0 flex-col justify-between border-r border-gray-200 bg-white px-3 py-4">
       <nav className="flex flex-col gap-1">
         {visibleItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href;
+          const active = viewingViaTeam ? item.id === "equipe" : pathname === item.href;
           return (
             <Link
               key={item.id}

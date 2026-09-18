@@ -91,7 +91,12 @@ DATABASES = {
         "NAME": os.getenv("POSTGRES_DB", "db"),
         "USER": os.getenv("POSTGRES_USER", "user"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", "password"),
-        "HOST": "postgres",
+        # "postgres" is the Docker Compose service name -- only resolvable
+        # from inside that network. Running `manage.py runserver` straight on
+        # the host (no Docker at all for this process) needs POSTGRES_HOST=
+        # localhost instead, with the `postgres` container's 5432 published
+        # to the host (see docker-compose.yml).
+        "HOST": os.getenv("POSTGRES_HOST", "postgres"),
         "PORT": "5432",
     }
 }

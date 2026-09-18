@@ -9,5 +9,6 @@ src/frontend/node_modules
 src/frontend/dist
 src/backend/.env
 src/backend/db.sqlite3
+src/frontend/.env.local
 __pycache__/
 *.pyc

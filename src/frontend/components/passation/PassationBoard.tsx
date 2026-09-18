@@ -17,6 +17,8 @@ import { contactsFromItems } from "@/lib/contacts-from-items";
 import { runGeneration } from "@/lib/generate-passation";
 import { MAX_PRIORITY_DOCUMENTS, rankDocuments } from "@/lib/documents-priority";
 import { passation as demoPassation } from "@/lib/mock-data";
+import { DEMO_MODE, DEMO_ITEMS, buildDemoHandover } from "@/lib/demo-data";
+import { withMinDuration, MIN_GENERATION_DURATION_MS } from "@/lib/with-min-duration";
 import type { AttentionPoint, Contact, Passation, SourceItem } from "@/lib/types";
 import { PassationCard } from "./PassationCard";
 
@@ -81,7 +83,7 @@ function completeness(handover: Handover | null): number {
 // actually returns.
 const FIRST_STEP = "Analyse de vos Docs…";
 const SECOND_STEP = "Rédaction de la fiche de passation…";
-const FIRST_STEP_DURATION_MS = 1300;
+const FIRST_STEP_DURATION_MS = 3000;
 
 export function PassationBoard() {
   const { session } = useAuth();
@@ -97,6 +99,17 @@ export function PassationBoard() {
 
   const load = useCallback(async (collaboratorId: string) => {
     setLoading(true);
+    if (DEMO_MODE) {
+      // Loaded ready, not empty: the dashboard's own checklist is where the
+      // "generating" wait already played (see app/dashboard/page.tsx), so
+      // arriving here should reveal the sheet at once, exactly like a real
+      // generation landing on this page after the redirect. Only a manual
+      // "Régénérer" (below) plays this page's own wait.
+      setItems(DEMO_ITEMS);
+      setHandover(buildDemoHandover(collaboratorId));
+      setLoading(false);
+      return;
+    }
     try {
       // The sheet is the point of the page; the items only feed the source
       // counts, so failing to read them must not hide an existing résumé.
@@ -140,7 +153,10 @@ export function PassationBoard() {
     setGenerating(true);
     setError(null);
     try {
-      setHandover(await runGeneration(collaboratorId, emailRef.current, nameRef.current));
+      const pass = DEMO_MODE
+        ? Promise.resolve(buildDemoHandover(collaboratorId))
+        : runGeneration(collaboratorId, emailRef.current, nameRef.current);
+      setHandover(await withMinDuration(pass, MIN_GENERATION_DURATION_MS));
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -173,6 +189,10 @@ export function PassationBoard() {
    */
   async function handleValidate() {
     if (!user?.id) return;
+    if (DEMO_MODE) {
+      setHandover((prev) => prev && { ...prev, validated: true, updatedAt: new Date().toISOString() });
+      return;
+    }
     try {
       setHandover(await validateHandover(user.id));
     } catch {
@@ -183,6 +203,10 @@ export function PassationBoard() {
   /** Called when the résumé's editor is closed, so an edit is not lost. */
   async function handleResumeCommit(text: string) {
     if (!user?.id) return;
+    if (DEMO_MODE) {
+      setHandover((prev) => prev && { ...prev, text, validated: false, updatedAt: new Date().toISOString() });
+      return;
+    }
     try {
       setHandover(await saveHandover(user.id, { text }));
     } catch {
@@ -213,6 +237,10 @@ export function PassationBoard() {
         role: contact.role.trim(),
         email: contact.email.trim(),
       }));
+    if (DEMO_MODE) {
+      setHandover((prev) => prev && { ...prev, contacts: cleaned, updatedAt: new Date().toISOString() });
+      return;
+    }
     try {
       setHandover(await saveHandover(user.id, { contacts: cleaned }));
     } catch {
@@ -234,6 +262,10 @@ export function PassationBoard() {
         label: point.label.trim(),
         evidence: point.evidence ?? [],
       }));
+    if (DEMO_MODE) {
+      setHandover((prev) => prev && { ...prev, blockers, updatedAt: new Date().toISOString() });
+      return;
+    }
     try {
       setHandover(await saveHandover(user.id, { blockers }));
     } catch {

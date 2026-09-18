@@ -6,13 +6,21 @@ export const currentUser = {
   jobTitle: "Cheffe de projet — Dossier Continuity",
 };
 
-// Manager view only (Sidebar's "Mon équipe"): a manager's own team, not the
-// passation's external contacts above. Lili Wang here is the same person as
-// currentUser -- the one leaving, whose passation is the demo data below.
+// Manager view (Sidebar's "Mon équipe" / app/equipe): Julie Bonnet's team in
+// the Service Achats (see lib/demo-data.ts's MANAGER_PERSONA). Marie is the
+// only one actually leaving -- everyone else here is filler to make the list
+// read as a real team rather than a single row.
 export const teamMembers: TeamMember[] = [
-  { id: "team-1", name: "Karim Haddad", role: "Développeur", status: "actif" },
-  { id: "team-2", name: "Julie Chevalier", role: "Chargée de projet", status: "actif" },
-  { id: "team-3", name: "Lili Wang", role: "Cheffe de projet — Dossier Continuity", status: "actif" },
+  { id: "team-1", name: "Karim Haddad", role: "Gestionnaire des marchés publics", status: "actif" },
+  { id: "team-10", name: "Marie Lambert", role: "Gestionnaire des marchés publics", status: "en_depart" },
+  { id: "team-2", name: "Ahmed Belkacem", role: "Chargé de mission achats", status: "actif" },
+  { id: "team-3", name: "Léa Girard", role: "Comptable", status: "actif" },
+  { id: "team-4", name: "Nora Benali", role: "Assistante administrative", status: "actif" },
+  { id: "team-5", name: "Thomas Petit", role: "Chargé de mission achats", status: "actif" },
+  { id: "team-6", name: "Sarah Fontaine", role: "Assistante administrative", status: "actif" },
+  { id: "team-7", name: "Yanis Cherif", role: "Gestionnaire de contrats", status: "actif" },
+  { id: "team-8", name: "Camille Roussel", role: "Contrôleuse de gestion", status: "actif" },
+  { id: "team-9", name: "Hugo Meunier", role: "Chargé de mission achats", status: "actif" },
 ];
 
 export const passation: Passation = {

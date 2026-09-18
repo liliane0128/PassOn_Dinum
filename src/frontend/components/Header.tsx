@@ -1,21 +1,38 @@
 "use client";
 
 import { Bell, CircleHelp, LogOut, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { PassOnLogo } from "./PassOnLogo";
 import { cn } from "@/lib/cn";
 import { Role, useRole } from "@/context/RoleContext";
 import { useAuth } from "@/context/AuthContext";
-import { LOGIN_PATH } from "@/lib/routes";
+import { DASHBOARD_PATH, EQUIPE_PATH, LOGIN_PATH } from "@/lib/routes";
+import { MANAGER_PERSONA } from "@/lib/demo-data";
 
 const roleOptions: { value: Role; label: string }[] = [
   { value: "agent", label: "Agent" },
   { value: "manager", label: "Manager" },
 ];
 
+// Where switching to a role lands: the manager's own view is the team list,
+// the agent's is their own dashboard -- so the switch reads as "go look at
+// things from there" rather than a toggle that leaves you on whatever page
+// you happened to be on.
+const roleDestination: Record<Role, string> = {
+  agent: DASHBOARD_PATH,
+  manager: EQUIPE_PATH,
+};
+
 // Purely local, front-end-only view switch for demos: not a real login or
 // permission system, see context/RoleContext.tsx.
 function RoleSwitcher() {
   const { role, setRole } = useRole();
+  const router = useRouter();
+
+  function switchTo(next: Role) {
+    setRole(next);
+    router.push(roleDestination[next]);
+  }
 
   return (
     <div
@@ -27,7 +44,7 @@ function RoleSwitcher() {
         <button
           key={option.value}
           type="button"
-          onClick={() => setRole(option.value)}
+          onClick={() => switchTo(option.value)}
           aria-pressed={role === option.value}
           className={cn(
             "rounded-md px-2.5 py-1 transition-colors",
@@ -53,7 +70,17 @@ function initialsOf(fullName: string, email: string) {
 
 export function Header() {
   const { session, logout } = useAuth();
+  const { role } = useRole();
   const user = session?.user;
+
+  // The "Manager" view is a cosmetic swap, not a second account (see
+  // RoleContext.tsx): the session underneath is still the real one, only what
+  // the header shows for it changes, so a demo can be given as "now looking
+  // at this as Marie's manager" without a second login.
+  const isManagerView = role === "manager";
+  const displayName = isManagerView ? MANAGER_PERSONA.full_name : user?.full_name;
+  const displayTitle = isManagerView ? MANAGER_PERSONA.jobTitle : user?.jobTitle;
+  const avatarUrl = isManagerView ? null : user?.avatarUrl;
 
   async function handleLogout() {
     await logout();
@@ -93,23 +120,23 @@ export function Header() {
         <div className="flex items-center gap-2">
           {/* The picture when there is one, initials otherwise -- most people
               have none, and an empty circle says less than two letters. */}
-          {user?.avatarUrl ? (
+          {avatarUrl ? (
             <img
-              src={user.avatarUrl}
+              src={avatarUrl}
               alt=""
               className="h-8 w-8 shrink-0 rounded-full object-cover"
             />
           ) : (
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white">
-              {user ? initialsOf(user.full_name, user.email) : "?"}
+              {displayName ? initialsOf(displayName, user?.email ?? "") : "?"}
             </span>
           )}
           <span className="hidden flex-col items-start leading-tight sm:flex">
             <span className="font-medium text-gray-800">
-              {user?.full_name || user?.email || "Non connecté"}
+              {displayName || user?.email || "Non connecté"}
             </span>
             <span className="text-xs text-gray-400">
-              {user?.jobTitle || user?.email}
+              {displayTitle || user?.email}
             </span>
           </span>
           <button

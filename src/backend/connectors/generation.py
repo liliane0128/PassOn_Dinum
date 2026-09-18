@@ -6,8 +6,8 @@ single LLM call.
 Uses the Groq API (groq SDK, OpenAI-compatible chat.completions interface),
 in JSON mode (response_format={"type": "json_object"}).
 
-Output shape matches the frontend's SummaryContext model directly (see
-src/frontend/src/context/SummaryContext.jsx / SummaryDetails.jsx):
+Output shape is stored as-is by the backend (`Handover.sections`, one PATCH
+of `src/frontend/lib/handover.ts`'s `Handover` type after generation):
     {
       "text": "free-text prose summary",
       "actions": [{"label": "...", "evidence": [EvidenceRef, ...]}],
@@ -21,12 +21,23 @@ src/frontend/src/context/SummaryContext.jsx / SummaryDetails.jsx):
   browsable (mock/synthetic ids, or a real item's REST resource_url rather
   than a page), so `content` lets a bullet's evidence be read in place. See
   _enrich_evidence_ids() below.
-No "id" per action/decision/deadline/blocker entry and no "contactIds": the
-frontend assigns its own `id` (crypto.randomUUID()) when merging an array
-into its state, and "contactIds" references the frontend's own collaborator
-roster, which this pipeline has no knowledge of -- see extraction.py's
-module docstring for why that stays a frontend-only, manually-edited field
-for now.
+
+The six fields are still generated and stored, but the current frontend does
+not render each of them as its own section any more. Only two are shown
+directly: `text` (the résumé) and `blockers` (the "points d'attention" list,
+`components/passation/PassationBoard.tsx`). `actions`, `decisions` and
+`deadlines` are kept but consumed only as ranking signal --
+`lib/documents-priority.ts`'s `rankDocuments()` uses which bullets cite a
+document, and a deadline's date, to order and label the "documents"
+section -- not displayed as their own bulleted lists. `documents` itself is
+filtered (mail ids dropped, kept for "Sources" instead) and capped to
+`MAX_PRIORITY_DOCUMENTS` before display, so what an evaluator sees for that
+section is a re-ranked subset, not this function's raw list. "contacts" is
+not one of this pipeline's fields at all: the frontend derives it separately
+from mail items after generation (`lib/contacts-from-items.ts`) and merges it
+into the same save, which is why there is no "contactIds" here either -- see
+extraction.py's module docstring for why contacts stay outside the model's
+job.
 
 The LLM itself only picks *which* item ids matter for "documents" and, for
 every action/decision/deadline/blocker, which id(s) justify that specific
